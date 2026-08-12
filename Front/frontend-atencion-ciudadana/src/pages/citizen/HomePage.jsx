@@ -4,22 +4,19 @@ import CategoryCard from "../../components/ui/CategoryCard";
 import logo from "../../assets/logo.png";
 import { MOCK_CATEGORIES } from "../../data/mockCategories";
 
-/**
- * HomePage — UADE-flavored municipal landing page.
- * Angular hero with geometric patterns, coral accents, institutional warmth.
- */
+/* HomePage */
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)]">
-      {/* ===================== HERO ===================== */}
+      {/*HERO */}
       <section className="hero-clip relative bg-[#0F2C59] overflow-hidden">
         {/* Luxury Pattern Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none bg-gradient-to-br from-[#0F2C59] via-[#0c244a] to-[#071630]">
           {/* Repeating Logo Pattern overlay */}
-          <div 
+          <div
             className="absolute inset-0 opacity-[0.025] mix-blend-screen"
             style={{
               backgroundImage: `url(${logo})`,
@@ -29,20 +26,17 @@ export default function HomePage() {
               transform: 'rotate(-12deg) scale(1.5)'
             }}
           />
-          
-          {/* Cinematic Lighting Accents */}
+
           <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[100%] rounded-full bg-gradient-to-b from-[#2563eb] to-transparent opacity-25 blur-[120px] mix-blend-screen" />
           <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[80%] rounded-full bg-gradient-to-t from-[#D63031] to-transparent opacity-20 blur-[100px] mix-blend-screen" />
         </div>
 
-        {/* Coral diagonal accent bar */}
         <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-[#D63031] to-transparent opacity-40" />
 
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-24 lg:py-28">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-12">
             {/* Left: text content */}
             <div className="max-w-xl">
-              {/* Institutional label with coral accent */}
               <div className="flex items-center gap-2 mb-6">
                 <div className="h-px w-6 bg-[#D63031]" />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D63031]/80">
@@ -61,7 +55,7 @@ export default function HomePage() {
                 los servicios de la Municipalidad de Ciudad UADE.
               </p>
 
-              {/* Search — underline style */}
+              {/* Search */}
               <div className="mt-8 max-w-md">
                 <div className="flex items-center gap-3 border-b border-white/15 pb-3 transition-colors focus-within:border-[#D63031]/50">
                   <Search className="h-4 w-4 text-white/30 shrink-0" strokeWidth={2} />
@@ -88,9 +82,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right: Floating Activity Cards (Chiche) */}
+            {/* Right: Floating Activity Cards */}
             <div className="hidden lg:flex flex-col gap-3 relative z-10 mt-8 w-[380px]">
-              
+
               {/* Header */}
               <div className="flex items-center gap-3 mb-2 ml-2">
                 <div className="relative flex h-2.5 w-2.5">
@@ -143,9 +137,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===================== MAIN CONTENT ===================== */}
+      {/*MAIN CONTENT */}
       <div className="flex-1 bg-[#fafafa]">
-        {/* Tracking strip — with coral left accent */}
+        {/* Tracking strip */}
         <section className="border-b border-neutral-200/60 bg-white">
           <div className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2.5 text-[13px] text-neutral-500 shrink-0">
@@ -212,10 +206,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA — UADE branded */}
         <section className="mx-auto max-w-6xl px-5 pb-16">
           <div className="relative overflow-hidden rounded-xl border border-neutral-200/80 bg-white p-6 sm:p-8">
-            {/* Subtle diagonal stripe — UADE geometric nod */}
             <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden">
               <div className="absolute -top-12 -right-12 w-24 h-24 rotate-45 bg-[#D63031]/5" />
             </div>
@@ -243,9 +235,8 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* ===================== FOOTER ===================== */}
+      {/*  FOOTER */}
       <footer className="border-t border-neutral-200/60 bg-white">
-        {/* Thin coral line at top of footer — mirrors navbar */}
         <div className="h-px bg-gradient-to-r from-transparent via-[#D63031]/20 to-transparent" />
 
         <div className="mx-auto max-w-6xl px-5 py-10">

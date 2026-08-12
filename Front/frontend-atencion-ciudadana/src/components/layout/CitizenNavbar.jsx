@@ -3,19 +3,16 @@ import { Link } from "react-router-dom";
 import { Search, Ticket, User, Menu, X } from "lucide-react";
 import logo from "../../assets/logo.png";
 
-/**
- * CitizenNavbar — Institutional navbar with UADE municipal branding.
- */
+/* CitizenNavbar */
 export default function CitizenNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-200/60 bg-white/95 backdrop-blur-md">
-      {/* Thin coral accent line at very top — institutional touch */}
+
       <div className="h-0.5 bg-gradient-to-r from-[#D63031] via-[#e74c3c] to-[#D63031]" />
 
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-        {/* Brand with shield */}
         <Link to="/" className="flex items-center gap-2.5">
           <img src={logo} alt="Ciudad UADE Logo" className="h-7 w-auto object-contain" />
           <div className="flex flex-col leading-none">

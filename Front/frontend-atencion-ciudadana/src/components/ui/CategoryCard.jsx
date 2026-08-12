@@ -1,8 +1,6 @@
 import { ArrowUpRight, icons } from "lucide-react";
 
-/**
- * CategoryCard — Clean card with UADE-accented hover interactions.
- */
+/* CategoryCard */
 export default function CategoryCard({
   title,
   description,
@@ -41,9 +39,8 @@ export default function CategoryCard({
         </div>
         {badgeText && (
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              badgeStyles[badgeText] || "bg-neutral-100 text-neutral-500"
-            }`}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeStyles[badgeText] || "bg-neutral-100 text-neutral-500"
+              }`}
           >
             {badgeText}
           </span>
