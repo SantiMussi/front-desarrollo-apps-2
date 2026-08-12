@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ArrowRight, ClipboardList, Phone, Mail, MapPin, ChevronRight, Activity, CheckCircle, Wrench, TreePine } from "lucide-react";
 import CategoryCard from "../../components/ui/CategoryCard";
 import logo from "../../assets/logo.png";
@@ -8,6 +8,20 @@ import { MOCK_CATEGORIES } from "../../data/mockCategories";
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
+  const [activeEventIndex, setActiveEventIndex] = useState(0);
+
+  const RECENT_EVENTS = [
+    { id: 1, text: "Bacheo en Av. Lima", time: "Resuelto hace 2m", icon: CheckCircle, color: "text-green-400" },
+    { id: 2, text: "Luminaria reparada", time: "Independencia 1100", icon: Wrench, color: "text-blue-400" },
+    { id: 3, text: "Poda programada", time: "Vera Peñaloza", icon: TreePine, color: "text-orange-400" }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveEventIndex((prev) => (prev + 1) % RECENT_EVENTS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)]">
@@ -34,103 +48,80 @@ export default function HomePage() {
         <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-[#D63031] to-transparent opacity-40" />
 
         <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-24 lg:py-28">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-12">
-            {/* Left: text content */}
-            <div className="max-w-xl">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="h-px w-6 bg-[#D63031]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D63031]/80">
-                  Portal del Vecino
-                </p>
+          <div className="flex flex-col items-center text-center">
+            {/* Center: text content */}
+            <div className="max-w-2xl flex flex-col items-center">
+              {/* Top Live Status Ticker */}
+              <div className="inline-flex items-center gap-4 bg-white/5 border border-white/10 rounded-full px-5 py-2 backdrop-blur-sm mb-6 shadow-md">
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <div className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </div>
+                  <span className="text-[12px] font-bold text-white/70 tracking-[0.1em] uppercase">
+                    En Vivo
+                  </span>
+                </div>
+                
+                <div className="h-5 w-px bg-white/20" />
+
+                {/* The rolling container */}
+                <div className="h-[24px] overflow-hidden relative w-[360px] text-left">
+                  <div 
+                    className="flex flex-col transition-transform duration-500 ease-in-out"
+                    style={{ transform: `translateY(-${activeEventIndex * 24}px)` }}
+                  >
+                    {RECENT_EVENTS.map((event) => (
+                      <div key={event.id} className="h-[24px] flex items-center gap-2.5 shrink-0">
+                        <event.icon className={`w-4 h-4 ${event.color}`} />
+                        <span className="text-[14px] font-medium text-white/95 whitespace-nowrap">
+                          {event.text}
+                          <span className="text-white/50 font-normal ml-2">• {event.time}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-bold leading-[1.1] tracking-tight text-white">
+              <h1 className="text-[clamp(2.5rem,5vw,3.75rem)] font-bold leading-[1.1] tracking-tight text-white">
                 ¿En qué te podemos
                 <br />
                 <span className="text-[#D63031]">ayudar</span> hoy?
               </h1>
 
-              <p className="mt-4 text-[15px] text-blue-200/50 leading-relaxed max-w-md">
+              <p className="mt-5 text-[16px] text-blue-200/60 leading-relaxed max-w-lg">
                 Iniciá un reclamo, consultá el estado de tu trámite o explorá
                 los servicios de la Municipalidad de Ciudad UADE.
               </p>
 
               {/* Search */}
-              <div className="mt-8 max-w-md">
+              <div className="mt-8 w-full max-w-lg">
                 <div className="flex items-center gap-3 border-b border-white/15 pb-3 transition-colors focus-within:border-[#D63031]/50">
-                  <Search className="h-4 w-4 text-white/30 shrink-0" strokeWidth={2} />
+                  <Search className="h-5 w-5 text-white/30 shrink-0" strokeWidth={2} />
                   <input
                     type="text"
                     placeholder="Buscá: baches, alumbrado, residuos..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-transparent text-[14px] text-white placeholder-white/25 outline-none"
+                    className="w-full bg-transparent text-[15px] text-white placeholder-white/25 outline-none"
                   />
                 </div>
-                <div className="mt-3 flex gap-2 flex-wrap">
+                <div className="mt-4 flex gap-2 flex-wrap justify-center">
                   {["Baches", "Alumbrado", "Poda", "Residuos", "Ruidos"].map((tag) => (
                     <button
                       key={tag}
                       type="button"
-                      className="rounded-full border border-white/8 px-2.5 py-0.5 text-[11px] text-white/30
-                                 transition-all duration-200 hover:border-[#D63031]/30 hover:text-[#D63031]/70"
+                      className="rounded-full border border-white/8 px-3 py-1 text-[12px] text-white/40
+                                 transition-all duration-200 hover:border-[#D63031]/40 hover:text-[#D63031]/90 hover:bg-[#D63031]/5"
                     >
                       {tag}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Right: Floating Activity Cards */}
-            <div className="hidden lg:flex flex-col gap-3 relative z-10 mt-8 w-[380px]">
 
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-2 ml-2">
-                <div className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
-                </div>
-                <span className="text-[12px] font-bold text-white tracking-[0.1em] uppercase">
-                  Feed de Actividad
-                </span>
-              </div>
-
-              {/* Card 1 */}
-              <div className="flex gap-4 items-center p-4 bg-white/[0.05] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg transform transition-all hover:scale-105 hover:bg-white/[0.08] cursor-default relative">
-                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-8 bg-green-500 rounded-full" />
-                <div className="p-2.5 rounded-xl bg-green-500/10 text-green-400">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-[14px] font-semibold text-white">Bacheo en Av. Lima</p>
-                  <p className="text-[11px] text-blue-200/60 mt-0.5">Resuelto hace 2 minutos</p>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="flex gap-4 items-center p-4 bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg transform transition-all hover:scale-105 hover:bg-white/[0.06] cursor-default relative ml-6">
-                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-full" />
-                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400">
-                  <Wrench className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-[14px] font-semibold text-white">Luminaria reparada</p>
-                  <p className="text-[11px] text-blue-200/60 mt-0.5">Independencia 1100 • Hace 15m</p>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="flex gap-4 items-center p-4 bg-white/[0.02] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg transform transition-all hover:scale-105 hover:bg-white/[0.04] cursor-default relative ml-12">
-                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-8 bg-orange-500 rounded-full opacity-70" />
-                <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-400">
-                  <TreePine className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-[14px] font-semibold text-white/80">Poda programada</p>
-                  <p className="text-[11px] text-blue-200/40 mt-0.5">Vera Peñaloza • Hace 1h</p>
-                </div>
-              </div>
 
             </div>
           </div>
