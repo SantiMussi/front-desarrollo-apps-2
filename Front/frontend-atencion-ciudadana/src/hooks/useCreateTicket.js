@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-
-// TODO: import { createTicket } from "../services/apiClient";
+// import { createTicket } from "../services/apiClient";
 
 function generateTrackingCode() {
   const prefix = "REC";
@@ -19,10 +18,7 @@ export function useCreateTicket() {
     setTrackingCode(null);
 
     try {
-      // TODO: Reemplazar mock por llamada real al backend
-      // const response = await createTicket(payload);
-      // setTrackingCode(response.trackingNumber);
-
+      // Simular delay de red
       await new Promise((r) => setTimeout(r, 1500));
 
       // Simular error aleatorio para testing (10% de las veces)

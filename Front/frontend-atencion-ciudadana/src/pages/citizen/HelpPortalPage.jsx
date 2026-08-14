@@ -26,6 +26,30 @@ export default function HelpPortalPage() {
     }
   }, [searchParams, categories]);
 
+  const query = searchParams.get("q")?.toLowerCase();
+
+  let searchResults = [];
+  if (query && !selectedCategory && !selectedSubcategory && !selectedRequestType && categories.length > 0) {
+    // TODO (Mejora de UX): Implementar un diccionario de sinónimos o un algoritmo de "fuzzy search" (ej. Fuse.js).
+    // Actualmente la búsqueda es por coincidencia exacta (includes).
+    // Sería ideal que si el usuario busca "bache" encuentre "bacheo", o si busca "luz" encuentre "luminaria".
+    // Ejemplo de diccionario: const synonyms = { "bache": ["pozo", "rotura", "bacheo"], "luz": ["luminaria", "foco"] };
+    categories.forEach(cat => {
+      cat.subcategories.forEach(sub => {
+        sub.requestTypes.forEach(rt => {
+          if (
+            rt.name.toLowerCase().includes(query) ||
+            rt.description.toLowerCase().includes(query) ||
+            sub.name.toLowerCase().includes(query) ||
+            cat.title.toLowerCase().includes(query)
+          ) {
+            searchResults.push({ category: cat, subcategory: sub, requestType: rt });
+          }
+        });
+      });
+    });
+  }
+
   const currentStep = selectedRequestType
     ? 3
     : selectedSubcategory
@@ -37,7 +61,10 @@ export default function HelpPortalPage() {
   const breadcrumbItems = [];
   if (selectedCategory) {
     breadcrumbItems.push({ id: "cat", label: selectedCategory.title });
+  } else if (query) {
+    breadcrumbItems.push({ id: "search", label: `Búsqueda: ${searchParams.get("q")}` });
   }
+  
   if (selectedSubcategory) {
     breadcrumbItems.push({ id: "sub", label: selectedSubcategory.name });
   }
@@ -216,6 +243,79 @@ export default function HelpPortalPage() {
               );
             })}
           </div>
+        </div>
+      );
+    }
+
+    if (query) {
+      return (
+        <div>
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px w-5 bg-[#D63031]" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+                  Resultados de búsqueda
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+                Trámites para "{searchParams.get("q")}"
+              </h2>
+            </div>
+            <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
+              {searchResults.length} {searchResults.length === 1 ? 'resultado' : 'resultados'}
+            </span>
+          </div>
+
+          {searchResults.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-2xl border border-neutral-100">
+              <FileText className="h-10 w-10 text-neutral-200 mx-auto mb-3" />
+              <p className="text-[15px] font-medium text-neutral-900">No encontramos resultados</p>
+              <p className="text-[13px] text-neutral-500 mt-1">Intentá con otras palabras clave o navegá por las categorías.</p>
+              <button 
+                onClick={() => { searchParams.delete("q"); navigate("/portal-ayuda", { replace: true }); }}
+                className="mt-4 px-4 py-2 bg-neutral-100 text-[13px] font-medium text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
+              >
+                Ver todas las categorías
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {searchResults.map((result) => (
+                <button
+                  key={result.requestType.code}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(result.category);
+                    setSelectedSubcategory(result.subcategory);
+                    setSelectedRequestType(result.requestType);
+                  }}
+                  className="group relative flex flex-col gap-3 rounded-xl border border-neutral-200/80 bg-white p-5 text-left
+                             transition-all duration-300 hover:border-[#D63031]/20 hover:shadow-[0_4px_24px_-6px_rgba(214,48,49,0.08)]"
+                >
+                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                    <span className="text-[10px] font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
+                      {result.category.title}
+                    </span>
+                    <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />
+                    <span className="text-[10px] font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
+                      {result.subcategory.name}
+                    </span>
+                  </div>
+                  <h3 className="text-[14px] font-semibold text-neutral-900 group-hover:text-[#0F2C59] transition-colors leading-tight">
+                    {result.requestType.name}
+                  </h3>
+                  <p className="text-[12px] text-neutral-400 leading-relaxed line-clamp-2">
+                    {result.requestType.description}
+                  </p>
+                  <div className="flex items-center gap-1 mt-auto pt-1 text-[12px] text-neutral-300 group-hover:text-[#D63031] transition-colors">
+                    <span>Iniciar solicitud</span>
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       );
     }

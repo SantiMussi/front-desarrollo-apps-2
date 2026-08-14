@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { MOCK_CATEGORIES } from "../data/mockCategories";
+import { fetchCategories } from "../services/apiClient";
 
-// TODO: Reemplazar por fetchCategories() del apiClient cuando el backend esté listo
+// Vuelto a true a pedido del usuario porque el back no está listo
 const USE_MOCK = true;
 
 export function useCategories() {
@@ -24,8 +25,9 @@ export function useCategories() {
             setCategories(MOCK_CATEGORIES);
           }
         } else {
-          // TODO: const data = await fetchCategories();
-          // if (!cancelled) setCategories(data);
+          // Llamada real al backend
+          const data = await fetchCategories();
+          if (!cancelled) setCategories(data);
         }
       } catch (err) {
         if (!cancelled) setError(err.message);
