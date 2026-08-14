@@ -9,7 +9,7 @@ export default function Breadcrumb({ items = [], onNavigate }) {
         className="flex items-center gap-1 text-[13px] text-neutral-400 hover:text-[#0F2C59] transition-colors"
       >
         <Home className="h-3.5 w-3.5" strokeWidth={2} />
-        <span>Inicio</span>
+        <span>Portal de Ayuda</span>
       </button>
 
       {items.map((item, index) => {

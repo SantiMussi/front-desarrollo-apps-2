@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ArrowRight, ClipboardList, Phone, Mail, MapPin, ChevronRight, Activity, CheckCircle, Wrench, TreePine } from "lucide-react";
+import { Search, ArrowRight, ClipboardList, Phone, Mail, MapPin, ChevronRight, Activity, FileText, CreditCard, Calendar, Info, CheckCircle } from "lucide-react";
 import CategoryCard from "../../components/ui/CategoryCard";
 import logo from "../../assets/logo.png";
 import { MOCK_CATEGORIES } from "../../data/mockCategories";
@@ -10,127 +10,180 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
-  const [activeEventIndex, setActiveEventIndex] = useState(0);
 
-  const RECENT_EVENTS = [
-    { id: 1, text: "Bacheo en Av. Lima", time: "Resuelto hace 2m", icon: CheckCircle, color: "text-green-400" },
-    { id: 2, text: "Luminaria reparada", time: "Independencia 1100", icon: Wrench, color: "text-blue-400" },
-    { id: 3, text: "Poda programada", time: "Vera Peñaloza", icon: TreePine, color: "text-orange-400" }
-  ];
+  const handleSearch = (e) => {
+    e?.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/portal-ayuda?q=${encodeURIComponent(searchQuery)}`);
+    } else {
+      navigate("/portal-ayuda");
+    }
+  };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveEventIndex((prev) => (prev + 1) % RECENT_EVENTS.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleTagClick = (tag) => {
+    navigate(`/portal-ayuda?q=${encodeURIComponent(tag)}`);
+  };
 
   return (
-    <div className="flex flex-col min-h-[calc(100svh-58px)]">
-      {/*HERO */}
-      <section className="hero-clip relative bg-[#0F2C59] overflow-hidden">
-        {/* Luxury Pattern Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none bg-gradient-to-br from-[#0F2C59] via-[#0c244a] to-[#071630]">
-          {/* Repeating Logo Pattern overlay */}
-          <div
-            className="absolute inset-0 opacity-[0.025] mix-blend-screen"
-            style={{
-              backgroundImage: `url(${logo})`,
-              backgroundSize: '120px',
-              backgroundRepeat: 'repeat',
-              backgroundPosition: 'center',
-              transform: 'rotate(-12deg) scale(1.5)'
-            }}
-          />
+    <div className="flex flex-col min-h-[calc(100svh-58px)] bg-[#fafafa]">
+      {/* HERO ASYMMETRICAL & EDITORIAL (Con "Chucu" pero sin cara de IA) */}
+      <section className="relative w-full bg-white border-b border-neutral-200 overflow-hidden">
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0F2C59] to-[#D63031]" />
 
-          <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[100%] rounded-full bg-gradient-to-b from-[#2563eb] to-transparent opacity-25 blur-[120px] mix-blend-screen" />
-          <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[80%] rounded-full bg-gradient-to-t from-[#D63031] to-transparent opacity-20 blur-[100px] mix-blend-screen" />
-        </div>
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:py-20">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
 
-        <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-[#D63031] to-transparent opacity-40" />
-
-        <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-24 lg:py-28">
-          <div className="flex flex-col items-center text-center">
-            {/* Center: text content */}
-            <div className="max-w-2xl flex flex-col items-center">
-              {/* Top Live Status Ticker */}
-              <div className="inline-flex items-center gap-4 bg-white/5 border border-white/10 rounded-full px-5 py-2 backdrop-blur-sm mb-6 shadow-md">
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <div className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </div>
-                  <span className="text-[12px] font-bold text-white/70 tracking-[0.1em] uppercase">
-                    En Vivo
-                  </span>
-                </div>
-                
-                <div className="h-5 w-px bg-white/20" />
-
-                {/* The rolling container */}
-                <div className="h-[24px] overflow-hidden relative w-[360px] text-left">
-                  <div 
-                    className="flex flex-col transition-transform duration-500 ease-in-out"
-                    style={{ transform: `translateY(-${activeEventIndex * 24}px)` }}
-                  >
-                    {RECENT_EVENTS.map((event) => (
-                      <div key={event.id} className="h-[24px] flex items-center gap-2.5 shrink-0">
-                        <event.icon className={`w-4 h-4 ${event.color}`} />
-                        <span className="text-[14px] font-medium text-white/95 whitespace-nowrap">
-                          {event.text}
-                          <span className="text-white/50 font-normal ml-2">• {event.time}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            {/* Left Content */}
+            <div className="flex-1 w-full z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-[2px] bg-[#D63031]" />
+                <span className="text-[#D63031] text-[13px] font-bold tracking-[0.2em] uppercase">
+                  Municipalidad
+                </span>
               </div>
 
-              <h1 className="text-[clamp(2.5rem,5vw,3.75rem)] font-bold leading-[1.1] tracking-tight text-white">
-                ¿En qué te podemos
-                <br />
-                <span className="text-[#D63031]">ayudar</span> hoy?
+              <h1 className="text-[3rem] sm:text-[4rem] lg:text-[4.5rem] leading-[1.05] font-extrabold text-[#0F2C59] tracking-[-0.03em] mb-6">
+                Tu ciudad, <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D63031] to-[#e74c3c]">
+                  más simple.
+                </span>
               </h1>
 
-              <p className="mt-5 text-[16px] text-blue-200/60 leading-relaxed max-w-lg">
-                Iniciá un reclamo, consultá el estado de tu trámite o explorá
-                los servicios de la Municipalidad de Ciudad UADE.
+              <p className="text-lg sm:text-[19px] text-neutral-500 max-w-xl mb-10 leading-relaxed font-medium">
+                Un canal digital directo para gestionar tus trámites, reclamos y consultas de forma rápida, sin filas y desde cualquier dispositivo.
               </p>
 
-              {/* Search */}
-              <div className="mt-8 w-full max-w-lg">
-                <div className="flex items-center gap-3 border-b border-white/15 pb-3 transition-colors focus-within:border-[#D63031]/50">
-                  <Search className="h-5 w-5 text-white/30 shrink-0" strokeWidth={2} />
+              {/* Buscador */}
+              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row w-full max-w-2xl shadow-xl shadow-black/[0.03] rounded-xl sm:rounded-2xl">
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-neutral-400" />
+                  </div>
                   <input
                     type="text"
-                    placeholder="Buscá: baches, alumbrado, residuos..."
+                    placeholder="Buscá: Patentes, Alumbrado, Licencias..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-transparent text-[15px] text-white placeholder-white/25 outline-none"
+                    className="w-full h-full min-h-[64px] bg-white border-2 border-neutral-200 text-neutral-900 text-[16px] font-medium rounded-t-xl sm:rounded-l-2xl sm:rounded-tr-none pl-14 pr-4 outline-none transition-all focus:border-[#0F2C59] focus:ring-4 focus:ring-[#0F2C59]/10"
                   />
                 </div>
-                <div className="mt-4 flex gap-2 flex-wrap justify-center">
-                  {["Baches", "Alumbrado", "Poda", "Residuos", "Ruidos"].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className="rounded-full border border-white/8 px-3 py-1 text-[12px] text-white/40
-                                 transition-all duration-200 hover:border-[#D63031]/40 hover:text-[#D63031]/90 hover:bg-[#D63031]/5"
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                <button type="submit" className="min-h-[64px] bg-[#0F2C59] hover:bg-[#163d75] text-white px-10 rounded-b-xl sm:rounded-r-2xl sm:rounded-bl-none font-bold text-[16px] transition-all flex items-center justify-center gap-2">
+                  Buscar
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </form>
+            </div>
+
+            {/* Right Content */}
+            <div className="hidden lg:flex w-[450px] shrink-0 relative items-center justify-center" style={{ perspective: "1000px" }}>
+              {/* Decorative background glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-tr from-[#0F2C59]/15 to-[#D63031]/15 rounded-full blur-[80px]" />
+
+              {/* Floating Wrapper */}
+              <div className="transform transition-transform duration-700 ease-out hover:scale-105 hover:rotate-0" style={{ transform: "rotateY(-12deg) rotateZ(4deg)" }}>
+
+                {/* Phone  */}
+                <div className="relative w-[280px] h-[560px] bg-[#fafafa] rounded-[3rem] border-[12px] border-neutral-900 shadow-2xl shadow-black/20 overflow-hidden flex flex-col">
+
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-50 flex items-center justify-end px-3 shadow-sm border border-white/5">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 opacity-80" />
+                  </div>
+
+                  {/* Phone Header / App Bar */}
+                  <div className="bg-white px-5 pt-10 pb-4 shadow-sm border-b border-neutral-100 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center">
+                        <img src={logo} alt="Logo" className="w-6 h-6 object-contain opacity-50" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Hola, vecino</p>
+                        <p className="text-[13px] font-extrabold text-[#0F2C59]">Mi Ciudad UADE</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phone Body */}
+                  <div className="flex-1 p-4 flex flex-col gap-4 relative">
+                    <div className="bg-white rounded-2xl p-3 shadow-sm border border-neutral-100 relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-[#D63031]" />
+                      <div className="h-28 bg-neutral-200 rounded-xl mb-3 relative overflow-hidden flex items-center justify-center border border-neutral-100">
+                        <iframe
+                          title="Mapa de Bacheo"
+                          frameBorder="0"
+                          scrolling="no"
+                          src="https://www.openstreetmap.org/export/embed.html?bbox=-58.494,-34.608,-58.486,-34.602&layer=mapnik"
+                          className="absolute w-[500px] h-[400px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-80 max-w-none"
+                          style={{ filter: 'grayscale(0.7) contrast(1.1)' }}
+                        />
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className="w-8 h-8 bg-[#D63031]/10 rounded-full flex items-center justify-center shadow-sm">
+                            <div className="w-3.5 h-3.5 bg-[#D63031] rounded-full shadow-md border-[1.5px] border-white relative z-10" />
+                            <div className="absolute w-full h-full rounded-full border border-[#D63031]/20 animate-ping" style={{ animationDuration: '3s' }} />
+                          </div>
+                          <div className="w-0.5 h-3 bg-gradient-to-b from-[#D63031] to-transparent opacity-60 mt-[-2px]" />
+                        </div>
+                      </div>
+                      <p className="text-[13px] font-bold text-neutral-900 mb-1">Reparación de Bacheo</p>
+                      <p className="text-[11px] text-neutral-500 mb-3">Calle Campana 3240</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#D63031] w-[60%] rounded-full relative overflow-hidden">
+                            <div className="absolute inset-0 bg-white/20 w-full animate-pulse" />
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#D63031]">En curso</span>
+                      </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="flex-1">
+                      <p className="text-[12px] font-bold text-neutral-900 mb-3 px-1">Últimos movimientos</p>
+                      <div className="flex flex-col gap-2">
+                        <div className="bg-white p-3 rounded-xl border border-neutral-100 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                            <FileText className="w-4 h-4 text-[#0F2C59]" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[12px] font-bold text-neutral-900 leading-tight">Licencia</p>
+                            <p className="text-[10px] text-neutral-400">Trámite aprobado</p>
+                          </div>
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-neutral-100 flex items-center gap-3 opacity-50">
+                          <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-neutral-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[12px] font-bold text-neutral-900 leading-tight">Pago ABL</p>
+                            <p className="text-[10px] text-neutral-400">Impactado</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Faux Bottom Navigation */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[100px] h-1.5 bg-neutral-300 rounded-full" />
+                  </div>
                 </div>
               </div>
 
-
-
+              <div className="absolute top-32 -right-6 bg-white py-2.5 px-4 rounded-xl shadow-xl shadow-[#D63031]/5 border border-[#D63031]/10 transform rotate-6 z-20">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D63031] opacity-50"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#D63031]"></span>
+                  </span>
+                  <span className="text-[12px] font-bold text-neutral-700">Cuadrilla en camino</span>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/*MAIN CONTENT */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 bg-[#fafafa]">
         {/* Tracking strip */}
         <section className="border-b border-neutral-200/60 bg-white">
