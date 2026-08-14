@@ -1,14 +1,15 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import CitizenNavbar from "./components/layout/CitizenNavbar";
 import HomePage from "./pages/citizen/HomePage";
+import HelpPortalPage from "./pages/citizen/HelpPortalPage";
 
 export default function App() {
   return (
     <BrowserRouter>
-      {/* Citizen layout */}
       <CitizenNavbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/portal-ayuda" element={<HelpPortalPage />} />
       </Routes>
     </BrowserRouter>
   );

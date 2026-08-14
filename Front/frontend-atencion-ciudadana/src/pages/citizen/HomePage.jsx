@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, ArrowRight, ClipboardList, Phone, Mail, MapPin, ChevronRight, Activity, CheckCircle, Wrench, TreePine } from "lucide-react";
 import CategoryCard from "../../components/ui/CategoryCard";
 import logo from "../../assets/logo.png";
@@ -6,6 +7,7 @@ import { MOCK_CATEGORIES } from "../../data/mockCategories";
 
 /* HomePage */
 export default function HomePage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [activeEventIndex, setActiveEventIndex] = useState(0);
@@ -189,9 +191,7 @@ export default function HomePage() {
                 iconName={category.iconName}
                 itemCount={category.itemCount}
                 badgeText={category.badgeText}
-                onClick={() => {
-                  /* TODO: navigate to category detail */
-                }}
+                onClick={() => navigate(`/portal-ayuda?category=${category.id}`)}
               />
             ))}
           </div>
@@ -214,6 +214,7 @@ export default function HomePage() {
               </div>
               <button
                 type="button"
+                onClick={() => navigate("/portal-ayuda")}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#D63031] px-4 py-2 text-[13px] font-semibold text-white shrink-0
                            transition-all duration-200 hover:bg-[#c0282a] hover:shadow-md hover:shadow-[#D63031]/10
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031] focus-visible:ring-offset-2"
