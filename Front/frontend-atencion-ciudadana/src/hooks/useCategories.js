@@ -19,7 +19,10 @@ export function useCategories() {
       try {
         if (USE_MOCK) {
           await new Promise((r) => setTimeout(r, 400));
-          if (!cancelled) setCategories(MOCK_CATEGORIES);
+          if (!cancelled) {
+            console.log("[useCategories] Respuesta esperada del backend GET /api/categories:", MOCK_CATEGORIES);
+            setCategories(MOCK_CATEGORIES);
+          }
         } else {
           // TODO: const data = await fetchCategories();
           // if (!cancelled) setCategories(data);

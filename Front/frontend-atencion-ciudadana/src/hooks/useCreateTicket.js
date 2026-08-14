@@ -31,9 +31,15 @@ export function useCreateTicket() {
       }
 
       const code = generateTrackingCode();
+      console.log("[useCreateTicket] Respuesta esperada del backend:", {
+        trackingNumber: code,
+        status: "REGISTRADO",
+        createdAt: new Date().toISOString(),
+      });
       setTrackingCode(code);
       return code;
     } catch (err) {
+      console.error("[useCreateTicket] Error del backend:", err.message);
       setError(err.message || "Ocurrió un error inesperado. Intentá de nuevo.");
       return null;
     } finally {
