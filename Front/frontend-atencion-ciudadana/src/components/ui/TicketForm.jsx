@@ -106,6 +106,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
       specificData: formData.specificData,
     };
 
+    console.log("[TicketForm] Payload a enviar al backend:", JSON.stringify(payload, null, 2));
+    console.log("[TicketForm] Archivos adjuntos:", attachments);
+
     await submit(payload);
   };
 
