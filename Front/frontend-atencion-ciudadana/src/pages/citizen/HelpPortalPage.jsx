@@ -30,24 +30,92 @@ export default function HelpPortalPage() {
 
   let searchResults = [];
   if (query && !selectedCategory && !selectedSubcategory && !selectedRequestType && categories.length > 0) {
-    // TODO (Mejora de UX): Implementar un diccionario de sinónimos o un algoritmo de "fuzzy search" (ej. Fuse.js).
-    // Actualmente la búsqueda es por coincidencia exacta (includes).
-    // Sería ideal que si el usuario busca "bache" encuentre "bacheo", o si busca "luz" encuentre "luminaria".
-    // Ejemplo de diccionario: const synonyms = { "bache": ["pozo", "rotura", "bacheo"], "luz": ["luminaria", "foco"] };
+    // Función para normalizar texto: minúsculas + sin tildes/diacríticos
+    const normalize = (text) =>
+      text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // Diccionario de sinónimos para expandir la búsqueda
+    // Todas las claves y valores van SIN tildes (ya normalizados)
+    const synonyms = {
+      // ─── Servicios Urbanos ───────────────────────────────────
+      // Subcategoría: Alumbrado Público
+      luminaria: ["luz", "foco", "lampara", "iluminacion", "alumbrado", "farol", "apagada", "poste", "columna", "led", "farola"],
+      semaforo: ["cruce", "transito", "rojo", "verde", "amarillo", "intermitente", "desincronizado", "semaforos"],
+
+      // Subcategoría: Residuos y Limpieza
+      residuo: ["basura", "mugre", "desecho", "bolsa", "limpieza", "escombro", "mueble", "rama", "voluminoso", "chatarra", "electrodomestico", "desperdicio", "desechos", "residuos"],
+      contenedor: ["tacho", "basurero", "campana", "reciclaje", "tacho de basura", "campana de vidrio", "contenedores", "tachos"],
+      recoleccion: ["camion", "basural", "microbasural", "no pasaron", "no paso", "recolector", "barrer", "barrido"],
+
+      // ─── Obras Públicas ──────────────────────────────────────
+      // Subcategoría: Calzadas y Veredas
+      bache: ["pozo", "hoyo", "asfalto", "calzada", "crater", "calle", "ruta", "hundimiento", "baches", "pozos", "hueco"],
+      vereda: ["baldosa", "pavimento", "cordon", "peatonal", "acera", "rampa", "cordon cuneta", "levantada", "rota", "veredas", "baldosas"],
+
+      // ─── Tránsito y Movilidad ────────────────────────────────
+      // Subcategoría: Señalización
+      senal: ["cartel", "letrero", "chapa", "indicador", "senalizacion", "pare", "velocidad maxima", "sentido unico", "senal de transito", "carteleria", "senaletica", "loma de burro"],
+      transito: ["estacionamiento", "estacionar", "transporte", "trafico", "movilidad", "vial", "circular"],
+
+      // ─── Habilitaciones Comerciales ──────────────────────────
+      // Subcategoría: Inspecciones
+      comercio: ["negocio", "local", "tienda", "habilitacion", "inspeccion", "gastronomia", "restaurante", "bar", "kiosco", "almacen", "supermercado", "carniceria", "panaderia", "farmacia", "verduleria"],
+      habilitacion: ["permiso", "permiso comercial", "uso de suelo", "normativa", "clausura", "multa", "infraccion"],
+
+      // ─── Denuncias Ciudadanas ────────────────────────────────
+      // Subcategoría: Ruidos Molestos
+      ruido: ["musica", "grito", "sonido", "fiesta", "molestia", "volumen", "boliche", "ruidos", "ruidoso", "escandalo", "bardo", "quilombo", "molestar", "vecino ruidoso", "construccion"],
+      // Subcategoría: Espacio Público
+      ocupacion: ["mesa", "silla", "obstaculo", "vehiculo", "abandono", "espacio publico", "mercaderia", "obstruccion", "vereda ocupada", "auto abandonado", "puesto ambulante"],
+      denuncia: ["queja", "reclamo", "contravencion", "ilegal", "clandestino", "irregular"],
+
+      // ─── Desarrollo Social ───────────────────────────────────
+      // Subcategoría: Programas Sociales
+      asistencia: ["ayuda", "programa", "social", "alimento", "habitacional", "desarrollo", "subsidio", "beca", "comedor", "merendero", "calle", "situacion de calle", "emergencia social", "laboral", "empleo", "trabajo", "salud"],
+      programa: ["plan", "plan social", "beneficio", "inscripcion", "anotarse"],
+
+      // Subcategoría: Arbolado Urbano
+      arbol: ["poda", "tronco", "raiz", "rama", "planta", "arbolado", "caida", "arbol caido", "riesgo caida", "copa", "follaje", "raices", "arboles", "podar"],
+      arbolado: ["verde", "espacio verde", "parque", "plaza", "jardin", "cantero", "cesped"]
+    };
+
+    const normalizedQuery = normalize(query);
+
+    // Construimos los términos de búsqueda expandidos
+    const searchTerms = new Set([normalizedQuery]);
+
+    Object.entries(synonyms).forEach(([key, values]) => {
+      // Si la búsqueda incluye la clave o alguno de los sinónimos, agregamos todos al set de términos
+      const matchesGroup = normalizedQuery.includes(key) || values.some(v => normalizedQuery.includes(v));
+      if (matchesGroup) {
+        searchTerms.add(key);
+        values.forEach(v => searchTerms.add(v));
+      }
+    });
+
+    const searchTermsArray = Array.from(searchTerms);
+
     categories.forEach(cat => {
       cat.subcategories.forEach(sub => {
         sub.requestTypes.forEach(rt => {
-          if (
-            rt.name.toLowerCase().includes(query) ||
-            rt.description.toLowerCase().includes(query) ||
-            sub.name.toLowerCase().includes(query) ||
-            cat.title.toLowerCase().includes(query)
-          ) {
+          // Normalizamos también el texto de las categorías para comparar sin tildes
+          const textToSearch = normalize([
+            rt.name,
+            rt.description,
+            sub.name,
+            cat.title
+          ].join(" "));
+
+          // Verificamos si algún término expandido coincide con la categoría/subcategoría/trámite
+          const hasMatch = searchTermsArray.some(term => textToSearch.includes(term));
+
+          if (hasMatch) {
             searchResults.push({ category: cat, subcategory: sub, requestType: rt });
           }
         });
       });
     });
+
   }
 
   const currentStep = selectedRequestType
@@ -64,7 +132,7 @@ export default function HelpPortalPage() {
   } else if (query) {
     breadcrumbItems.push({ id: "search", label: `Búsqueda: ${searchParams.get("q")}` });
   }
-  
+
   if (selectedSubcategory) {
     breadcrumbItems.push({ id: "sub", label: selectedSubcategory.name });
   }
@@ -272,7 +340,7 @@ export default function HelpPortalPage() {
               <FileText className="h-10 w-10 text-neutral-200 mx-auto mb-3" />
               <p className="text-[15px] font-medium text-neutral-900">No encontramos resultados</p>
               <p className="text-[13px] text-neutral-500 mt-1">Intentá con otras palabras clave o navegá por las categorías.</p>
-              <button 
+              <button
                 onClick={() => { searchParams.delete("q"); navigate("/portal-ayuda", { replace: true }); }}
                 className="mt-4 px-4 py-2 bg-neutral-100 text-[13px] font-medium text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
               >
