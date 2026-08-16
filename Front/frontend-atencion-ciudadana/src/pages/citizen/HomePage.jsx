@@ -80,6 +80,10 @@ export default function HomePage() {
               {/* Decorative background glow */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-tr from-[#0F2C59]/15 to-[#D63031]/15 rounded-full blur-[80px]" />
 
+              {/* Decorative concentric circles */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full border border-neutral-300/25 pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border border-neutral-400/20 pointer-events-none" />
+
               {/* Floating Wrapper */}
               <div className="transform transition-transform duration-700 ease-out hover:scale-105 hover:rotate-0" style={{ transform: "rotateY(-12deg) rotateZ(4deg)" }}>
 
