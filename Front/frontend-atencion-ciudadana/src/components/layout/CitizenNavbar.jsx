@@ -27,7 +27,7 @@ export default function CitizenNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          <button
+          {/* <button
             type="button"
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] text-neutral-500
                        transition-colors hover:text-[#0F2C59] hover:bg-blue-50/50"
@@ -37,7 +37,7 @@ export default function CitizenNavbar() {
             <kbd className="ml-1 rounded border border-neutral-200 bg-neutral-50 px-1 py-px text-[10px] text-neutral-400 font-mono">
               ⌘K
             </kbd>
-          </button>
+          </button> */}
 
           <button
             type="button"

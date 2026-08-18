@@ -17,6 +17,29 @@ export default function FormField({
 
   const borderClass = error ? "border-red-300" : "border-neutral-200";
 
+  if (type === "smalltext"){
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={name} className="text-[13px] font-medium text-neutral-700">
+          {label}
+          {required && <span className="text-[#D63031] ml-0.5">*</span>}
+        </label>
+        <textarea
+          id={name}
+          name={name}
+          rows={1}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          required={required}
+          disabled={disabled}
+          className={`${baseClasses} ${borderClass} resize-none`}
+        />
+        {error && <p className="text-[12px] text-red-500">{error}</p>}
+      </div>
+    );
+  }
+
   if (type === "textarea") {
     return (
       <div className="flex flex-col gap-1.5">

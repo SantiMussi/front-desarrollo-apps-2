@@ -225,6 +225,17 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
           </span>
         </div>
         <FormField
+          label="Título / Resumen"
+          name="summary"
+          type="smalltext"
+          placeholder="Pon el título o un pequeño resumen de tu reclamo o solicitud..."
+          value={formData.description}
+          onChange={handleChange}
+          error={fieldErrors.description}
+          required
+          disabled={loading}
+        />
+        <FormField
           label="Descripción detallada"
           name="description"
           type="textarea"
