@@ -1,8 +1,8 @@
 export default function PageHeader({ 
-  label = "Atención Ciudadana", 
-  title = "Portal de", 
-  highlight = "Ayuda", 
-  description = "Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos." 
+  label, 
+  title, 
+  highlight, 
+  description 
 }) {
   return (
     <section className="relative w-full bg-white border-b border-neutral-200 overflow-hidden">
