@@ -467,20 +467,32 @@ export default function HelpPortalPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)]">
-      <section className="relative bg-[#0F2C59] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F2C59] via-[#0c244a] to-[#071630]">
-          <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[100%] rounded-full bg-gradient-to-b from-[#2563eb] to-transparent opacity-25 blur-[120px] mix-blend-screen" />
-          <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[80%] rounded-full bg-gradient-to-t from-[#D63031] to-transparent opacity-20 blur-[100px] mix-blend-screen" />
-        </div>
+      <section className="relative w-full bg-white border-b border-neutral-200 overflow-hidden">
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0F2C59] to-[#D63031]" />
 
         <div className="relative mx-auto max-w-6xl px-5 py-10 sm:py-14">
-          <div className="flex flex-col items-center text-center">
-            <h1 className="text-[clamp(1.5rem,3vw,2.25rem)] font-bold leading-[1.2] tracking-tight text-white">
-              Portal de <span className="text-[#D63031]">Ayuda</span>
-            </h1>
-            <p className="mt-2 text-[14px] text-blue-200/60 max-w-md">
-              Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud.
-            </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-[2px] bg-[#D63031]" />
+                <span className="text-[#D63031] text-[12px] font-bold tracking-[0.2em] uppercase">
+                  Atención Ciudadana
+                </span>
+              </div>
+              <h1 className="text-[2.5rem] sm:text-[3rem] font-extrabold text-[#0F2C59] tracking-[-0.02em] leading-tight mb-3">
+                Portal de <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D63031] to-[#e74c3c]">Ayuda</span>
+              </h1>
+              <p className="text-[16px] text-neutral-500 max-w-md font-medium leading-relaxed">
+                Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos.
+              </p>
+            </div>
+            
+            {/* Decorative subtle background element, without being overwhelmingly "AI" */}
+            <div className="hidden sm:flex shrink-0 relative items-center justify-center w-32 h-32 opacity-10">
+              <div className="absolute w-full h-full border-4 border-[#0F2C59] rounded-full" />
+              <div className="absolute w-24 h-24 border-4 border-[#D63031] rounded-full translate-x-4 -translate-y-4" />
+            </div>
           </div>
         </div>
       </section>
