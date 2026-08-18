@@ -343,7 +343,7 @@ export default function HelpPortalPage() {
                       {sub.name}
                     </h3>
                     <p className="text-[12px] text-neutral-400 mt-0.5">
-                      {sub.requestTypes.length} {sub.requestTypes.length === 1 ? "trámite" : "trámites"}
+                      {sub.requestTypes.map(rt => rt.name).join(", ")}
                     </p>
                   </div>
 
