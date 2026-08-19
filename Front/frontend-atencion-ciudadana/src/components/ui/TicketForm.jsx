@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff } from "lucide-react";
+import { motion } from "framer-motion";
 import FormField from "./FormField";
 import Spinner from "./Spinner";
 import Alert from "./Alert";
@@ -33,6 +35,7 @@ function validateForm(formData, specificFields) {
 }
 
 export default function TicketForm({ requestType, onBack, onNewTicket }) {
+  const navigate = useNavigate();
   const { submit, loading, error, trackingCode, reset } = useCreateTicket();
   const [copied, setCopied] = useState(false);
 
@@ -122,51 +125,102 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
     handleSubmit({ preventDefault: () => {} });
   };
 
+
+
   if (trackingCode) {
     return (
-      <div className="flex flex-col items-center text-center py-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 mb-5">
-          <CheckCircle className="h-8 w-8 text-emerald-500" strokeWidth={1.5} />
-        </div>
-        <h3 className="text-xl font-bold text-neutral-900">¡Solicitud registrada!</h3>
-        <p className="mt-2 text-[14px] text-neutral-500 max-w-md">
-          Tu reclamo fue registrado exitosamente. Usá el código de seguimiento para consultar el estado en cualquier momento.
-        </p>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+        className="flex flex-col items-center text-center py-10"
+      >
+        <motion.div 
+          initial={{ scale: 0 }}
+          animate={{ scale: 1, rotate: 360 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+          className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 mb-6 shadow-lg shadow-emerald-500/20"
+        >
+          <div className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-20"></div>
+          <CheckCircle className="h-10 w-10 text-emerald-600" strokeWidth={2} />
+        </motion.div>
+        
+        <motion.h3 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-2xl font-extrabold text-neutral-900 tracking-tight"
+        >
+          ¡Reclamo Registrado!
+        </motion.h3>
+        
+        <motion.p 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-3 text-[15px] text-neutral-600 max-w-md leading-relaxed"
+        >
+          Tu solicitud ha sido ingresada exitosamente. Utilizá el siguiente código para consultar su estado en cualquier momento.
+        </motion.p>
 
-        <div className="mt-6 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3">
-          <span className="text-[13px] text-emerald-600 font-medium">Código:</span>
-          <span className="text-lg font-bold text-emerald-700 font-mono tracking-wider">
-            {trackingCode}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 px-8 py-5 relative overflow-hidden group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-100/0 via-emerald-100/40 to-emerald-100/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+          <span className="text-[13px] text-emerald-600 font-semibold uppercase tracking-widest">
+            Código de Seguimiento
           </span>
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            className="ml-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-            aria-label="Copiar código"
-          >
-            {copied ? (
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
-            ) : (
-              <Copy className="h-4 w-4 text-emerald-500" />
-            )}
-          </button>
-        </div>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl font-black text-emerald-700 font-mono tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm">
+              {trackingCode}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="p-2.5 rounded-lg bg-white shadow-sm hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-95"
+              aria-label="Copiar código"
+            >
+              {copied ? (
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <Copy className="h-5 w-5 text-emerald-600" />
+              )}
+            </button>
+          </div>
+        </motion.div>
 
-        <div className="mt-8 flex gap-3">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-10 flex flex-col gap-3 w-full max-w-xs"
+        >
           <button
             type="button"
             onClick={() => {
               reset();
               onNewTicket();
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-5 py-2.5 text-[13px] font-semibold text-white
-                       transition-all duration-200 hover:bg-[#1a3f7a]"
+            className="group flex justify-center items-center gap-2 rounded-xl bg-[#0F2C59] px-6 py-3.5 text-[14px] font-semibold text-white
+                       transition-all duration-300 hover:bg-[#1a3f7a] shadow-sm hover:shadow-md active:scale-95"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4 transition-transform group-hover:-rotate-180 duration-500" />
             Nuevo reclamo
           </button>
-        </div>
-      </div>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="group flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-neutral-600
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1 duration-300" />
+            Volver al inicio
+          </button>
+        </motion.div>
+      </motion.div>
     );
   }
 
