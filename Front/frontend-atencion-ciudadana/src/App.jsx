@@ -12,7 +12,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/portal-ayuda" element={<HelpPortalPage />} />
       </Routes>
-      <Footer />
+      <Footer areaName ="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar"/>
     </BrowserRouter>
   );
 }

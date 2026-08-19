@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -10,6 +10,10 @@ import { NEIGHBORHOODS } from "../../data/mockCategories";
 
 function validateForm(formData, specificFields) {
   const errors = {};
+
+  if (!formData.summary.trim()) {
+    errors.summary = "El título / resumen es obligatorio";
+  }
 
   if (!formData.description.trim()) {
     errors.description = "La descripción es obligatoria";
@@ -40,6 +44,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
   const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
+    summary: "",
     description: "",
     address: "",
     neighborhoodId: "",
@@ -94,6 +99,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
       requestTypeCode: requestType.code,
       citizenId: null, // TODO: Obtener del módulo de autenticación
       isAnonymous: formData.isAnonymous,
+      summary: formData.summary,
       description: formData.description,
       location: {
         address: formData.address,
