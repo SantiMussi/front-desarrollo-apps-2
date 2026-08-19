@@ -8,6 +8,7 @@ import StepIndicator from "../../components/ui/StepIndicator";
 import Spinner from "../../components/ui/Spinner";
 import Alert from "../../components/ui/Alert";
 import TicketForm from "../../components/ui/TicketForm";
+import PageHeader from "../../components/ui/PageHeader";
 
 export default function HelpPortalPage() {
   const navigate = useNavigate();
@@ -467,23 +468,12 @@ export default function HelpPortalPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)]">
-      <section className="relative bg-[#0F2C59] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F2C59] via-[#0c244a] to-[#071630]">
-          <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[100%] rounded-full bg-gradient-to-b from-[#2563eb] to-transparent opacity-25 blur-[120px] mix-blend-screen" />
-          <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[80%] rounded-full bg-gradient-to-t from-[#D63031] to-transparent opacity-20 blur-[100px] mix-blend-screen" />
-        </div>
-
-        <div className="relative mx-auto max-w-6xl px-5 py-10 sm:py-14">
-          <div className="flex flex-col items-center text-center">
-            <h1 className="text-[clamp(1.5rem,3vw,2.25rem)] font-bold leading-[1.2] tracking-tight text-white">
-              Portal de <span className="text-[#D63031]">Ayuda</span>
-            </h1>
-            <p className="mt-2 text-[14px] text-blue-200/60 max-w-md">
-              Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHeader 
+        label="Atención Ciudadana"
+        title="Portal de"
+        highlight="Ayuda"
+        description="Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos."
+      />
 
       <div className="flex-1 bg-[#fafafa]">
         <div className="mx-auto max-w-6xl px-5">
