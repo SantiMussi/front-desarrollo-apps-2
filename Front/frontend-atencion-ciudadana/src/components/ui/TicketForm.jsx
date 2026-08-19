@@ -119,7 +119,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
   };
 
   const handleRetry = () => {
-    reset();
+    handleSubmit({ preventDefault: () => {} });
   };
 
   if (trackingCode) {
@@ -173,7 +173,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <Alert variant="error" title="Error al enviar" onDismiss={handleRetry}>
+        <Alert variant="error" title="Error al enviar" onDismiss={reset}>
           <p>{error}</p>
           <button
             type="button"
