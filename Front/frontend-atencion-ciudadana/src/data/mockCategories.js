@@ -448,8 +448,8 @@ export const MOCK_CATEGORIES = [
             "assignedArea": "Ambiente y Servicios Urbanos",
             "specificFields": [
               {
-                "key": "descripcionDetallada",
-                "label": "Descripción detallada",
+                "key": "test",
+                "label": "test",
                 "type": "textarea",
                 "placeholder": "Describa en detalle la situación o motivo...",
                 "required": true

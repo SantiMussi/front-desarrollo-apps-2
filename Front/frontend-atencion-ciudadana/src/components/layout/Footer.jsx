@@ -1,7 +1,7 @@
 import { Phone, Mail, MapPin } from "lucide-react";
 import logo from "../../assets/logo.png";
 
-function Footer(){
+function Footer({areaName, areaEmail}){
     return(
 			<>
 				{/*  FOOTER */}
@@ -17,7 +17,7 @@ function Footer(){
 									<span className="text-[13px] font-bold text-[#0F2C59]">Ciudad UADE</span>
 								</div>
 								<p className="text-[12px] text-neutral-400 leading-relaxed">
-									Centro de Atención al Vecino.
+									{areaName}
 									<br />
 									Municipalidad de Ciudad UADE — Gestión 2026.
 								</p>
@@ -26,7 +26,7 @@ function Footer(){
 										<Phone className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> 147 — Línea Municipal
 									</span>
 									<span className="flex items-center gap-2 text-[12px] text-neutral-400">
-										<Mail className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> atencion@ciudaduade.gob.ar
+										<Mail className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> {areaEmail}
 									</span>
 									<span className="flex items-center gap-2 text-[12px] text-neutral-400">
 										<MapPin className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> Av. Independencia 1100, CABA
