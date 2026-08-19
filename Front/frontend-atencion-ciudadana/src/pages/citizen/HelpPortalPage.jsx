@@ -12,19 +12,56 @@ import PageHeader from "../../components/ui/PageHeader";
 
 export default function HelpPortalPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { categories, loading, error } = useCategories();
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [selectedRequestType, setSelectedRequestType] = useState(null);
 
+  const updateSelection = (category, subcategory, requestType) => {
+    setSelectedCategory(category);
+    setSelectedSubcategory(subcategory);
+    setSelectedRequestType(requestType);
+
+    setSearchParams((prev) => {
+      if (category) prev.set("category", category.id);
+      else prev.delete("category");
+
+      if (subcategory) prev.set("subcategory", subcategory.id);
+      else prev.delete("subcategory");
+
+      if (requestType) prev.set("requestType", requestType.code);
+      else prev.delete("requestType");
+
+      return prev;
+    }, { replace: true });
+  };
+
   useEffect(() => {
-    const categoryId = searchParams.get("category");
-    if (categoryId && categories.length > 0) {
-      const found = categories.find((c) => c.id === categoryId);
-      if (found) setSelectedCategory(found);
+    if (categories.length === 0) return;
+
+    const catId = searchParams.get("category");
+    const subId = searchParams.get("subcategory");
+    const reqCode = searchParams.get("requestType");
+
+    let foundCat = null;
+    let foundSub = null;
+    let foundReq = null;
+
+    if (catId) {
+      foundCat = categories.find((c) => c.id === catId);
+      if (foundCat && subId) {
+        foundSub = foundCat.subcategories.find((s) => s.id === subId);
+        if (foundSub && reqCode) {
+          foundReq = foundSub.requestTypes.find((r) => r.code === reqCode);
+        }
+      }
     }
+
+    setSelectedCategory(foundCat || null);
+    setSelectedSubcategory(foundSub || null);
+    setSelectedRequestType(foundReq || null);
   }, [searchParams, categories]);
 
   const query = searchParams.get("q")?.toLowerCase();
@@ -184,35 +221,30 @@ export default function HelpPortalPage() {
 
   const handleBreadcrumbNavigate = (index) => {
     if (index === -1) {
-      setSelectedCategory(null);
-      setSelectedSubcategory(null);
-      setSelectedRequestType(null);
+      updateSelection(null, null, null);
       return;
     }
     if (index === 0) {
-      setSelectedSubcategory(null);
-      setSelectedRequestType(null);
+      updateSelection(selectedCategory, null, null);
     } else if (index === 1) {
-      setSelectedRequestType(null);
+      updateSelection(selectedCategory, selectedSubcategory, null);
     }
   };
 
   const handleBack = () => {
     if (selectedRequestType) {
-      setSelectedRequestType(null);
+      updateSelection(selectedCategory, selectedSubcategory, null);
     } else if (selectedSubcategory) {
-      setSelectedSubcategory(null);
+      updateSelection(selectedCategory, null, null);
     } else if (selectedCategory) {
-      setSelectedCategory(null);
+      updateSelection(null, null, null);
     } else {
       navigate("/");
     }
   };
 
   const handleNewTicket = () => {
-    setSelectedCategory(null);
-    setSelectedSubcategory(null);
-    setSelectedRequestType(null);
+    updateSelection(null, null, null);
   };
 
   const renderStepContent = () => {
@@ -269,7 +301,7 @@ export default function HelpPortalPage() {
               <button
                 key={rt.code}
                 type="button"
-                onClick={() => setSelectedRequestType(rt)}
+                onClick={() => updateSelection(selectedCategory, selectedSubcategory, rt)}
                 className="group relative flex flex-col gap-3 rounded-xl border border-neutral-200/80 bg-white p-5 text-left
                            transition-all duration-300 hover:border-[#D63031]/20 hover:shadow-[0_4px_24px_-6px_rgba(214,48,49,0.08)]
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031]/40 focus-visible:ring-offset-2"
@@ -324,7 +356,7 @@ export default function HelpPortalPage() {
                 <button
                   key={sub.id}
                   type="button"
-                  onClick={() => setSelectedSubcategory(sub)}
+                  onClick={() => updateSelection(selectedCategory, sub, null)}
                   className="group relative flex items-center gap-4 rounded-xl border border-neutral-200/80 bg-white p-5 text-left
                              transition-all duration-300 hover:border-[#D63031]/20 hover:shadow-[0_4px_24px_-6px_rgba(214,48,49,0.08)]
                              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031]/40 focus-visible:ring-offset-2"
@@ -396,9 +428,7 @@ export default function HelpPortalPage() {
                   key={result.requestType.code}
                   type="button"
                   onClick={() => {
-                    setSelectedCategory(result.category);
-                    setSelectedSubcategory(result.subcategory);
-                    setSelectedRequestType(result.requestType);
+                    updateSelection(result.category, result.subcategory, result.requestType);
                   }}
                   className="group relative flex flex-col gap-3 rounded-xl border border-neutral-200/80 bg-white p-5 text-left
                              transition-all duration-300 hover:border-[#D63031]/20 hover:shadow-[0_4px_24px_-6px_rgba(214,48,49,0.08)]"
@@ -458,7 +488,7 @@ export default function HelpPortalPage() {
               iconName={category.iconName}
               itemCount={category.itemCount}
               badgeText={category.badgeText}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => updateSelection(category, null, null)}
             />
           ))}
         </div>
@@ -468,7 +498,7 @@ export default function HelpPortalPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)]">
-      <PageHeader 
+      <PageHeader
         label="Atención Ciudadana"
         title="Portal de"
         highlight="Ayuda"
