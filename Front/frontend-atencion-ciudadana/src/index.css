@@ -17,6 +17,15 @@ body {
   color: #1a1a1a;
 }
 
+@keyframes alert-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 #root {
   min-height: 100svh;
   display: flex;

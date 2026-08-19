@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { CheckCircle, AlertCircle, Info, X } from "lucide-react";
 
 const VARIANTS = {
@@ -24,12 +25,32 @@ const VARIANTS = {
   },
 };
 
-export default function Alert({ variant = "info", title, children, onDismiss }) {
+export default function Alert({
+  variant = "info",
+  title,
+  children,
+  onDismiss,
+  sticky = false,
+  autoDismissMs,
+}) {
   const config = VARIANTS[variant];
   const Icon = config.icon;
 
+  useEffect(() => {
+    if (!autoDismissMs || !onDismiss) return undefined;
+
+    const timeoutId = setTimeout(onDismiss, autoDismissMs);
+    return () => clearTimeout(timeoutId);
+  }, [autoDismissMs, onDismiss]);
+
   return (
-    <div className={`relative flex gap-3 rounded-lg border p-4 ${config.bg}`}>
+    <div
+      className={`relative flex gap-3 overflow-hidden rounded-lg border p-4 ${config.bg} ${
+        sticky
+          ? "sticky top-20 z-50 mx-auto w-[calc(100%-2rem)] max-w-lg shadow-lg"
+          : ""
+      }`}
+    >
       <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${config.iconColor}`} strokeWidth={2} />
       <div className="flex-1 min-w-0">
         {title && (
@@ -48,6 +69,15 @@ export default function Alert({ variant = "info", title, children, onDismiss }) 
         >
           <X className="h-4 w-4 text-neutral-400" strokeWidth={2} />
         </button>
+      )}
+      {autoDismissMs && onDismiss && (
+        <div
+          className={`absolute bottom-0 left-0 h-0.5 w-full origin-left ${
+            variant === "error" ? "bg-red-500" : "bg-blue-500"
+          }`}
+          style={{ animation: `alert-countdown ${autoDismissMs}ms linear forwards` }}
+          aria-hidden="true"
+        />
       )}
     </div>
   );

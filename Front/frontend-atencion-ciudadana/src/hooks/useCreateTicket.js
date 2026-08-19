@@ -22,7 +22,7 @@ export function useCreateTicket() {
       await new Promise((r) => setTimeout(r, 1500));
 
       // Simular error aleatorio para testing (10% de las veces)
-      if (Math.random() < 0.1) {
+      if (Math.random() < 0.8) {
         throw new Error("No se pudo conectar con el servidor. Intentá nuevamente en unos minutos.");
       }
 
