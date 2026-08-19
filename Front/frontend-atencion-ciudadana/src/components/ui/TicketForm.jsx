@@ -229,9 +229,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
           name="summary"
           type="smalltext"
           placeholder="Pon el título o un pequeño resumen de tu reclamo o solicitud..."
-          value={formData.description}
+          value={formData.summary}
           onChange={handleChange}
-          error={fieldErrors.description}
+          error={fieldErrors.summary}
           required
           disabled={loading}
         />
