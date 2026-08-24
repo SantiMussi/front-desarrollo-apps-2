@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ArrowRight, ClipboardList, ChevronRight, FileText, CreditCard, CheckCircle } from "lucide-react";
+import { Search, ArrowRight, ClipboardList, FileText, CreditCard, CheckCircle } from "lucide-react";
 import CategoryCard from "../../components/ui/CategoryCard";
 import logo from "../../assets/logo.png";
 import { MOCK_CATEGORIES } from "../../data/mockCategories";
@@ -248,40 +248,18 @@ export default function HomePage() {
                 iconName={category.iconName}
                 itemCount={category.itemCount}
                 badgeText={category.badgeText}
-                onClick={() => navigate(`/portal-ayuda?category=${category.id}`)}
+                onClick={() => {
+                  if (category.id === "otro") {
+                    navigate("/portal-ayuda?category=otro&subcategory=otro-general&requestType=OTRO_CONSULTA_GENERAL");
+                  } else {
+                    navigate(`/portal-ayuda?category=${category.id}`);
+                  }
+                }}
               />
             ))}
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-5 pb-16">
-          <div className="relative overflow-hidden rounded-xl border border-neutral-200/80 bg-white p-6 sm:p-8">
-            <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden">
-              <div className="absolute -top-12 -right-12 w-24 h-24 rotate-45 bg-[#D63031]/5" />
-            </div>
-
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-[15px] font-semibold text-neutral-900">
-                  ¿No encontrás la categoría que necesitás?
-                </p>
-                <p className="text-[13px] text-neutral-400 mt-0.5">
-                  Iniciá un reclamo general y nuestro equipo lo deriva al área correspondiente.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate("/portal-ayuda")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#D63031] px-4 py-2 text-[13px] font-semibold text-white shrink-0
-                           transition-all duration-200 hover:bg-[#c0282a] hover:shadow-md hover:shadow-[#D63031]/10
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031] focus-visible:ring-offset-2"
-              >
-                Reclamo General
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );

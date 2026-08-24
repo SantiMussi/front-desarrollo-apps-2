@@ -2726,6 +2726,39 @@ export const MOCK_CATEGORIES = [
         ]
       }
     ]
+  },
+  {
+    "id": "otro",
+    "title": "Otro",
+    "description": "¿No encontrás la categoría que necesitás? Enviá tu consulta o reclamo y nuestro equipo lo derivará al área correspondiente.",
+    "iconName": "HelpCircle",
+    "itemCount": 1,
+    "badgeText": null,
+    "subcategories": [
+      {
+        "id": "otro-general",
+        "name": "Consulta general",
+        "iconName": "HelpCircle",
+        "requestTypes": [
+          {
+            "code": "OTRO_CONSULTA_GENERAL",
+            "name": "Consulta o reclamo general",
+            "description": "Enviá tu consulta o reclamo y nuestro equipo lo derivará al área correspondiente.",
+            "ticketType": "Reclamo",
+            "assignedArea": "Mesa de Entrada",
+            "specificFields": [
+              {
+                "key": "descripcionDetallada",
+                "label": "Descripción detallada",
+                "type": "textarea",
+                "placeholder": "Describa en detalle la situación o motivo...",
+                "required": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 ];
 
