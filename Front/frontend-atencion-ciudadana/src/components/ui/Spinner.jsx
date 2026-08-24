@@ -1,5 +1,28 @@
+import { useState, useEffect, useRef } from "react";
+import {
+  Construction,
+  TreePine,
+  Lightbulb,
+  ShieldCheck,
+  FileText,
+  Droplets,
+  Bus,
+  Heart,
+} from "lucide-react";
+
+const ICONS = [
+  { icon: Construction, color: "#e67e22" },
+  { icon: TreePine,     color: "#27ae60" },
+  { icon: Lightbulb,    color: "#f1c40f" },
+  { icon: ShieldCheck,  color: "#0F2C59" },
+  { icon: FileText,     color: "#8e44ad" },
+  { icon: Droplets,     color: "#3498db" },
+  { icon: Bus,          color: "#e74c3c" },
+  { icon: Heart,        color: "#D63031" },
+];
+const CYCLE_MS = 1500;
+
 export default function Spinner({ size = "md", className = "" }) {
-  /* ── Inline-button spinner (sm): clean ring ──────────────────── */
   if (size === "sm") {
     return (
       <div
@@ -10,59 +33,64 @@ export default function Spinner({ size = "md", className = "" }) {
     );
   }
 
-  /* ── Page-level spinner (md / lg): morphing ring + pulse ─────── */
-  const ringSize = size === "lg" ? 48 : 36;
-  const stroke = size === "lg" ? 3.5 : 3;
+  const [iconIndex, setIconIndex] = useState(0);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    const firstSwap = setTimeout(() => {
+      setIconIndex((prev) => {
+        let next;
+        do { next = Math.floor(Math.random() * ICONS.length); } while (next === prev);
+        return next;
+      });
+      intervalRef.current = setInterval(() => {
+        setIconIndex((prev) => {
+          let next;
+          do { next = Math.floor(Math.random() * ICONS.length); } while (next === prev);
+          return next;
+        });
+      }, CYCLE_MS);
+    }, CYCLE_MS * 0.5);
+
+    return () => {
+      clearTimeout(firstSwap);
+      clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const { icon: Icon, color } = ICONS[iconIndex];
+  const iconPx = size === "lg" ? 26 : 20;
+  const boxPx = size === "lg" ? 52 : 40;
 
   return (
-    <div className={`relative flex items-center justify-center ${className}`} role="status" aria-label="Cargando">
-      <svg
-        width={ringSize}
-        height={ringSize}
-        viewBox="0 0 48 48"
-        fill="none"
-        style={{ animation: "spinnerRotate 1.8s linear infinite" }}
-      >
-        {/* Track */}
-        <circle cx="24" cy="24" r="20" stroke="#e5e5e5" strokeWidth={stroke} />
-        {/* Animated arc */}
-        <circle
-          cx="24" cy="24" r="20"
-          stroke="url(#spinnerGrad)"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray="90 126"
-          style={{ animation: "spinnerDash 1.8s ease-in-out infinite" }}
-        />
-        <defs>
-          <linearGradient id="spinnerGrad" x1="0" y1="0" x2="48" y2="48">
-            <stop offset="0%" stopColor="#0F2C59" />
-            <stop offset="100%" stopColor="#D63031" />
-          </linearGradient>
-        </defs>
-      </svg>
-      {/* Center pulse dot */}
-      <span
-        className="absolute rounded-full bg-[#D63031]"
+    <div
+      className={`flex flex-col items-center justify-center gap-3 ${className}`}
+      role="status"
+      aria-label="Cargando"
+    >
+      <div
+        className="flex items-center justify-center rounded-xl bg-neutral-50 border border-neutral-200/80"
         style={{
-          width: size === "lg" ? 6 : 5,
-          height: size === "lg" ? 6 : 5,
-          animation: "spinnerPulse 1.8s ease-in-out infinite",
+          width: boxPx,
+          height: boxPx,
+          color,
+          transition: "color 0.4s ease",
+          animation: `iconWheel ${CYCLE_MS}ms ease-in-out infinite`,
         }}
-      />
+      >
+        <Icon
+          width={iconPx}
+          height={iconPx}
+          strokeWidth={1.5}
+        />
+      </div>
+
+      <p className="text-[13px] text-neutral-400 font-medium">Cargando...</p>
 
       <style>{`
-        @keyframes spinnerRotate {
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes spinnerDash {
-          0%   { stroke-dasharray: 10 116; stroke-dashoffset: 0; }
-          50%  { stroke-dasharray: 90 36;  stroke-dashoffset: -30; }
-          100% { stroke-dasharray: 10 116; stroke-dashoffset: -126; }
-        }
-        @keyframes spinnerPulse {
-          0%, 100% { transform: scale(0.8); opacity: 0.4; }
-          50%      { transform: scale(1.3); opacity: 1; }
+        @keyframes iconWheel {
+          0%, 20%   { transform: rotate(0deg); }
+          80%, 100% { transform: rotate(720deg); }
         }
       `}</style>
     </div>

@@ -254,9 +254,8 @@ export default function HelpPortalPage() {
   const renderStepContent = () => {
     if (loading) {
       return (
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
-          <p className="mt-4 text-[14px] text-neutral-400">Cargando categorías...</p>
         </div>
       );
     }
