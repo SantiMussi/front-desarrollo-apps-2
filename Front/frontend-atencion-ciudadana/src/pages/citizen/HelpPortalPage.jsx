@@ -232,6 +232,10 @@ export default function HelpPortalPage() {
   };
 
   const handleBack = () => {
+    if (selectedCategory?.id === "otro") {
+      navigate("/");
+      return;
+    }
     if (selectedRequestType) {
       updateSelection(selectedCategory, selectedSubcategory, null);
     } else if (selectedSubcategory) {
