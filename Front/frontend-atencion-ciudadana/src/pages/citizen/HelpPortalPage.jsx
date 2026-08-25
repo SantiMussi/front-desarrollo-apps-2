@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, icons, ChevronRight, FileText } from "lucide-react";
 import { useCategories } from "../../hooks/useCategories";
@@ -8,6 +8,7 @@ import StepIndicator from "../../components/ui/StepIndicator";
 import Spinner from "../../components/ui/Spinner";
 import Alert from "../../components/ui/Alert";
 import TicketForm from "../../components/ui/TicketForm";
+import ConfirmExitModal from "../../components/ui/ConfirmExitModal";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 
@@ -19,6 +20,51 @@ export default function HelpPortalPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [selectedRequestType, setSelectedRequestType] = useState(null);
+
+  const [showExitModal, setShowExitModal] = useState(false);
+  const pendingAction = useRef(null);
+  const [formDirty, setFormDirty] = useState(false);
+
+  // El TicketForm avisa cuando el form tiene datos
+  const handleFormDirtyChange = useCallback((dirty) => {
+    setFormDirty(dirty);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRequestType || !formDirty) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [selectedRequestType, formDirty]);
+
+  const guardNavigation = useCallback(
+    (action) => {
+      if (selectedRequestType && formDirty) {
+        pendingAction.current = action;
+        setShowExitModal(true);
+      } else {
+        action();
+      }
+    },
+    [selectedRequestType, formDirty]
+  );
+
+  const confirmExit = useCallback(() => {
+    setShowExitModal(false);
+    setFormDirty(false);
+    if (pendingAction.current) {
+      pendingAction.current();
+      pendingAction.current = null;
+    }
+  }, []);
+
+  const cancelExit = useCallback(() => {
+    setShowExitModal(false);
+    pendingAction.current = null;
+  }, []);
 
   const updateSelection = (category, subcategory, requestType) => {
     setSelectedCategory(category);
@@ -221,31 +267,39 @@ export default function HelpPortalPage() {
   }
 
   const handleBreadcrumbNavigate = (index) => {
-    if (index === -1) {
-      updateSelection(null, null, null);
-      return;
-    }
-    if (index === 0) {
-      updateSelection(selectedCategory, null, null);
-    } else if (index === 1) {
-      updateSelection(selectedCategory, selectedSubcategory, null);
-    }
+    const doBreadcrumb = () => {
+      if (index === -1) {
+        updateSelection(null, null, null);
+        return;
+      }
+      if (index === 0) {
+        updateSelection(selectedCategory, null, null);
+      } else if (index === 1) {
+        updateSelection(selectedCategory, selectedSubcategory, null);
+      }
+    };
+
+    guardNavigation(doBreadcrumb);
   };
 
   const handleBack = () => {
-    if (selectedCategory?.id === "otro") {
-      navigate("/");
-      return;
-    }
-    if (selectedRequestType) {
-      updateSelection(selectedCategory, selectedSubcategory, null);
-    } else if (selectedSubcategory) {
-      updateSelection(selectedCategory, null, null);
-    } else if (selectedCategory) {
-      updateSelection(null, null, null);
-    } else {
-      navigate("/");
-    }
+    const doBack = () => {
+      if (selectedCategory?.id === "otro") {
+        navigate("/");
+        return;
+      }
+      if (selectedRequestType) {
+        updateSelection(selectedCategory, selectedSubcategory, null);
+      } else if (selectedSubcategory) {
+        updateSelection(selectedCategory, null, null);
+      } else if (selectedCategory) {
+        updateSelection(null, null, null);
+      } else {
+        navigate("/");
+      }
+    };
+
+    guardNavigation(doBack);
   };
 
   const handleNewTicket = () => {
@@ -278,6 +332,7 @@ export default function HelpPortalPage() {
             requestType={selectedRequestType}
             onBack={handleBack}
             onNewTicket={handleNewTicket}
+            onDirtyChange={handleFormDirtyChange}
           />
         </div>
       );
@@ -509,11 +564,13 @@ export default function HelpPortalPage() {
         description="Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos."
       />
 
-      <section className="border-b border-neutral-200/60 bg-white">
-        <div className="mx-auto max-w-6xl px-5 py-6">
-          <SearchBar key={searchParams.toString()} />
-        </div>
-      </section>
+      {!selectedRequestType && (
+        <section className="border-b border-neutral-200/60 bg-white">
+          <div className="mx-auto max-w-6xl px-5 py-6">
+            <SearchBar key={searchParams.toString()} />
+          </div>
+        </section>
+      )}
 
       <div className="flex-1 bg-[#fafafa]">
         <div className="mx-auto max-w-6xl px-5">
@@ -540,6 +597,11 @@ export default function HelpPortalPage() {
           </div>
         </div>
       </div>
+      <ConfirmExitModal
+        isOpen={showExitModal}
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
     </div>
   );
 }

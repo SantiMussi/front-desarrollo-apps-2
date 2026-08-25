@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -38,7 +38,7 @@ function validateForm(formData, specificFields) {
   return errors;
 }
 
-export default function TicketForm({ requestType, onBack, onNewTicket }) {
+export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange }) {
   const navigate = useNavigate();
   const { submit, loading, error, trackingCode, reset } = useCreateTicket();
   const [copied, setCopied] = useState(false);
@@ -54,6 +54,19 @@ export default function TicketForm({ requestType, onBack, onNewTicket }) {
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [attachments, setAttachments] = useState([]);
+
+  // Notificar al padre cuando el formulario tiene datos
+  useEffect(() => {
+    if (!onDirtyChange) return;
+    const isDirty =
+      formData.summary.trim() !== "" ||
+      formData.description.trim() !== "" ||
+      formData.address.trim() !== "" ||
+      formData.neighborhoodId !== "" ||
+      Object.values(formData.specificData).some((v) => v && String(v).trim() !== "") ||
+      attachments.length > 0;
+    onDirtyChange(isDirty);
+  }, [formData, attachments, onDirtyChange]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
