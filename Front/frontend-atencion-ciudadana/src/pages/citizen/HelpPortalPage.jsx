@@ -509,11 +509,13 @@ export default function HelpPortalPage() {
         description="Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos."
       />
 
-      <section className="border-b border-neutral-200/60 bg-white">
-        <div className="mx-auto max-w-6xl px-5 py-6">
-          <SearchBar key={searchParams.toString()} />
-        </div>
-      </section>
+      {!selectedRequestType && (
+        <section className="border-b border-neutral-200/60 bg-white">
+          <div className="mx-auto max-w-6xl px-5 py-6">
+            <SearchBar key={searchParams.toString()} />
+          </div>
+        </section>
+      )}
 
       <div className="flex-1 bg-[#fafafa]">
         <div className="mx-auto max-w-6xl px-5">
