@@ -144,7 +144,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     handleSubmit({ preventDefault: () => {} });
   };
 
-
+  // Cuando el formulario se envió exitosamente, avisar al padre que ya no está "dirty"
+  // para que el modal de confirmación no aparezca al navegar hacia atrás.
+  useEffect(() => {
+    if (trackingCode && onDirtyChange) {
+      onDirtyChange(false);
+    }
+  }, [trackingCode, onDirtyChange]);
 
   if (trackingCode) {
     return (
