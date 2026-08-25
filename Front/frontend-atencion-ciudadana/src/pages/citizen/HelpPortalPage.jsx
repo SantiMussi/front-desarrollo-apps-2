@@ -9,6 +9,7 @@ import Spinner from "../../components/ui/Spinner";
 import Alert from "../../components/ui/Alert";
 import TicketForm from "../../components/ui/TicketForm";
 import PageHeader from "../../components/ui/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
 
 export default function HelpPortalPage() {
   const navigate = useNavigate();
@@ -507,6 +508,12 @@ export default function HelpPortalPage() {
         highlight="Ayuda"
         description="Seleccioná una categoría, elegí el tipo de trámite y completá tu solicitud en pocos pasos."
       />
+
+      <section className="border-b border-neutral-200/60 bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-6">
+          <SearchBar key={searchParams.toString()} />
+        </div>
+      </section>
 
       <div className="flex-1 bg-[#fafafa]">
         <div className="mx-auto max-w-6xl px-5">
