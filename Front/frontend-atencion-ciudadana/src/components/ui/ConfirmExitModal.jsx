@@ -67,7 +67,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
 
             {/* Body */}
             <div className="px-6 pt-7 pb-6">
-              {/* Animated icon */}
+              {/* Animated icon with heartbeat */}
               <div className="flex justify-center mb-5">
                 <motion.div
                   className="relative"
@@ -75,14 +75,55 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                 >
-                  {/* Outer glow ring */}
-                  <div className="absolute inset-0 rounded-full bg-amber-400/20 animate-ping" style={{ animationDuration: "2s" }} />
-                  {/* Second ring */}
-                  <div className="absolute -inset-2 rounded-full border-2 border-dashed border-amber-300/30 animate-spin" style={{ animationDuration: "8s" }} />
-                  {/* Icon container */}
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/50 shadow-lg shadow-amber-500/10">
+                  {/* Heartbeat glow ring — pulses in sync */}
+                  <motion.div
+                    className="absolute -inset-3 rounded-full"
+                    style={{
+                      background: "radial-gradient(circle, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0) 70%)",
+                    }}
+                    animate={{
+                      scale: [1, 1.35, 1.1, 1.3, 1],
+                      opacity: [0.4, 0.8, 0.5, 0.7, 0.4],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      repeatDelay: 0.8,
+                      ease: "easeInOut",
+                      times: [0, 0.15, 0.3, 0.45, 0.7],
+                    }}
+                  />
+                  {/* Second subtle ring */}
+                  <motion.div
+                    className="absolute -inset-1.5 rounded-full border border-amber-300/40"
+                    animate={{
+                      scale: [1, 1.15, 1.05, 1.12, 1],
+                      opacity: [0.3, 0.6, 0.35, 0.55, 0.3],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      repeatDelay: 0.8,
+                      ease: "easeInOut",
+                      times: [0, 0.15, 0.3, 0.45, 0.7],
+                    }}
+                  />
+                  {/* Icon container with heartbeat scale */}
+                  <motion.div
+                    className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/50 shadow-lg shadow-amber-500/10"
+                    animate={{
+                      scale: [1, 1.18, 1, 1.12, 1],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      repeatDelay: 0.8,
+                      ease: "easeInOut",
+                      times: [0, 0.15, 0.3, 0.45, 0.7],
+                    }}
+                  >
                     <ShieldAlert className="h-8 w-8 text-amber-600" strokeWidth={1.8} />
-                  </div>
+                  </motion.div>
                 </motion.div>
               </div>
 
