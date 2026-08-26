@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import FormField from "./FormField";
+import LocationMap from "./LocationMap";
 import Spinner from "./Spinner";
 import Alert from "./Alert";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
@@ -48,6 +49,8 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     description: "",
     address: "",
     neighborhoodId: "",
+    latitude: null,
+    longitude: null,
     isAnonymous: false,
     specificData: {},
   });
@@ -70,7 +73,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      // Clear coordinates when the user manually edits the address
+      // (the map will re-geocode via debounce)
+      ...(name === "address" ? { latitude: null, longitude: null } : {}),
+    }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -83,6 +92,37 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
+
+  // Called when the user clicks or drags on the map
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhood }) => {
+    let matchedNeighborhoodId = undefined;
+    if (neighborhood) {
+      const normalizedQuery = neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const match = NEIGHBORHOODS.find(n => {
+        const normalizedName = n.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
+      });
+      if (match) {
+        matchedNeighborhoodId = match.id;
+      }
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      ...(addr ? { address: addr } : {}),
+      ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
+    }));
+    
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev, address: undefined };
+      if (matchedNeighborhoodId) {
+        newErrors.neighborhoodId = undefined;
+      }
+      return newErrors;
+    });
+  }, []);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -117,8 +157,8 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       location: {
         address: formData.address,
         neighborhoodId: formData.neighborhoodId,
-        latitude: null,
-        longitude: null,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
       },
       attachments: attachments.map((a) => ({
         name: a.name,
@@ -360,6 +400,11 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           onChange={handleChange}
           error={fieldErrors.neighborhoodId}
           required
+          disabled={loading}
+        />
+        <LocationMap
+          address={formData.address}
+          onLocationSelect={handleLocationSelect}
           disabled={loading}
         />
       </div>
