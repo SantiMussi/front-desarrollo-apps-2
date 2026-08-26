@@ -22,17 +22,17 @@ const ICONS = [
 ];
 const CYCLE_MS = 1500;
 
-export default function Spinner({ size = "md", className = "" }) {
-  if (size === "sm") {
-    return (
-      <div
-        className={`h-4 w-4 rounded-full border-2 border-neutral-200 border-t-[#D63031] animate-spin ${className}`}
-        role="status"
-        aria-label="Cargando"
-      />
-    );
-  }
+function SmallSpinner({ className = "" }) {
+  return (
+    <div
+      className={`h-4 w-4 rounded-full border-2 border-neutral-200 border-t-[#D63031] animate-spin ${className}`}
+      role="status"
+      aria-label="Cargando"
+    />
+  );
+}
 
+export default function Spinner({ size = "md", className = "" }) {
   const [iconIndex, setIconIndex] = useState(0);
   const intervalRef = useRef(null);
 
@@ -57,6 +57,10 @@ export default function Spinner({ size = "md", className = "" }) {
       clearInterval(intervalRef.current);
     };
   }, []);
+
+  if (size === "sm") {
+    return <SmallSpinner className={className} />;
+  }
 
   const { icon: Icon, color } = ICONS[iconIndex];
   const iconPx = size === "lg" ? 26 : 20;

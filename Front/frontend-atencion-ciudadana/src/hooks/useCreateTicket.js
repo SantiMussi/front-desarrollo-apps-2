@@ -12,7 +12,7 @@ export function useCreateTicket() {
   const [error, setError] = useState(null);
   const [trackingCode, setTrackingCode] = useState(null);
 
-  const submit = useCallback(async (payload) => {
+  const submit = useCallback(async (_payload) => {
     setLoading(true);
     setError(null);
     setTrackingCode(null);

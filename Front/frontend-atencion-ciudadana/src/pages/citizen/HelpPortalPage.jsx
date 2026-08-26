@@ -106,9 +106,13 @@ export default function HelpPortalPage() {
       }
     }
 
-    setSelectedCategory(foundCat || null);
-    setSelectedSubcategory(foundSub || null);
-    setSelectedRequestType(foundReq || null);
+    // Derive selection from URL params - use functional updates to batch
+    const newSelection = { cat: foundCat || null, sub: foundSub || null, req: foundReq || null };
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setSelectedCategory((prev) => prev === newSelection.cat ? prev : newSelection.cat);
+    setSelectedSubcategory((prev) => prev === newSelection.sub ? prev : newSelection.sub);
+    setSelectedRequestType((prev) => prev === newSelection.req ? prev : newSelection.req);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [searchParams, categories]);
 
   const query = searchParams.get("q")?.toLowerCase();
