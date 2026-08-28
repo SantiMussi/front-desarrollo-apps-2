@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Clock3, MapPin, Paperclip, Send, Smile, Tag, Users } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock3, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
+import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
 import UserAvatar from "../../components/ui/UserAvatar";
 import {
   MOCK_CITIZENS, MOCK_REQUEST_TYPES_LIST, MOCK_SUBCATEGORIES_LIST, MOCK_CATEGORIES_LIST,
@@ -9,9 +10,14 @@ import {
   MOCK_USERS_LIST
 } from "../../data/mockTickets";
 
-const STATUS = { REGISTERED: "Registrado", IN_REVIEW: "En revisión", ROUTED: "Derivado", IN_PROGRESS: "En progreso", PENDING_INFORMATION: "Pendiente de información", RESOLVED: "Resuelto", CLOSED: "Cerrado", DUPLICATE: "Duplicado", CANCELLED: "Cancelado" };
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
 const AREA = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Mantenimiento vial", "AREA-SANITATION": "Higiene urbana", "AREA-GREEN": "Espacios verdes", "AREA-TRAFFIC": "Tránsito y movilidad" };
+const TICKET_TYPE_CONFIG = {
+  COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
+  REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
+  QUESTION: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
+  SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }
+};
 const formatDate = (value) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 
 function Field({ label, children }) {
@@ -38,6 +44,8 @@ export default function TicketDetailPage() {
       activities: MOCK_TICKET_ACTIVITIES_LIST.filter((item) => item.ticketId === ticket.id)
     };
   }, [ticket]);
+  const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
+  const TypeIcon = typeConfig?.icon;
   const submit = () => {
     if (!comment.trim()) return;
     setLocalMessages((items) => [...items, { id: `local-${Date.now()}`, text: comment, visibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
@@ -49,12 +57,23 @@ export default function TicketDetailPage() {
       <div className="border-b border-slate-200 px-5 py-3 md:px-7">
         <Link to="/agente/tickets" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[#0F2C59]"><ArrowLeft className="h-3.5 w-3.5" /> Volver a tickets</Link>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div><div className="mb-1 text-xs font-semibold text-[#0F2C59]">{ticket.publicId}</div><h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{ticket.summary}</h1></div>
-          <div className="relative">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="appearance-none rounded-md border-0 bg-amber-100 py-2 pl-3 pr-9 text-xs font-bold uppercase text-amber-800 outline-none ring-1 ring-amber-200">
-              {Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select><ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-amber-700" />
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-[#0F2C59]">
+              {TypeIcon && (
+                <span className="group relative inline-flex" title={typeConfig.label} tabIndex={0}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full ${typeConfig.className}`}>
+                    <TypeIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                  </span>
+                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                    {typeConfig.label}
+                  </span>
+                </span>
+              )}
+              <span>{ticket.id}</span><span className="text-slate-300">/</span><span>{ticket.publicId}</span>
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{ticket.summary}</h1>
           </div>
+        	<StatusTransitionMenu status={status} onChange={setStatus} />
         </div>
       </div>
 

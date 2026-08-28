@@ -1,6 +1,14 @@
 import StatusBadge from "./StatusBadge";
 import { motion } from "framer-motion";
+import { CircleHelp, Lightbulb, Plus, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const TICKET_TYPE_CONFIG = {
+  COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
+  REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
+  QUESTION: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
+  SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }
+};
 
 export default function TicketTable({ tickets, columns }) {
   const navigate = useNavigate();
@@ -32,7 +40,26 @@ export default function TicketTable({ tickets, columns }) {
 
   const renderCell = (ticket, colId) => {
     switch (colId) {
-      case 'clave': return <span className="font-medium text-slate-900">{ticket.id}</span>;
+      case 'clave': {
+        const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
+        const TypeIcon = typeConfig?.icon;
+
+        return (
+          <span className="inline-flex items-center gap-2 font-medium text-slate-900">
+            {TypeIcon && (
+              <span className="group relative inline-flex" title={typeConfig.label}>
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full ${typeConfig.className}`}>
+                  <TypeIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                </span>
+                <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  {typeConfig.label}
+                </span>
+              </span>
+            )}
+            {ticket.id}
+          </span>
+        );
+      }
       case 'summary': return <span className="text-slate-700">{ticket.summary}</span>;
       case 'citizen': return (
         <div className="flex items-center gap-2">
