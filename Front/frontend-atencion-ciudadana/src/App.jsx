@@ -7,6 +7,7 @@ import Footer from "./components/layout/Footer";
 import SplashScreen from "./components/ui/SplashScreen";
 import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
+// import TicketDetailPage from "./pages/agent/TicketDetailPage";
 
 function CitizenLayout() {
   return (

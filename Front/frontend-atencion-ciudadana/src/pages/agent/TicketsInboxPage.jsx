@@ -4,11 +4,67 @@ import { Search, Filter, RefreshCw, Download, Columns, Bell, Loader2, Check } fr
 import { 
   MOCK_TICKETS, 
   MOCK_CATEGORIES_LIST, 
+  MOCK_CITIZENS,
   MOCK_PRIORITIES, 
   MOCK_NEIGHBORHOODS,
-  MOCK_STATUSES
+  MOCK_REQUEST_TYPES_LIST,
+  MOCK_SUBCATEGORIES_LIST,
+  MOCK_STATUSES,
+  MOCK_TICKET_LOCATIONS_LIST,
+  MOCK_USERS_LIST
 } from "../../data/mockTickets";
 import TicketTable from "../../components/ui/TicketTable";
+
+const CURRENT_AGENT_ID = "AGENT-014";
+
+const STATUS_LABELS = {
+  REGISTERED: "Registrado",
+  IN_REVIEW: "En revisión",
+  ROUTED: "Derivado",
+  IN_PROGRESS: "En Progreso",
+  PENDING_INFORMATION: "Pendiente de información",
+  RESOLVED: "Resuelto",
+  CLOSED: "Cerrado",
+  DUPLICATE: "Duplicado",
+  CANCELLED: "Cancelado"
+};
+
+const getDisplayDate = (value) => new Date(value).toLocaleDateString("es-AR");
+const TERMINAL_STATUSES = ["RESOLVED", "CLOSED", "DUPLICATE", "CANCELLED"];
+
+const inboxTickets = MOCK_TICKETS.map((ticket) => {
+  const requestType = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === ticket.requestTypeId);
+  const subcategory = requestType && MOCK_SUBCATEGORIES_LIST.find((item) => item.id === requestType.subcategoryId);
+  const category = subcategory && MOCK_CATEGORIES_LIST.find((item) => item.id === subcategory.categoryId);
+  const location = MOCK_TICKET_LOCATIONS_LIST.find((item) => item.ticketId === ticket.id);
+  const citizen = MOCK_CITIZENS.find((item) => item.id === ticket.citizenId);
+  const assignedUser = MOCK_USERS_LIST.find((item) => item.id === ticket.assignedAgentId);
+  const neighborhood = MOCK_NEIGHBORHOODS.find((item) => item.id === location?.neighborhoodId);
+
+  return {
+    ...ticket,
+    summary: ticket.summary,
+    description: ticket.description,
+    category: category?.name || requestType?.name || ticket.ticketType,
+    priority: ticket.currentPriorityFactor,
+    neighborhood: neighborhood?.name || "Sin barrio",
+    status: STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus,
+    createdAt: getDisplayDate(ticket.createdAt),
+    updatedAt: getDisplayDate(ticket.updatedAt),
+    location: location?.addressLine || "Ubicación pendiente",
+    assignee: assignedUser
+      ? { name: assignedUser.id === CURRENT_AGENT_ID ? "Tú" : assignedUser.name, avatar: assignedUser.avatar }
+      : { name: "Sin asignar", avatar: null },
+    citizen: ticket.anonymous
+      ? { name: "Anónimo", initials: "AN", email: null }
+      : { name: citizen?.name || "Ciudadano no encontrado", initials: citizen?.initials || "??", email: citizen?.email || null },
+    sla: ticket.currentStatus === "RESOLVED"
+      ? "Confirmación pendiente"
+      : ["CLOSED", "CANCELLED", "DUPLICATE"].includes(ticket.currentStatus)
+        ? "-"
+        : "En plazo"
+  };
+});
 
 export default function TicketsInboxPage() {
   const [activeTab, setActiveTab] = useState("Asignados a mí");
@@ -17,10 +73,10 @@ export default function TicketsInboxPage() {
   const [downloadState, setDownloadState] = useState("idle");
   
   const [filters, setFilters] = useState({
-    categoria: "",
-    prioridad: "",
-    barrio: "",
-    estado: ""
+    category: "",
+    priority: "",
+    neighborhood: "",
+    status: ""
   });
 
   const handleFilterChange = (key, value) => {
@@ -32,36 +88,36 @@ export default function TicketsInboxPage() {
 
   const counts = useMemo(() => {
     return {
-      todosAbiertos: MOCK_TICKETS.filter(t => ["Abierto", "En Progreso"].includes(t.estado)).length,
-      asignados: MOCK_TICKETS.filter(t => t.responsable?.nombre === "Tú").length,
-      sinAsignar: MOCK_TICKETS.filter(t => !t.responsable || t.responsable.nombre === "Sin asignar").length,
-      vencidos: MOCK_TICKETS.filter(t => t.sla && t.sla.includes("Vencido")).length,
+      todosAbiertos: inboxTickets.filter(t => !TERMINAL_STATUSES.includes(t.currentStatus)).length,
+      asignados: inboxTickets.filter(t => t.assignedAgentId === CURRENT_AGENT_ID).length,
+      sinAsignar: inboxTickets.filter(t => !t.assignedAgentId).length,
+      vencidos: inboxTickets.filter(t => t.sla && t.sla.includes("Vencido")).length,
     };
   }, []);
 
   const filteredTickets = useMemo(() => {
-    return MOCK_TICKETS.filter((ticket) => {
+    return inboxTickets.filter((ticket) => {
       // 1. Sidebar Tab logic
-      if (activeTab === "Asignados a mí" && ticket.responsable?.nombre !== "Tú") return false;
-      if (activeTab === "Todos abiertos" && !["Abierto", "En Progreso"].includes(ticket.estado)) return false;
-      if (activeTab === "Sin asignar" && (!ticket.responsable || ticket.responsable.nombre !== "Sin asignar")) return false;
+      if (activeTab === "Asignados a mí" && ticket.assignedAgentId !== CURRENT_AGENT_ID) return false;
+      if (activeTab === "Todos abiertos" && TERMINAL_STATUSES.includes(ticket.currentStatus)) return false;
+      if (activeTab === "Sin asignar" && ticket.assignedAgentId) return false;
       if (activeTab === "SLA Vencido / En Riesgo" && (!ticket.sla || !ticket.sla.includes("Vencido"))) return false;
-      if (activeTab === "Resueltos" && ticket.estado !== "Resuelto") return false;
+      if (activeTab === "Resueltos" && ticket.status !== "Resuelto") return false;
       
       // 2. Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = 
           ticket.id.toLowerCase().includes(query) || 
-          ticket.resumen.toLowerCase().includes(query);
+          ticket.summary.toLowerCase().includes(query);
         if (!matchesSearch) return false;
       }
 
       // 3. Dropdown Filters
-      if (filters.categoria && ticket.categoria !== filters.categoria) return false;
-      if (filters.prioridad && ticket.prioridad !== filters.prioridad) return false;
-      if (filters.barrio && ticket.barrio !== filters.barrio) return false;
-      if (filters.estado && ticket.estado !== filters.estado) return false;
+      if (filters.category && ticket.category !== filters.category) return false;
+      if (filters.priority && ticket.priority !== filters.priority) return false;
+      if (filters.neighborhood && ticket.neighborhood !== filters.neighborhood) return false;
+      if (filters.status && ticket.status !== filters.status) return false;
 
       return true;
     });
@@ -73,11 +129,11 @@ export default function TicketsInboxPage() {
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [columns, setColumns] = useState([
     { id: 'clave', label: 'CLAVE', visible: true },
-    { id: 'resumen', label: 'RESUMEN', visible: true },
-    { id: 'informador', label: 'INFORMADOR', visible: true },
-    { id: 'responsable', label: 'RESPONSABLE', visible: true },
-    { id: 'estado', label: 'ESTADO', visible: true },
-    { id: 'creado', label: 'CREADO', visible: true },
+    { id: 'summary', label: 'RESUMEN', visible: true },
+    { id: 'citizen', label: 'INFORMADOR', visible: true },
+    { id: 'assignee', label: 'RESPONSABLE', visible: true },
+    { id: 'status', label: 'ESTADO', visible: true },
+    { id: 'createdAt', label: 'CREADO', visible: true },
     { id: 'sla', label: 'SLA', visible: true }
   ]);
 
@@ -98,11 +154,11 @@ export default function TicketsInboxPage() {
           return columns.filter(c => c.visible).map(c => {
             switch(c.id) {
               case 'clave': return t.id;
-              case 'resumen': return `"${t.resumen}"`;
-              case 'informador': return `"${t.informador.nombre}"`;
-              case 'responsable': return `"${t.responsable ? t.responsable.nombre : "Sin asignar"}"`;
-              case 'estado': return t.estado;
-              case 'creado': return t.creado;
+              case 'summary': return `"${t.summary}"`;
+              case 'citizen': return `"${t.citizen.name}"`;
+              case 'assignee': return `"${t.assignee ? t.assignee.name : "Sin asignar"}"`;
+              case 'status': return t.status;
+              case 'createdAt': return t.createdAt;
               case 'sla': return t.sla || "-";
               default: return "";
             }
@@ -220,7 +276,7 @@ export default function TicketsInboxPage() {
             
             {activeFilterCount > 0 && (
               <button 
-                onClick={() => setFilters({categoria: "", prioridad: "", barrio: "", estado: ""})}
+                onClick={() => setFilters({category: "", priority: "", neighborhood: "", status: ""})}
                 className="text-xs text-slate-500 hover:text-slate-700 underline"
               >
                 Limpiar filtros
@@ -331,21 +387,21 @@ export default function TicketsInboxPage() {
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
               <select 
-                value={filters.categoria}
-                onChange={(e) => handleFilterChange("categoria", e.target.value)}
+                value={filters.category}
+                onChange={(e) => handleFilterChange("category", e.target.value)}
                 className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
               >
                 <option value="">Todas</option>
                 {MOCK_CATEGORIES_LIST.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat.id} value={cat.name}>{cat.name}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Prioridad</label>
               <select 
-                value={filters.prioridad}
-                onChange={(e) => handleFilterChange("prioridad", e.target.value)}
+                value={filters.priority}
+                onChange={(e) => handleFilterChange("priority", e.target.value)}
                 className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
               >
                 <option value="">Todas</option>
@@ -357,26 +413,26 @@ export default function TicketsInboxPage() {
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Barrio</label>
               <select 
-                value={filters.barrio}
-                onChange={(e) => handleFilterChange("barrio", e.target.value)}
+                value={filters.neighborhood}
+                onChange={(e) => handleFilterChange("neighborhood", e.target.value)}
                 className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
               >
                 <option value="">Todos</option>
                 {MOCK_NEIGHBORHOODS.map(barrio => (
-                  <option key={barrio} value={barrio}>{barrio}</option>
+                  <option key={barrio.id} value={barrio.name}>{barrio.name}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Estado</label>
               <select 
-                value={filters.estado}
-                onChange={(e) => handleFilterChange("estado", e.target.value)}
+                value={filters.status}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
                 className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
               >
                 <option value="">Todos</option>
                 {MOCK_STATUSES.map(est => (
-                  <option key={est} value={est}>{est}</option>
+                  <option key={est} value={STATUS_LABELS[est] || est}>{STATUS_LABELS[est] || est}</option>
                 ))}
               </select>
             </div>

@@ -1,14 +1,16 @@
 import StatusBadge from "./StatusBadge";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 export default function TicketTable({ tickets, columns }) {
+  const navigate = useNavigate();
   const displayColumns = columns || [
     { id: 'clave', label: 'CLAVE', visible: true },
-    { id: 'resumen', label: 'RESUMEN', visible: true },
-    { id: 'informador', label: 'INFORMADOR', visible: true },
-    { id: 'responsable', label: 'RESPONSABLE', visible: true },
-    { id: 'estado', label: 'ESTADO', visible: true },
-    { id: 'creado', label: 'CREADO', visible: true },
+    { id: 'summary', label: 'RESUMEN', visible: true },
+    { id: 'citizen', label: 'INFORMADOR', visible: true },
+    { id: 'assignee', label: 'RESPONSABLE', visible: true },
+    { id: 'status', label: 'ESTADO', visible: true },
+    { id: 'createdAt', label: 'CREADO', visible: true },
     { id: 'sla', label: 'SLA', visible: true }
   ];
 
@@ -31,21 +33,21 @@ export default function TicketTable({ tickets, columns }) {
   const renderCell = (ticket, colId) => {
     switch (colId) {
       case 'clave': return <span className="font-medium text-slate-900">{ticket.id}</span>;
-      case 'resumen': return <span className="text-slate-700">{ticket.resumen}</span>;
-      case 'informador': return (
+      case 'summary': return <span className="text-slate-700">{ticket.summary}</span>;
+      case 'citizen': return (
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
-            {ticket.informador.iniciales}
+            {ticket.citizen.initials}
           </div>
-          <span className="text-slate-700">{ticket.informador.nombre}</span>
+          <span className="text-slate-700">{ticket.citizen.name}</span>
         </div>
       );
-      case 'responsable': return (
+      case 'assignee': return (
         <div className="flex items-center gap-2">
-          {ticket.responsable.avatar ? (
+          {ticket.assignee.avatar ? (
             <img 
-              src={ticket.responsable.avatar} 
-              alt={ticket.responsable.nombre}
+              src={ticket.assignee.avatar} 
+              alt={ticket.assignee.name}
               className="w-6 h-6 rounded-full object-cover" 
             />
           ) : (
@@ -53,11 +55,11 @@ export default function TicketTable({ tickets, columns }) {
               ?
             </div>
           )}
-          <span className="text-slate-700">{ticket.responsable.nombre}</span>
+          <span className="text-slate-700">{ticket.assignee.name}</span>
         </div>
       );
-      case 'estado': return <StatusBadge status={ticket.estado} />;
-      case 'creado': return <span className="text-slate-500 text-xs">{ticket.creado}</span>;
+      case 'status': return <StatusBadge status={ticket.status} />;
+      case 'createdAt': return <span className="text-slate-500 text-xs">{ticket.createdAt}</span>;
       case 'sla': return (
         <span className="text-xs font-medium">
           {ticket.sla === "-" ? (
@@ -101,7 +103,14 @@ export default function TicketTable({ tickets, columns }) {
           className="divide-y divide-slate-100 text-sm"
         >
           {tickets.map((ticket) => (
-            <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
+            <tr
+              key={ticket.id}
+              onClick={() => navigate(`/agente/tickets/${ticket.id}`)}
+              className="hover:bg-slate-50 transition-colors cursor-pointer"
+              tabIndex={0}
+              onKeyDown={(event) => event.key === "Enter" && navigate(`/agente/tickets/${ticket.id}`)}
+              aria-label={`Abrir ticket ${ticket.id}: ${ticket.summary}`}
+            >
               {displayColumns.filter(c => c.visible).map(col => (
                 <td key={col.id} className="p-4">
                   {renderCell(ticket, col.id)}

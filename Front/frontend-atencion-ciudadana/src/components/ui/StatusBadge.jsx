@@ -1,15 +1,24 @@
 export default function StatusBadge({ status }) {
   const getStatusStyles = (status) => {
     switch (status) {
-      case "Abierto":
-        return "bg-slate-200 text-slate-700";
+      case "Registrado":
+        return "bg-orange-100 text-orange-800";
+      case "En revisión":
+        return "bg-blue-100 text-blue-800";
       case "En Progreso":
-        return "bg-[#0F2C59] text-white";
-      case "Resuelto":
+        return "bg-blue-100 text-blue-800";
+      case "Derivado":
+        return "bg-blue-100 text-blue-800";
+      case "Pendiente de información":
+        return "bg-blue-100 text-blue-800";
+        case "Resuelto":
         return "bg-green-100 text-green-800";
       case "Cerrado":
+        return "bg-slate-200 text-slate-700";  
       case "Cerrado (Duplicado)":
-        return "bg-slate-300 text-slate-600";
+        return "bg-slate-200 text-slate-700";
+      case "Cancelado":
+        return "bg-slate-200 text-slate-700";
       default:
         return "bg-slate-100 text-slate-600";
     }

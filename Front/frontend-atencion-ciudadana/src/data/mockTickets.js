@@ -1,155 +1,114 @@
 export const MOCK_TICKETS = [
-  {
-    id: "T-8924",
-    resumen: "Rotura de caño maestro de agua",
-    informador: {
-      nombre: "María Castro",
-      iniciales: "MC",
-    },
-    responsable: {
-      nombre: "Tú",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    estado: "Abierto",
-    creado: "Hoy 10:23",
-    sla: "Vencido por 2h",
-    categoria: "Servicios Públicos",
-    prioridad: "Alta",
-    barrio: "Centro",
-  },
-  {
-    id: "T-8923",
-    resumen: "Semáforo intermitente en cruce escolar",
-    informador: {
-      nombre: "Juan Gómez",
-      iniciales: "JG",
-    },
-    responsable: {
-      nombre: "Tú",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    estado: "En Progreso",
-    creado: "Ayer 15:40",
-    sla: "4h restantes",
-    categoria: "Tránsito",
-    prioridad: "Media",
-    barrio: "Palermo",
-  },
-  {
-    id: "T-8919",
-    resumen: "Vehículo abandonado en vía pública",
-    informador: {
-      nombre: "Laura Ruiz",
-      iniciales: "LR",
-    },
-    responsable: {
-      nombre: "Tú",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    estado: "Cerrado (Duplicado)",
-    creado: "Ayer 14:30",
-    sla: "-",
-    categoria: "Tránsito",
-    prioridad: "Baja",
-    barrio: "Belgrano",
-  },
-  {
-    id: "T-8915",
-    resumen: "Solicitud poda de árbol (No urgente)",
-    informador: {
-      nombre: "Pedro Díaz",
-      iniciales: "PD",
-    },
-    responsable: {
-      nombre: "Tú",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    estado: "Abierto",
-    creado: "23/10/2026",
-    sla: "48h restantes",
-    categoria: "Arbolado",
-    prioridad: "Baja",
-    barrio: "Recoleta",
-  },
-  {
-    id: "T-8910",
-    resumen: "Bache profundo en avenida principal",
-    informador: {
-      nombre: "Sofía Martínez",
-      iniciales: "SM",
-    },
-    responsable: {
-      nombre: "Carlos López",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-    },
-    estado: "Abierto",
-    creado: "22/10/2026",
-    sla: "Vencido por 24h",
-    categoria: "Infraestructura",
-    prioridad: "Alta",
-    barrio: "Caballito",
-  },
-  {
-    id: "T-8905",
-    resumen: "Falta de iluminación en plaza",
-    informador: {
-      nombre: "Diego Fernández",
-      iniciales: "DF",
-    },
-    responsable: {
-      nombre: "Tú",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    estado: "Resuelto",
-    creado: "20/10/2026",
-    sla: "-",
-    categoria: "Servicios Públicos",
-    prioridad: "Media",
-    barrio: "Almagro",
-  },
-  {
-    id: "T-8900",
-    resumen: "Ramas caídas obstruyendo la calle",
-    informador: {
-      nombre: "Ana Clara",
-      iniciales: "AC",
-    },
-    responsable: {
-      nombre: "Sin asignar",
-      avatar: null,
-    },
-    estado: "Abierto",
-    creado: "19/10/2026",
-    sla: "24h restantes",
-    categoria: "Arbolado",
-    prioridad: "Media",
-    barrio: "Centro",
-  }
+  { "id": "TICKET-001", "publicId": "OP-2026-000001", "trackingCodeHash": "$2a$10$mock000001", "citizenId": 1001, "anonymous": false, "requestTypeId": 101, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-LIGHTING", "assignedAgentId": null, "summary": "Luminaria apagada frente al edificio", "description": "La luminaria no enciende desde hace tres noches.", "formData": { "poleNumber": "AP-4582", "since": "2026-08-25", "dangerous": false }, "currentStatus": "REGISTERED", "initialPriorityFactor": "MEDIUM", "currentPriorityFactor": "MEDIUM", "affectedCount": 1, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-28T09:10:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "EMAIL", "ticketVersion": 1, "createdAt": "2026-08-28T09:10:00Z", "updatedAt": "2026-08-28T09:10:00Z" },
+  { "id": "TICKET-002", "publicId": "OP-2026-000002", "trackingCodeHash": "$2a$10$mock000002", "citizenId": 1002, "anonymous": false, "requestTypeId": 102, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-ROADWORKS", "assignedAgentId": "AGENT-014", "summary": "Bache profundo junto a la parada", "description": "El bache ocupa parte del carril derecho y acumula agua.", "formData": { "approximateDiameterCm": 90, "blocksTraffic": true, "photoCount": 2 }, "currentStatus": "IN_REVIEW", "initialPriorityFactor": "HIGH", "currentPriorityFactor": "HIGH", "affectedCount": 8, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-28T08:30:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "PUSH", "ticketVersion": 2, "createdAt": "2026-08-27T18:20:00Z", "updatedAt": "2026-08-28T08:30:00Z" },
+  { "id": "TICKET-003", "publicId": "OP-2026-000003", "trackingCodeHash": "$2a$10$mock000003", "citizenId": null, "anonymous": true, "requestTypeId": 103, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-SANITATION", "assignedAgentId": "AGENT-007", "summary": "Residuos sin retirar", "description": "Hay bolsas acumuladas desde el martes.", "formData": { "wasteType": "HOUSEHOLD", "estimatedBags": 15 }, "currentStatus": "ROUTED", "initialPriorityFactor": "MEDIUM", "currentPriorityFactor": "MEDIUM", "affectedCount": 5, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-27T15:00:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": null, "ticketVersion": 3, "createdAt": "2026-08-27T11:00:00Z", "updatedAt": "2026-08-27T15:00:00Z" },
+  { "id": "TICKET-004", "publicId": "OP-2026-000004", "trackingCodeHash": "$2a$10$mock000004", "citizenId": 1004, "anonymous": false, "requestTypeId": 104, "ticketType": "REQUEST", "responsibleAreaId": "AREA-GREEN", "assignedAgentId": "AGENT-021", "summary": "Ramas rozan cables y balcón", "description": "Solicito inspección del árbol ubicado frente a mi domicilio.", "formData": { "treeHeightMeters": 12, "nearPowerLines": true, "accessNotes": "Acceso libre desde la vereda" }, "currentStatus": "IN_PROGRESS", "initialPriorityFactor": "LOW", "currentPriorityFactor": "HIGH", "affectedCount": 2, "mainTicketId": null, "escalated": true, "escalationReasonCode": "MANUAL", "escalatedAt": "2026-08-26T14:30:00Z", "reopenCount": 0, "statusChangedAt": "2026-08-26T16:00:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "EMAIL", "ticketVersion": 5, "createdAt": "2026-08-24T10:00:00Z", "updatedAt": "2026-08-26T16:00:00Z" },
+  { "id": "TICKET-005", "publicId": "OP-2026-000005", "trackingCodeHash": "$2a$10$mock000005", "citizenId": 1005, "anonymous": false, "requestTypeId": 102, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-ROADWORKS", "assignedAgentId": "AGENT-014", "summary": "Hundimiento sin referencia exacta", "description": "Se observa un hundimiento cerca de una esquina, pero falta confirmar cuál.", "formData": { "approximateDiameterCm": 50, "blocksTraffic": false }, "currentStatus": "PENDING_INFORMATION", "initialPriorityFactor": "HIGH", "currentPriorityFactor": "HIGH", "affectedCount": 1, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-27T17:00:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "EMAIL", "ticketVersion": 3, "createdAt": "2026-08-27T12:00:00Z", "updatedAt": "2026-08-27T17:00:00Z" },
+  { "id": "TICKET-006", "publicId": "OP-2026-000006", "trackingCodeHash": "$2a$10$mock000006", "citizenId": 1006, "anonymous": false, "requestTypeId": 101, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-LIGHTING", "assignedAgentId": "AGENT-011", "summary": "Segunda denuncia por la misma luminaria", "description": "La luminaria de la esquina continúa apagada.", "formData": { "poleNumber": "AP-4582", "since": "2026-08-26", "dangerous": false }, "currentStatus": "DUPLICATE", "initialPriorityFactor": "MEDIUM", "currentPriorityFactor": "MEDIUM", "affectedCount": 0, "mainTicketId": "TICKET-001", "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-28T10:00:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "PUSH", "ticketVersion": 2, "createdAt": "2026-08-28T09:45:00Z", "updatedAt": "2026-08-28T10:00:00Z" },
+  { "id": "TICKET-007", "publicId": "OP-2026-000007", "trackingCodeHash": "$2a$10$mock000007", "citizenId": null, "anonymous": true, "requestTypeId": 105, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-TRAFFIC", "assignedAgentId": "AGENT-003", "summary": "Semáforo completamente apagado", "description": "El semáforo no funciona en ninguna dirección y genera riesgo inmediato.", "formData": { "intersection": "Av. Rivadavia y Acoyte", "allDirectionsAffected": true, "accidentReported": false }, "currentStatus": "RESOLVED", "initialPriorityFactor": "CRITICAL", "currentPriorityFactor": "CRITICAL", "affectedCount": 40, "mainTicketId": null, "escalated": true, "escalationReasonCode": "CRITICAL_PRIORITY", "escalatedAt": "2026-08-27T20:05:00Z", "reopenCount": 0, "statusChangedAt": "2026-08-28T03:15:00Z", "resolutionConfirmationDueAt": "2026-08-30T03:15:00Z", "preferredNotificationChannel": null, "ticketVersion": 8, "createdAt": "2026-08-27T20:00:00Z", "updatedAt": "2026-08-28T03:15:00Z" },
+  { "id": "TICKET-008", "publicId": "OP-2026-000008", "trackingCodeHash": "$2a$10$mock000008", "citizenId": 1008, "anonymous": false, "requestTypeId": 103, "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-SANITATION", "assignedAgentId": "AGENT-007", "summary": "Recolección normalizada", "description": "No se había realizado la recolección en toda la cuadra.", "formData": { "wasteType": "HOUSEHOLD", "estimatedBags": 25 }, "currentStatus": "CLOSED", "initialPriorityFactor": "MEDIUM", "currentPriorityFactor": "MEDIUM", "affectedCount": 12, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 1, "statusChangedAt": "2026-08-25T18:00:00Z", "resolutionConfirmationDueAt": "2026-08-25T17:00:00Z", "preferredNotificationChannel": "EMAIL", "ticketVersion": 9, "createdAt": "2026-08-20T09:00:00Z", "updatedAt": "2026-08-25T18:00:00Z" },
+  { "id": "TICKET-009", "publicId": "OP-2026-000009", "trackingCodeHash": "$2a$10$mock000009", "citizenId": 1009, "anonymous": false, "requestTypeId": 104, "ticketType": "REQUEST", "responsibleAreaId": "AREA-GREEN", "assignedAgentId": null, "summary": "Poda solicitada por error", "description": "El ciudadano indicó luego que el árbol se encuentra dentro de propiedad privada.", "formData": { "treeHeightMeters": 4, "nearPowerLines": false }, "currentStatus": "CANCELLED", "initialPriorityFactor": "LOW", "currentPriorityFactor": "LOW", "affectedCount": 0, "mainTicketId": null, "escalated": false, "escalationReasonCode": null, "escalatedAt": null, "reopenCount": 0, "statusChangedAt": "2026-08-26T11:30:00Z", "resolutionConfirmationDueAt": null, "preferredNotificationChannel": "EMAIL", "ticketVersion": 2, "createdAt": "2026-08-26T10:00:00Z", "updatedAt": "2026-08-26T11:30:00Z" }
 ];
 
 export const MOCK_CATEGORIES_LIST = [
-  "Servicios Públicos",
-  "Tránsito",
-  "Arbolado",
-  "Infraestructura",
-  "Higiene Urbana"
+  { "id": 1, "name": "Infraestructura urbana", "description": "Problemas en calles, veredas y alumbrado.", "active": true, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" },
+  { "id": 2, "name": "Higiene urbana", "description": "Residuos, limpieza y contenedores.", "active": true, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" },
+  { "id": 3, "name": "Espacios verdes", "description": "Plazas, parques y arbolado público.", "active": true, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" },
+  { "id": 4, "name": "Tránsito", "description": "Semáforos, señalización y circulación.", "active": true, "createdAt": "2026-01-01T00:00:00Z", "updatedAt": "2026-01-01T00:00:00Z" }
 ];
 
-export const MOCK_PRIORITIES = ["Alta", "Media", "Baja"];
+export const MOCK_SUBCATEGORIES_LIST = [
+  { "id": 11, "categoryId": 1, "name": "Alumbrado público", "description": "Luminarias y postes.", "active": true },
+  { "id": 12, "categoryId": 1, "name": "Calles y veredas", "description": "Baches y roturas.", "active": true },
+  { "id": 21, "categoryId": 2, "name": "Recolección de residuos", "description": "Retiro de residuos domiciliarios.", "active": true },
+  { "id": 31, "categoryId": 3, "name": "Arbolado", "description": "Árboles y ramas en vía pública.", "active": true },
+  { "id": 41, "categoryId": 4, "name": "Semáforos", "description": "Funcionamiento de señales luminosas.", "active": true }
+]
+
+export const MOCK_REQUEST_TYPES_LIST = [
+  { "id": 101, "code": "LIGHT_OUT", "subcategoryId": 11, "name": "Luminaria apagada", "description": "Reclamo por luminaria que no enciende.", "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-LIGHTING", "initialPriority": "MEDIUM", "initialRisk": "LOW", "allowsAnonymous": true, "requiresLocation": true, "active": true },
+  { "id": 102, "code": "POTHOLE", "subcategoryId": 12, "name": "Bache en calzada", "description": "Reporte de bache o hundimiento.", "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-ROADWORKS", "initialPriority": "HIGH", "initialRisk": "MEDIUM", "allowsAnonymous": true, "requiresLocation": true, "active": true },
+  { "id": 103, "code": "MISSED_COLLECTION", "subcategoryId": 21, "name": "Falta de recolección", "description": "Residuos no retirados en el horario previsto.", "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-SANITATION", "initialPriority": "MEDIUM", "initialRisk": "LOW", "allowsAnonymous": true, "requiresLocation": true, "active": true },
+  { "id": 104, "code": "TREE_PRUNING", "subcategoryId": 31, "name": "Solicitud de poda", "description": "Pedido de inspección y poda de árbol.", "ticketType": "REQUEST", "responsibleAreaId": "AREA-GREEN", "initialPriority": "LOW", "initialRisk": "LOW", "allowsAnonymous": false, "requiresLocation": true, "active": true },
+  { "id": 105, "code": "TRAFFIC_LIGHT_FAILURE", "subcategoryId": 41, "name": "Semáforo fuera de servicio", "description": "Reporte de semáforo apagado o con falla.", "ticketType": "COMPLAINT", "responsibleAreaId": "AREA-TRAFFIC", "initialPriority": "CRITICAL", "initialRisk": "CRITICAL", "allowsAnonymous": true, "requiresLocation": true, "active": true }
+  
+]
+
+export const MOCK_CITIZENS = [
+  { "id": 1001, "firstName": "María", "lastName": "González", "name": "María González", "initials": "MG", "documentNumber": "28123456", "email": "maria.gonzalez@example.com", "phone": "+54 11 4555-1001", "address": "Güemes 4200, CABA", "neighborhoodId": "NEIGHBORHOOD-001", "preferredNotificationChannel": "EMAIL", "active": true, "createdAt": "2025-03-12T14:20:00Z", "updatedAt": "2026-08-28T09:10:00Z" },
+  { "id": 1002, "firstName": "Juan", "lastName": "Fernández", "name": "Juan Fernández", "initials": "JF", "documentNumber": "30234567", "email": "juan.fernandez@example.com", "phone": "+54 11 4555-1002", "address": "Av. Rivadavia 5300, CABA", "neighborhoodId": "NEIGHBORHOOD-002", "preferredNotificationChannel": "PUSH", "active": true, "createdAt": "2025-04-18T10:15:00Z", "updatedAt": "2026-08-28T08:30:00Z" },
+  { "id": 1004, "firstName": "Lucía", "lastName": "Martínez", "name": "Lucía Martínez", "initials": "LM", "documentNumber": "27456789", "email": "lucia.martinez@example.com", "phone": "+54 11 4555-1004", "address": "Yerbal 2400, CABA", "neighborhoodId": "NEIGHBORHOOD-004", "preferredNotificationChannel": "EMAIL", "active": true, "createdAt": "2025-02-07T16:40:00Z", "updatedAt": "2026-08-26T16:00:00Z" },
+  { "id": 1005, "firstName": "Diego", "lastName": "Romero", "name": "Diego Romero", "initials": "DR", "documentNumber": "31567890", "email": "diego.romero@example.com", "phone": "+54 11 4555-1005", "address": "Caballito, CABA", "neighborhoodId": "NEIGHBORHOOD-002", "preferredNotificationChannel": "EMAIL", "active": true, "createdAt": "2025-05-22T09:30:00Z", "updatedAt": "2026-08-27T17:00:00Z" },
+  { "id": 1006, "firstName": "Sofía", "lastName": "Acosta", "name": "Sofía Acosta", "initials": "SA", "documentNumber": "29678901", "email": "sofia.acosta@example.com", "phone": "+54 11 4555-1006", "address": "Güemes 4200, CABA", "neighborhoodId": "NEIGHBORHOOD-001", "preferredNotificationChannel": "PUSH", "active": true, "createdAt": "2025-06-11T12:05:00Z", "updatedAt": "2026-08-28T10:00:00Z" },
+  { "id": 1008, "firstName": "Pablo", "lastName": "Torres", "name": "Pablo Torres", "initials": "PT", "documentNumber": "32890123", "email": "pablo.torres@example.com", "phone": "+54 11 4555-1008", "address": "Aranguren 2900, CABA", "neighborhoodId": "NEIGHBORHOOD-004", "preferredNotificationChannel": "EMAIL", "active": true, "createdAt": "2025-07-03T08:50:00Z", "updatedAt": "2026-08-25T18:00:00Z" },
+  { "id": 1009, "firstName": "Carolina", "lastName": "Silva", "name": "Carolina Silva", "initials": "CS", "documentNumber": "30901234", "email": "carolina.silva@example.com", "phone": "+54 11 4555-1009", "address": "Juramento 2600, CABA", "neighborhoodId": "NEIGHBORHOOD-003", "preferredNotificationChannel": "EMAIL", "active": true, "createdAt": "2025-08-14T11:25:00Z", "updatedAt": "2026-08-26T11:30:00Z" }
+];
+
+export const MOCK_USERS_LIST = [
+  { "id": "USER-1001", "userId": 1001, "userType": "CITIZEN", "name": "María González", "firstName": "María", "lastName": "González", "email": "maria.gonzalez@example.com", "initials": "MG", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1002", "userId": 1002, "userType": "CITIZEN", "name": "Juan Fernández", "firstName": "Juan", "lastName": "Fernández", "email": "juan.fernandez@example.com", "initials": "JF", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1004", "userId": 1004, "userType": "CITIZEN", "name": "Lucía Martínez", "firstName": "Lucía", "lastName": "Martínez", "email": "lucia.martinez@example.com", "initials": "LM", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1005", "userId": 1005, "userType": "CITIZEN", "name": "Diego Romero", "firstName": "Diego", "lastName": "Romero", "email": "diego.romero@example.com", "initials": "DR", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1006", "userId": 1006, "userType": "CITIZEN", "name": "Sofía Acosta", "firstName": "Sofía", "lastName": "Acosta", "email": "sofia.acosta@example.com", "initials": "SA", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1008", "userId": 1008, "userType": "CITIZEN", "name": "Pablo Torres", "firstName": "Pablo", "lastName": "Torres", "email": "pablo.torres@example.com", "initials": "PT", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "USER-1009", "userId": 1009, "userType": "CITIZEN", "name": "Carolina Silva", "firstName": "Carolina", "lastName": "Silva", "email": "carolina.silva@example.com", "initials": "CS", "avatar": null, "areaId": null, "role": "CITIZEN", "active": true },
+  { "id": "AGENT-003", "userId": "AGENT-003", "userType": "AREA_USER", "name": "Martín López", "firstName": "Martín", "lastName": "López", "email": "martin.lopez@municipio.gob.ar", "initials": "ML", "avatar": "https://i.pravatar.cc/150?u=agent-003", "areaId": "AREA-TRAFFIC", "role": "AREA_USER", "active": true },
+  { "id": "AGENT-007", "userId": "AGENT-007", "userType": "AGENT", "name": "Valentina Ruiz", "firstName": "Valentina", "lastName": "Ruiz", "email": "valentina.ruiz@municipio.gob.ar", "initials": "VR", "avatar": "https://i.pravatar.cc/150?u=agent-007", "areaId": "AREA-SANITATION", "role": "AGENT", "active": true },
+  { "id": "AGENT-011", "userId": "AGENT-011", "userType": "AGENT", "name": "Nicolás Castro", "firstName": "Nicolás", "lastName": "Castro", "email": "nicolas.castro@municipio.gob.ar", "initials": "NC", "avatar": "https://i.pravatar.cc/150?u=agent-011", "areaId": "AREA-LIGHTING", "role": "AGENT", "active": true },
+  { "id": "AGENT-014", "userId": "AGENT-014", "userType": "AGENT", "name": "Ana Pérez", "firstName": "Ana", "lastName": "Pérez", "email": "ana.perez@municipio.gob.ar", "initials": "AP", "avatar": "https://i.pravatar.cc/150?u=agent-014", "areaId": "AREA-ROADWORKS", "role": "AGENT", "active": true },
+  { "id": "AGENT-021", "userId": "AGENT-021", "userType": "AGENT", "name": "Federico Díaz", "firstName": "Federico", "lastName": "Díaz", "email": "federico.diaz@municipio.gob.ar", "initials": "FD", "avatar": "https://i.pravatar.cc/150?u=agent-021", "areaId": "AREA-GREEN", "role": "AGENT", "active": true },
+  { "id": "TRAFFIC-88", "userId": "TRAFFIC-88", "userType": "AREA_USER", "name": "Equipo de Tránsito", "firstName": "Equipo", "lastName": "de Tránsito", "email": "transito@municipio.gob.ar", "initials": "ET", "avatar": null, "areaId": "AREA-TRAFFIC", "role": "AREA_USER", "active": true },
+  { "id": "SYSTEM", "userId": "SYSTEM", "userType": "SYSTEM", "name": "Sistema", "firstName": "Sistema", "lastName": "", "email": null, "initials": "SI", "avatar": null, "areaId": null, "role": "SYSTEM", "active": true }
+];
+
+export const MOCK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
 
 export const MOCK_NEIGHBORHOODS = [
-  "Centro",
-  "Palermo",
-  "Belgrano",
-  "Recoleta",
-  "Caballito",
-  "Almagro"
+  { "id": "NEIGHBORHOOD-001", "name": "Palermo", "population": 225970 },
+  { "id": "NEIGHBORHOOD-002", "name": "Caballito", "population": 176076 },
+  { "id": "NEIGHBORHOOD-003", "name": "Belgrano", "population": 126816 },
+  { "id": "NEIGHBORHOOD-004", "name": "Flores", "population": 164310 }
 ];
 
 export const MOCK_STATUSES = [
-  "Abierto",
-  "En Progreso",
-  "Resuelto",
-  "Cerrado",
-  "Cerrado (Duplicado)"
+  "REGISTERED",
+  "IN PROGRESS",
+  "RESOLVED",
+  "CLOSED",
+  "DUPLICATE",
+  "ROUTED",
+  "PENDING_INFORMATION",
+  "CANCELLED"
 ];
+
+export const MOCK_TICKET_LOCATIONS_LIST =  [
+  { "id": 1, "ticketId": "TICKET-001", "addressLine": "Güemes 4200, CABA", "street": "Güemes", "streetNumber": "4200", "neighborhoodId": "NEIGHBORHOOD-001", "postalCode": "C1425", "latitude": -34.586100, "longitude": -58.423300, "createdAt": "2026-08-28T09:10:00Z", "updatedAt": "2026-08-28T09:10:00Z" },
+  { "id": 2, "ticketId": "TICKET-002", "addressLine": "Av. Rivadavia 5300, CABA", "street": "Av. Rivadavia", "streetNumber": "5300", "neighborhoodId": "NEIGHBORHOOD-002", "postalCode": "C1424", "latitude": -34.618900, "longitude": -58.438700, "createdAt": "2026-08-27T18:20:00Z", "updatedAt": "2026-08-27T18:20:00Z" },
+  { "id": 3, "ticketId": "TICKET-003", "addressLine": "Moldes 1900, CABA", "street": "Moldes", "streetNumber": "1900", "neighborhoodId": "NEIGHBORHOOD-003", "postalCode": "C1428", "latitude": -34.565700, "longitude": -58.455100, "createdAt": "2026-08-27T11:00:00Z", "updatedAt": "2026-08-27T11:00:00Z" },
+  { "id": 4, "ticketId": "TICKET-004", "addressLine": "Yerbal 2400, CABA", "street": "Yerbal", "streetNumber": "2400", "neighborhoodId": "NEIGHBORHOOD-004", "postalCode": "C1406", "latitude": -34.628000, "longitude": -58.463000, "createdAt": "2026-08-24T10:00:00Z", "updatedAt": "2026-08-24T10:00:00Z" },
+  { "id": 5, "ticketId": "TICKET-005", "addressLine": null, "street": null, "streetNumber": null, "neighborhoodId": "NEIGHBORHOOD-002", "postalCode": null, "latitude": null, "longitude": null, "createdAt": "2026-08-27T12:00:00Z", "updatedAt": "2026-08-27T12:00:00Z" },
+  { "id": 6, "ticketId": "TICKET-006", "addressLine": "Güemes 4200, CABA", "street": "Güemes", "streetNumber": "4200", "neighborhoodId": "NEIGHBORHOOD-001", "postalCode": "C1425", "latitude": -34.586100, "longitude": -58.423300, "createdAt": "2026-08-28T09:45:00Z", "updatedAt": "2026-08-28T09:45:00Z" },
+  { "id": 7, "ticketId": "TICKET-007", "addressLine": "Av. Rivadavia y Acoyte, CABA", "street": "Av. Rivadavia", "streetNumber": "5000", "neighborhoodId": "NEIGHBORHOOD-002", "postalCode": "C1405", "latitude": -34.618000, "longitude": -58.437000, "createdAt": "2026-08-27T20:00:00Z", "updatedAt": "2026-08-27T20:00:00Z" },
+  { "id": 8, "ticketId": "TICKET-008", "addressLine": "Aranguren 2900, CABA", "street": "Aranguren", "streetNumber": "2900", "neighborhoodId": "NEIGHBORHOOD-004", "postalCode": "C1406", "latitude": -34.623500, "longitude": -58.470000, "createdAt": "2026-08-20T09:00:00Z", "updatedAt": "2026-08-20T09:00:00Z" },
+  { "id": 9, "ticketId": "TICKET-009", "addressLine": "Juramento 2600, CABA", "street": "Juramento", "streetNumber": "2600", "neighborhoodId": "NEIGHBORHOOD-003", "postalCode": "C1428", "latitude": -34.562300, "longitude": -58.457100, "createdAt": "2026-08-26T10:00:00Z", "updatedAt": "2026-08-26T10:00:00Z" }
+]
+  
+export const MOCK_TICKET_MESSAGES_LIST = [
+  { "id": 1, "ticketId": "TICKET-002", "authorType": "AGENT", "authorId": "AGENT-014", "sourceModuleId": "M2", "visibility": "PUBLIC", "text": "Recibimos el reclamo y comenzamos la revisión.", "createdAt": "2026-08-28T08:30:00Z" },
+  { "id": 2, "ticketId": "TICKET-004", "authorType": "AGENT", "authorId": "AGENT-021", "sourceModuleId": "M2", "visibility": "INTERNAL", "text": "Priorizar inspección por cercanía a cableado.", "createdAt": "2026-08-26T14:30:00Z" },
+  { "id": 3, "ticketId": "TICKET-005", "authorType": "AGENT", "authorId": "AGENT-014", "sourceModuleId": "M2", "visibility": "PUBLIC", "text": "Necesitamos la intersección exacta o una fotografía con referencia.", "createdAt": "2026-08-27T17:00:00Z" },
+  { "id": 4, "ticketId": "TICKET-007", "authorType": "AREA_USER", "authorId": "TRAFFIC-88", "sourceModuleId": "M6", "visibility": "PUBLIC", "text": "La cuadrilla reparó el controlador y verificó el funcionamiento.", "createdAt": "2026-08-28T03:15:00Z" },
+  { "id": 5, "ticketId": "TICKET-008", "authorType": "CITIZEN", "authorId": "1008", "sourceModuleId": "M2", "visibility": "PUBLIC", "text": "Confirmo que ya retiraron los residuos.", "createdAt": "2026-08-25T17:30:00Z" }
+]
+
+export const MOCK_TICKET_ACTIVITIES_LIST = [
+  { "id": 1, "ticketId": "TICKET-001", "sequence": 1, "actionType": "TICKET_CREATED", "previousStatus": null, "newStatus": "REGISTERED", "actorType": "CITIZEN", "actorId": "1001", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": null, "message": "Ticket creado", "metadata": { "channel": "WEB" }, "occurredAt": "2026-08-28T09:10:00Z", "createdAt": "2026-08-28T09:10:00Z", "ticketVersion": 1 },
+  { "id": 2, "ticketId": "TICKET-002", "sequence": 2, "actionType": "REVIEW_STARTED", "previousStatus": "REGISTERED", "newStatus": "IN_REVIEW", "actorType": "AGENT", "actorId": "AGENT-014", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": null, "message": "Revisión iniciada", "metadata": null, "occurredAt": "2026-08-28T08:30:00Z", "createdAt": "2026-08-28T08:30:00Z", "ticketVersion": 2 },
+  { "id": 3, "ticketId": "TICKET-003", "sequence": 3, "actionType": "ROUTED", "previousStatus": "IN_REVIEW", "newStatus": "ROUTED", "actorType": "AGENT", "actorId": "AGENT-007", "sourceModuleId": "M2", "externalEventId": "EVENT-003", "reasonCode": "RESPONSIBLE_AREA", "message": "Derivado a Higiene Urbana", "metadata": { "targetAreaId": "AREA-SANITATION" }, "occurredAt": "2026-08-27T15:00:00Z", "createdAt": "2026-08-27T15:00:00Z", "ticketVersion": 3 },
+  { "id": 4, "ticketId": "TICKET-004", "sequence": 4, "actionType": "ESCALATED", "previousStatus": "IN_PROGRESS", "newStatus": "IN_PROGRESS", "actorType": "AGENT", "actorId": "AGENT-021", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": "MANUAL", "message": "Escalado por proximidad a cableado", "metadata": { "priorityBefore": "LOW", "priorityAfter": "HIGH" }, "occurredAt": "2026-08-26T14:30:00Z", "createdAt": "2026-08-26T14:30:00Z", "ticketVersion": 4 },
+  { "id": 5, "ticketId": "TICKET-005", "sequence": 3, "actionType": "INFORMATION_REQUIRED", "previousStatus": "IN_REVIEW", "newStatus": "PENDING_INFORMATION", "actorType": "AGENT", "actorId": "AGENT-014", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": "MISSING_EXACT_LOCATION", "message": "Se solicita ubicación exacta", "metadata": { "requestedFields": ["addressLine", "latitude", "longitude"] }, "occurredAt": "2026-08-27T17:00:00Z", "createdAt": "2026-08-27T17:00:00Z", "ticketVersion": 3 },
+  { "id": 6, "ticketId": "TICKET-006", "sequence": 2, "actionType": "DUPLICATE_LINKED", "previousStatus": "REGISTERED", "newStatus": "DUPLICATE", "actorType": "AGENT", "actorId": "AGENT-011", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": "SAME_LOCATION_AND_REQUEST", "message": "Vinculado al ticket principal OP-2026-000001", "metadata": { "mainTicketId": "TICKET-001" }, "occurredAt": "2026-08-28T10:00:00Z", "createdAt": "2026-08-28T10:00:00Z", "ticketVersion": 2 },
+  { "id": 7, "ticketId": "TICKET-007", "sequence": 8, "actionType": "RESOLVED", "previousStatus": "IN_PROGRESS", "newStatus": "RESOLVED", "actorType": "AREA_USER", "actorId": "TRAFFIC-88", "sourceModuleId": "M6", "externalEventId": "EVENT-007", "reasonCode": "REPAIR_COMPLETED", "message": "Controlador reparado", "metadata": { "workOrder": "OT-8841" }, "occurredAt": "2026-08-28T03:15:00Z", "createdAt": "2026-08-28T03:15:00Z", "ticketVersion": 8 },
+  { "id": 8, "ticketId": "TICKET-008", "sequence": 9, "actionType": "CLOSED", "previousStatus": "RESOLVED", "newStatus": "CLOSED", "actorType": "SYSTEM", "actorId": null, "sourceModuleId": "M2", "externalEventId": null, "reasonCode": "CITIZEN_CONFIRMED", "message": "Ticket cerrado luego de la confirmación", "metadata": null, "occurredAt": "2026-08-25T18:00:00Z", "createdAt": "2026-08-25T18:00:00Z", "ticketVersion": 9 },
+  { "id": 9, "ticketId": "TICKET-009", "sequence": 2, "actionType": "CANCELLED", "previousStatus": "REGISTERED", "newStatus": "CANCELLED", "actorType": "AGENT", "actorId": "AGENT-021", "sourceModuleId": "M2", "externalEventId": null, "reasonCode": "OUTSIDE_PUBLIC_DOMAIN", "message": "Solicitud cancelada: árbol en propiedad privada", "metadata": null, "occurredAt": "2026-08-26T11:30:00Z", "createdAt": "2026-08-26T11:30:00Z", "ticketVersion": 2 }
+]
