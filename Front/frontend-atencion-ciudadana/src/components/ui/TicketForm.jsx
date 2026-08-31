@@ -39,7 +39,7 @@ function validateForm(formData, specificFields) {
   return errors;
 }
 
-export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange }) {
+export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
   const navigate = useNavigate();
   const { submit, loading, error, trackingCode, reset } = useCreateTicket();
   const [copied, setCopied] = useState(false);
@@ -196,6 +196,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       onDirtyChange(false);
     }
   }, [trackingCode, onDirtyChange]);
+
+  useEffect(() => {
+    if (onStatusChange) {
+      if (trackingCode) onStatusChange('success');
+      else if (error) onStatusChange('error');
+      else onStatusChange('idle');
+    }
+  }, [trackingCode, error, onStatusChange]);
 
   if (trackingCode) {
     return (

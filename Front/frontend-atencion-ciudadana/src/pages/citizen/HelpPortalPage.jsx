@@ -24,6 +24,7 @@ export default function HelpPortalPage() {
   const [showExitModal, setShowExitModal] = useState(false);
   const pendingAction = useRef(null);
   const [formDirty, setFormDirty] = useState(false);
+  const [ticketStatus, setTicketStatus] = useState('idle');
 
   // El TicketForm avisa cuando el form tiene datos
   const handleFormDirtyChange = useCallback((dirty) => {
@@ -70,6 +71,7 @@ export default function HelpPortalPage() {
     setSelectedCategory(category);
     setSelectedSubcategory(subcategory);
     setSelectedRequestType(requestType);
+    setTicketStatus('idle');
 
     setSearchParams((prev) => {
       if (category) prev.set("category", category.id);
@@ -337,6 +339,7 @@ export default function HelpPortalPage() {
             onBack={handleBack}
             onNewTicket={handleNewTicket}
             onDirtyChange={handleFormDirtyChange}
+            onStatusChange={setTicketStatus}
           />
         </div>
       );
@@ -593,7 +596,7 @@ export default function HelpPortalPage() {
               )}
               <Breadcrumb items={breadcrumbItems} onNavigate={handleBreadcrumbNavigate} />
             </div>
-            <StepIndicator currentStep={currentStep} />
+            <StepIndicator currentStep={currentStep} status={ticketStatus} />
           </div>
 
           <div className="py-8 sm:py-10">
