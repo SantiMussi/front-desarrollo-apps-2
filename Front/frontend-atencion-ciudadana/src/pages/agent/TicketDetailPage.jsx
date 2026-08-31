@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CircleHelp, Clock3, FileQuestion, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock3, FileQuestion, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users, X } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
 import UserAvatar from "../../components/ui/UserAvatar";
@@ -12,6 +12,8 @@ import {
 
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
 const AREA = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Mantenimiento vial", "AREA-SANITATION": "Higiene urbana", "AREA-GREEN": "Espacios verdes", "AREA-TRAFFIC": "Tránsito y movilidad" };
+const CURRENT_AGENT_ID = "AGENT-014";
+const EDITOR_CLASS = "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 const TICKET_TYPE_CONFIG = {
   COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
   REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
@@ -32,22 +34,49 @@ export default function TicketDetailPage() {
   const [visibility, setVisibility] = useState("PUBLIC");
   const [comment, setComment] = useState("");
   const [localMessages, setLocalMessages] = useState([]);
-  
+  const [fields, setFields] = useState(() => ({
+    requestTypeId: ticket?.requestTypeId,
+    responsibleAreaId: ticket?.responsibleAreaId,
+    assignedAgentId: ticket?.assignedAgentId || "",
+    priority: ticket?.currentPriorityFactor,
+    affectedCount: ticket?.affectedCount ?? 0,
+    tags: ticket ? [MOCK_REQUEST_TYPES_LIST.find((item) => item.id === ticket.requestTypeId)?.code?.toLowerCase()].filter(Boolean) : []
+  }));
+  const [tagInput, setTagInput] = useState("");
+
   const data = useMemo(() => {
     if (!ticket) return null;
     
-    const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === ticket.requestTypeId);
+    const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === fields.requestTypeId);
     const subcategory = MOCK_SUBCATEGORIES_LIST.find((item) => item.id === request?.subcategoryId);
     
     return {
       request, category: MOCK_CATEGORIES_LIST.find((item) => item.id === subcategory?.categoryId),
       citizen: MOCK_CITIZENS.find((item) => item.id === ticket.citizenId),
-      assignee: MOCK_USERS_LIST.find((item) => item.id === ticket.assignedAgentId),
+      assignee: MOCK_USERS_LIST.find((item) => item.id === fields.assignedAgentId),
       location: MOCK_TICKET_LOCATIONS_LIST.find((item) => item.ticketId === ticket.id),
       messages: MOCK_TICKET_MESSAGES_LIST.filter((item) => item.ticketId === ticket.id),
       activities: MOCK_TICKET_ACTIVITIES_LIST.filter((item) => item.ticketId === ticket.id)
     };
-  }, [ticket]);
+  }, [ticket, fields.requestTypeId, fields.assignedAgentId]);
+
+  const agents = useMemo(() => MOCK_USERS_LIST.filter((user) => user.active && user.role === "AGENT"), []);
+  const requestTypeLocked = status !== "REGISTERED";
+  const tags = fields.tags;
+  
+  const updateRequestType = (requestTypeId) => {
+    const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === Number(requestTypeId));
+    if (!request || requestTypeLocked) return;
+    setFields((current) => ({ ...current, requestTypeId: request.id, responsibleAreaId: request.responsibleAreaId, priority: request.initialPriority, tags: [request.code.toLowerCase()] }));
+  };
+  
+  const addTag = () => {
+    const tag = tagInput.trim().toLowerCase();
+    if (!tag) return;
+    setFields((current) => ({ ...current, tags: [...new Set([...tags, tag])] }));
+    setTagInput("");
+  };
+
 
   const submit = () => {
     if (!comment.trim()) return;
@@ -104,7 +133,7 @@ export default function TicketDetailPage() {
         </div>
       </div>
 
-      <div className="grid min-h-[calc(100%-102px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid min-h-[calc(100%-102px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px]">
         <main className="px-5 py-6 md:px-7 xl:border-r xl:border-slate-200">
           <div className="mx-auto max-w-4xl">
             <section className="border-b border-slate-200 pb-6">
@@ -112,7 +141,7 @@ export default function TicketDetailPage() {
               <p className="max-w-3xl text-sm leading-6 text-slate-600">{ticket.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><MapPin className="h-3.5 w-3.5" />{data.location?.addressLine || "Ubicación pendiente"}</span>
-                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><Users className="h-3.5 w-3.5" />{ticket.affectedCount} {ticket.affectedCount === 1 ? "persona afectada" : "personas afectadas"}</span>
+                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><Users className="h-3.5 w-3.5" />{fields.affectedCount} {Number(fields.affectedCount) === 1 ? "persona afectada" : "personas afectadas"}</span>
               </div>
             </section>
 
@@ -136,17 +165,35 @@ export default function TicketDetailPage() {
           </div>
         </main>
 
-        <aside className="bg-slate-50/60 px-5 py-6 space-y-4">
+        <aside className="bg-slate-50/60 px-3 py-6 space-y-4">
           <DetailCard title="Detalles">
             <dl className="divide-y divide-slate-100">
-              <Field label="Tipo de solicitud">{data.request?.name || ticket.ticketType}</Field>
-              <Field label="Responsable"><span className="flex items-center gap-2"><UserAvatar user={data.assignee} size="sm" />{data.assignee?.name || "Sin asignar"}</span></Field>
+              <Field label="Tipo de solicitud"><select aria-label="Tipo de solicitud" disabled={requestTypeLocked} value={fields.requestTypeId} onChange={(event) => updateRequestType(event.target.value)} className={EDITOR_CLASS}>{MOCK_REQUEST_TYPES_LIST.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{requestTypeLocked && <span className="mt-1.5 block text-[10px] font-normal leading-4 text-amber-700">No se puede modificar desde En revisión.</span>}</Field>
+              <Field label="Responsable"><select aria-label="Agente responsable" value={fields.assignedAgentId} onChange={(event) => setFields((current) => ({ ...current, assignedAgentId: event.target.value }))} className={EDITOR_CLASS}><option value="">Sin asignar</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select><button type="button" onClick={() => setFields((current) => ({ ...current, assignedAgentId: CURRENT_AGENT_ID }))} className="mt-1.5 text-[11px] font-semibold text-[#0F2C59] hover:underline">Asignarme a mí</button></Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen || { initials: "AN" }} size="sm" />{ticket.anonymous ? "Anónimo" : data.citizen?.name}</span></Field>
-              <Field label="Prioridad"><span className={ticket.currentPriorityFactor === "CRITICAL" || ticket.currentPriorityFactor === "HIGH" ? "text-red-600" : ""}>{PRIORITY[ticket.currentPriorityFactor]}</span></Field>
-              <Field label="Área responsable">{AREA[ticket.responsibleAreaId]}</Field>
+              <Field label="Prioridad"><select aria-label="Prioridad" value={fields.priority} onChange={(event) => setFields((current) => ({ ...current, priority: event.target.value }))} className={EDITOR_CLASS}>{Object.entries(PRIORITY).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
+              <Field label="Área responsable"><select aria-label="Área responsable" value={fields.responsibleAreaId} onChange={(event) => setFields((current) => ({ ...current, responsibleAreaId: event.target.value }))} className={EDITOR_CLASS}>{Object.entries(AREA).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
+              <Field label="Afectados"><input aria-label="Cantidad de afectados" type="number" min="0" value={fields.affectedCount} onChange={(event) => setFields((current) => ({ ...current, affectedCount: Math.max(0, Number(event.target.value)) }))} className={EDITOR_CLASS} /></Field>
               <Field label="Canal">{ticket.preferredNotificationChannel || "Sin preferencia"}</Field>
-              <Field label="Etiquetas"><span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1"><Tag className="h-3 w-3" />{data.request?.code?.toLowerCase()}</span></Field>
+              <Field label="Etiquetas">
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((tag) => 
+                    <span key={tag} className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1">
+                      <Tag className="h-3 w-3" />
+                      {tag}
+                      <button type="button" aria-label={`Quitar etiqueta ${tag}`} onClick={() => setFields((current) => 
+                        ({ ...current, tags: tags.filter((item) => item !== tag) }))} className="text-slate-400 hover:text-red-600">
+                          <X className="h-3 w-3" />
+                      </button>
+                    </span>)}
+                </div>
+                <div className="mt-2 flex gap-1">
+                  <input aria-label="Nueva etiqueta" value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addTag(); } }} placeholder="Nueva etiqueta" className={EDITOR_CLASS} />
+                  <button type="button" onClick={addTag} className="rounded-md bg-[#0F2C59] px-2 text-white" aria-label="Agregar etiqueta"><Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </Field>
             </dl>
           </DetailCard>
           <DetailCard title="SLA" icon={Clock3}>

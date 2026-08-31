@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X, LifeBuoy } from "lucide-react";
 import logo from "../../assets/logo.png";
 
 export default function AgentSidebar() {
@@ -47,6 +47,10 @@ export default function AgentSidebar() {
         </nav>
 
         <div className="p-4 border-t border-slate-200/60 mt-auto">
+          <Link to="/portal-ayuda" className="mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#0F2C59] transition-colors hover:bg-blue-50">
+            <LifeBuoy className="h-5 w-5" />
+            Ir al centro de ayuda
+          </Link>
           <button className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors">
             <LogOut className="h-5 w-5" />
             Cerrar Sesión
@@ -92,6 +96,10 @@ export default function AgentSidebar() {
               })}
             </nav>
             <div className="p-4 border-t border-slate-200/60 mt-auto">
+              <Link to="/portal-ayuda" onClick={() => setIsMobileMenuOpen(false)} className="mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#0F2C59] hover:bg-blue-50">
+                <LifeBuoy className="h-5 w-5" />
+                Ir al centro de ayuda
+              </Link>
               <button className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
                 <LogOut className="h-5 w-5" />
                 Cerrar Sesión
