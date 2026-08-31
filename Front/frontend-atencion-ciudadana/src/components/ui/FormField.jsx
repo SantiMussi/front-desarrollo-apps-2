@@ -1,3 +1,103 @@
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronDown, Search, X } from "lucide-react";
+
+function SearchableSelect({ label, name, required, options, value, onChange, disabled, error, placeholder, baseClasses, borderClass }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return options.filter((opt) => {
+      const normalizedLabel = opt.label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return normalizedLabel.includes(normalizedSearch);
+    });
+  }, [search, options]);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (val) => {
+    onChange({ target: { name, value: val } });
+    setIsOpen(false);
+    setSearch("");
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5" ref={dropdownRef}>
+      <label htmlFor={name} className="text-[13px] font-medium text-neutral-700">
+        {label}
+        {required && <span className="text-[#D63031] ml-0.5">*</span>}
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setIsOpen(!isOpen)}
+          className={`${baseClasses} ${borderClass} flex items-center justify-between text-left h-[42px]`}
+        >
+          <span className={`block truncate ${selectedOption ? "text-neutral-900" : "text-neutral-400"}`}>
+            {selectedOption ? selectedOption.label : placeholder || "Seleccionar..."}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2">
+              <Search className="h-4 w-4 text-neutral-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full text-[13px] outline-none placeholder:text-neutral-400 bg-transparent border-none p-0 focus:ring-0"
+                autoFocus
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch("")} className="shrink-0">
+                  <X className="h-3 w-3 text-neutral-400 hover:text-neutral-600 transition-colors" />
+                </button>
+              )}
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleSelect(opt.value)}
+                    className={`w-full text-left px-3 py-2 text-[13px] hover:bg-neutral-50 transition-colors ${
+                      value === opt.value ? "bg-neutral-50 font-medium text-[#D63031]" : "text-neutral-700"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-4 text-center text-[12px] text-neutral-400">
+                  No se encontraron resultados
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 export default function FormField({
   label,
   name,
@@ -88,6 +188,26 @@ export default function FormField({
         </select>
         {error && <p className="text-[12px] text-red-500">{error}</p>}
       </div>
+    );
+  }
+
+
+
+  if (type === "searchable-select") {
+    return (
+      <SearchableSelect 
+        label={label}
+        name={name}
+        required={required}
+        options={options}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        error={error}
+        placeholder={placeholder}
+        baseClasses={baseClasses}
+        borderClass={borderClass}
+      />
     );
   }
 

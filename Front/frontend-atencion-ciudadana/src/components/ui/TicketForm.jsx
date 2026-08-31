@@ -48,6 +48,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     summary: "",
     description: "",
     address: "",
+    addressSource: null, // "input" when typed, "map" when set from map
     neighborhoodId: "",
     latitude: null,
     longitude: null,
@@ -76,9 +77,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      // Clear coordinates when the user manually edits the address
-      // (the map will re-geocode via debounce)
-      ...(name === "address" ? { latitude: null, longitude: null } : {}),
+      // When the user manually edits the address, mark source as "input"
+      // and clear coordinates so the map will forward-geocode via debounce
+      ...(name === "address" ? { addressSource: "input", latitude: null, longitude: null } : {}),
     }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
@@ -111,6 +112,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       ...prev,
       latitude: lat,
       longitude: lng,
+      addressSource: "map",
       ...(addr ? { address: addr } : {}),
       ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
     }));
@@ -394,7 +396,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <FormField
           label="Barrio"
           name="neighborhoodId"
-          type="select"
+          type="searchable-select"
           options={NEIGHBORHOODS.map((n) => ({ value: n.id, label: n.name }))}
           value={formData.neighborhoodId}
           onChange={handleChange}
@@ -404,6 +406,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         />
         <LocationMap
           address={formData.address}
+          addressSource={formData.addressSource}
+          latitude={formData.latitude}
+          longitude={formData.longitude}
           onLocationSelect={handleLocationSelect}
           disabled={loading}
         />

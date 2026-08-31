@@ -26,13 +26,15 @@ const redIcon = new L.Icon({
 const CABA_CENTER = [-34.6118, -58.4173];
 const CABA_ZOOM = 12;
 
-// Debounce helper
+// Debounce helper — returns a function with a .cancel() method
 function debounce(fn, ms) {
   let timer;
-  return (...args) => {
+  const debounced = (...args) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
+  debounced.cancel = () => clearTimeout(timer);
+  return debounced;
 }
 
 // Reverse geocode using Nominatim
@@ -40,8 +42,12 @@ async function reverseGeocode(lat, lng) {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`,
-      { headers: { "User-Agent": "AtencionCiudadanaApp/1.0" } }
+      { 
+        headers: { "User-Agent": "AtencionCiudadanaApp/1.0" },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+      }
     );
+    if (!res.ok) throw new Error("Network response was not ok");
     const data = await res.json();
     if (data && data.display_name) {
       // Build a clean address from parts
@@ -61,7 +67,8 @@ async function reverseGeocode(lat, lng) {
       return { address: addressString, neighborhood: neighborhoodName };
     }
     return { address: "", neighborhood: "" };
-  } catch {
+  } catch (error) {
+    console.error("Reverse geocoding error:", error);
     return { address: "", neighborhood: "" };
   }
 }
@@ -72,18 +79,26 @@ async function forwardGeocode(address) {
     const query = encodeURIComponent(`${address}, Buenos Aires, Argentina`);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1&accept-language=es`,
-      { headers: { "User-Agent": "AtencionCiudadanaApp/1.0" } }
+      { 
+        headers: { "User-Agent": "AtencionCiudadanaApp/1.0" },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+      }
     );
+    if (!res.ok) throw new Error("Network response was not ok");
     const data = await res.json();
     if (data && data.length > 0) {
+      const addr = data[0].address || {};
+      const neighborhoodName = addr.neighbourhood || addr.suburb || addr.city_district || "";
       return {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon),
         displayName: data[0].display_name,
+        neighborhood: neighborhoodName
       };
     }
     return null;
-  } catch {
+  } catch (error) {
+    console.error("Forward geocoding error:", error);
     return null;
   }
 }
@@ -109,21 +124,27 @@ function RecenterMap({ position }) {
   return null;
 }
 
-export default function LocationMap({ address, onLocationSelect, disabled }) {
-  const [markerPos, setMarkerPos] = useState(null);
+export default function LocationMap({ address, addressSource, latitude, longitude, onLocationSelect, disabled }) {
   const [geocoding, setGeocoding] = useState(false);
   const markerRef = useRef(null);
+  
+  // Use exact coordinates provided by parent as the truth
+  const markerPos = latitude && longitude ? [latitude, longitude] : null;
 
   // Handle click on map
   const handleMapClick = useCallback(
     async (latlng) => {
       if (disabled) return;
       const { lat, lng } = latlng;
-      setMarkerPos([lat, lng]);
+      setGeocoding(true);
 
-      // Reverse geocode to get address
-      const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-      onLocationSelect({ lat, lng, address: addr, neighborhood });
+      try {
+        // Reverse geocode to get address
+        const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
+        onLocationSelect({ lat, lng, address: addr, neighborhood });
+      } finally {
+        setGeocoding(false);
+      }
     },
     [disabled, onLocationSelect]
   );
@@ -133,9 +154,13 @@ export default function LocationMap({ address, onLocationSelect, disabled }) {
     const marker = markerRef.current;
     if (!marker) return;
     const { lat, lng } = marker.getLatLng();
-    setMarkerPos([lat, lng]);
-    const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-    onLocationSelect({ lat, lng, address: addr, neighborhood });
+    setGeocoding(true);
+    try {
+      const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
+      onLocationSelect({ lat, lng, address: addr, neighborhood });
+    } finally {
+      setGeocoding(false);
+    }
   }, [onLocationSelect]);
 
   // Forward geocode when user types an address and triggers search
@@ -143,11 +168,18 @@ export default function LocationMap({ address, onLocationSelect, disabled }) {
     async (searchAddress) => {
       if (!searchAddress || searchAddress.trim().length < 5) return;
       setGeocoding(true);
-      const result = await forwardGeocode(searchAddress);
-      setGeocoding(false);
-      if (result) {
-        setMarkerPos([result.lat, result.lng]);
-        onLocationSelect({ lat: result.lat, lng: result.lng, address: searchAddress });
+      try {
+        const result = await forwardGeocode(searchAddress);
+        if (result) {
+          onLocationSelect({ 
+            lat: result.lat, 
+            lng: result.lng, 
+            address: searchAddress,
+            neighborhood: result.neighborhood 
+          });
+        }
+      } finally {
+        setGeocoding(false);
       }
     },
     [onLocationSelect]
@@ -162,11 +194,21 @@ export default function LocationMap({ address, onLocationSelect, disabled }) {
     [handleSearchAddress]
   );
 
+  // Cleanup debounced timer on unmount
   useEffect(() => {
-    if (address && address.trim().length >= 5) {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    // Only forward-geocode when the address was typed by the user (source === "input"),
+    // NOT when it was set programmatically from a map click/drag (source === "map").
+    if (addressSource === "input" && address && address.trim().length >= 5) {
       debouncedSearch(address);
+    } else {
+      // Cancel any pending search when source is not "input"
+      debouncedSearch.cancel();
     }
-  }, [address, debouncedSearch]);
+  }, [address, addressSource, debouncedSearch]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -238,3 +280,4 @@ export default function LocationMap({ address, onLocationSelect, disabled }) {
     </div>
   );
 }
+
