@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -154,11 +154,13 @@ export default function LocationMap({ address, onLocationSelect, disabled }) {
   );
 
   // Debounced search when address prop changes
-  const debouncedSearch = useRef(
-    debounce((addr) => {
-      handleSearchAddress(addr);
-    }, 1200)
-  ).current;
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((addr) => {
+        handleSearchAddress(addr);
+      }, 1200),
+    [handleSearchAddress]
+  );
 
   useEffect(() => {
     if (address && address.trim().length >= 5) {
