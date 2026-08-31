@@ -96,16 +96,20 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   // Called when the user clicks/drags on the map (source="map")
   // or when forward geocode completes from typing (source="geocode")
-  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhood, source }) => {
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhoods, source }) => {
     let matchedNeighborhoodId = undefined;
-    if (neighborhood) {
-      const normalizedQuery = neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const match = NEIGHBORHOODS.find(n => {
-        const normalizedName = n.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        return normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
-      });
-      if (match) {
-        matchedNeighborhoodId = match.id;
+    if (neighborhoods && neighborhoods.length > 0) {
+      for (const nb of neighborhoods) {
+        if (!nb) continue;
+        const normalizedQuery = nb.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const match = NEIGHBORHOODS.find(n => {
+          const normalizedName = n.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
+        });
+        if (match) {
+          matchedNeighborhoodId = match.id;
+          break;
+        }
       }
     }
 

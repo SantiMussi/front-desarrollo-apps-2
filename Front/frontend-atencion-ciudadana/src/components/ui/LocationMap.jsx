@@ -56,7 +56,13 @@ async function reverseGeocode(lat, lng) {
       if (addr.road) parts.push(addr.road);
       if (addr.house_number) parts.push(addr.house_number);
       
-      const neighborhoodName = addr.neighbourhood || addr.suburb || addr.city_district || "";
+      const neighborhoods = [
+        addr.neighbourhood,
+        addr.suburb,
+        addr.city_district,
+        addr.quarter,
+        addr.borough
+      ].filter(Boolean);
       
       let addressString = "";
       if (parts.length === 0) {
@@ -64,12 +70,12 @@ async function reverseGeocode(lat, lng) {
       } else {
         addressString = parts.join(" ");
       }
-      return { address: addressString, neighborhood: neighborhoodName };
+      return { address: addressString, neighborhoods };
     }
-    return { address: "", neighborhood: "" };
+    return { address: "", neighborhoods: [] };
   } catch (error) {
     console.error("Reverse geocoding error:", error);
-    return { address: "", neighborhood: "" };
+    return { address: "", neighborhoods: [] };
   }
 }
 
@@ -88,12 +94,18 @@ async function forwardGeocode(address, signal) {
     const data = await res.json();
     if (data && data.length > 0) {
       const addr = data[0].address || {};
-      const neighborhoodName = addr.neighbourhood || addr.suburb || addr.city_district || "";
+      const neighborhoods = [
+        addr.neighbourhood,
+        addr.suburb,
+        addr.city_district,
+        addr.quarter,
+        addr.borough
+      ].filter(Boolean);
       return {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon),
         displayName: data[0].display_name,
-        neighborhood: neighborhoodName
+        neighborhoods
       };
     }
     return null;
@@ -147,8 +159,8 @@ export default function LocationMap({ address, addressSource, latitude, longitud
 
       try {
         // Reverse geocode to get address
-        const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-        onLocationSelect({ lat, lng, address: addr, neighborhood, source: "map" });
+        const { address: addr, neighborhoods } = await reverseGeocode(lat, lng);
+        onLocationSelect({ lat, lng, address: addr, neighborhoods, source: "map" });
       } finally {
         setGeocoding(false);
       }
@@ -168,8 +180,8 @@ export default function LocationMap({ address, addressSource, latitude, longitud
     const { lat, lng } = marker.getLatLng();
     setGeocoding(true);
     try {
-      const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-      onLocationSelect({ lat, lng, address: addr, neighborhood, source: "map" });
+      const { address: addr, neighborhoods } = await reverseGeocode(lat, lng);
+      onLocationSelect({ lat, lng, address: addr, neighborhoods, source: "map" });
     } finally {
       setGeocoding(false);
     }
@@ -198,7 +210,7 @@ export default function LocationMap({ address, addressSource, latitude, longitud
           onLocationSelect({ 
             lat: result.lat, 
             lng: result.lng, 
-            neighborhood: result.neighborhood,
+            neighborhoods: result.neighborhoods,
             source: "geocode"
           });
         }
