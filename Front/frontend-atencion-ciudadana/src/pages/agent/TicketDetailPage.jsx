@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CircleHelp, Clock3, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock3, FileQuestion, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
 import UserAvatar from "../../components/ui/UserAvatar";
@@ -15,7 +15,7 @@ const AREA = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Manteni
 const TICKET_TYPE_CONFIG = {
   COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
   REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
-  QUESTION: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
+  INQUIRY: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
   SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }
 };
 const formatDate = (value) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -26,15 +26,19 @@ function Field({ label, children }) {
 
 export default function TicketDetailPage() {
   const { ticketId } = useParams();
-  const ticket = MOCK_TICKETS.find((item) => item.id === ticketId) || MOCK_TICKETS[1];
-  const [status, setStatus] = useState(ticket.currentStatus);
+  const ticket = MOCK_TICKETS.find((item) => item.id === ticketId);
+  const [status, setStatus] = useState(ticket?.currentStatus);
   const [tab, setTab] = useState("activity");
   const [visibility, setVisibility] = useState("PUBLIC");
   const [comment, setComment] = useState("");
   const [localMessages, setLocalMessages] = useState([]);
+  
   const data = useMemo(() => {
+    if (!ticket) return null;
+    
     const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === ticket.requestTypeId);
     const subcategory = MOCK_SUBCATEGORIES_LIST.find((item) => item.id === request?.subcategoryId);
+    
     return {
       request, category: MOCK_CATEGORIES_LIST.find((item) => item.id === subcategory?.categoryId),
       citizen: MOCK_CITIZENS.find((item) => item.id === ticket.citizenId),
@@ -44,13 +48,36 @@ export default function TicketDetailPage() {
       activities: MOCK_TICKET_ACTIVITIES_LIST.filter((item) => item.ticketId === ticket.id)
     };
   }, [ticket]);
-  const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
-  const TypeIcon = typeConfig?.icon;
+
   const submit = () => {
     if (!comment.trim()) return;
     setLocalMessages((items) => [...items, { id: `local-${Date.now()}`, text: comment, visibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
     setComment("");
   };
+
+  if (!ticket) {
+    return (
+      <main className="flex h-full min-h-[70vh] items-center justify-center bg-slate-50 px-6 py-12">
+        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-[#0F2C59]">
+            <FileQuestion className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <p className="mt-5 text-sm font-semibold text-[#D63031]">Error 404</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">Ticket no encontrado</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            No existe un ticket con el identificador <strong className="text-slate-700">{ticketId}</strong>.
+            Verificá el enlace o volvé a la bandeja de entrada.
+          </p>
+          <Link to="/agente/tickets" className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#0F2C59] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#173d73]">
+            <ArrowLeft className="h-4 w-4" /> Volver a tickets
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
+  const TypeIcon = typeConfig?.icon;
 
   return (
     <div className="h-full overflow-y-auto bg-white text-slate-800">

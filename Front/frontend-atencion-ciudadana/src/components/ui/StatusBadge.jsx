@@ -5,7 +5,7 @@ export default function StatusBadge({ status }) {
         return "bg-orange-100 text-orange-800";
       case "En revisión":
         return "bg-blue-100 text-blue-800";
-      case "En Progreso":
+      case "En gestión":
         return "bg-blue-100 text-blue-800";
       case "Derivado":
         return "bg-blue-100 text-blue-800";

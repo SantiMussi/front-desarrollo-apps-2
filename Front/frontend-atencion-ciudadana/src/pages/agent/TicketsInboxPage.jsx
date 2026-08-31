@@ -15,19 +15,9 @@ import {
 } from "../../data/mockTickets";
 import TicketTable from "../../components/ui/TicketTable";
 
-const CURRENT_AGENT_ID = "AGENT-014";
+import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 
-const STATUS_LABELS = {
-  REGISTERED: "Registrado",
-  IN_REVIEW: "En revisión",
-  ROUTED: "Derivado",
-  IN_PROGRESS: "En Progreso",
-  PENDING_INFORMATION: "Pendiente de información",
-  RESOLVED: "Resuelto",
-  CLOSED: "Cerrado",
-  DUPLICATE: "Duplicado",
-  CANCELLED: "Cancelado"
-};
+const CURRENT_AGENT_ID = "AGENT-014";
 
 const getDisplayDate = (value) => new Date(value).toLocaleDateString("es-AR");
 const TERMINAL_STATUSES = ["RESOLVED", "CLOSED", "DUPLICATE", "CANCELLED"];
@@ -48,7 +38,7 @@ const inboxTickets = MOCK_TICKETS.map((ticket) => {
     category: category?.name || requestType?.name || ticket.ticketType,
     priority: ticket.currentPriorityFactor,
     neighborhood: neighborhood?.name || "Sin barrio",
-    status: STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus,
+    status: TICKET_STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus,
     createdAt: getDisplayDate(ticket.createdAt),
     updatedAt: getDisplayDate(ticket.updatedAt),
     location: location?.addressLine || "Ubicación pendiente",
@@ -432,7 +422,7 @@ export default function TicketsInboxPage() {
               >
                 <option value="">Todos</option>
                 {MOCK_STATUSES.map(est => (
-                  <option key={est} value={STATUS_LABELS[est] || est}>{STATUS_LABELS[est] || est}</option>
+                  <option key={est} value={TICKET_STATUS_LABELS[est] || est}>{TICKET_STATUS_LABELS[est] || est}</option>
                 ))}
               </select>
             </div>

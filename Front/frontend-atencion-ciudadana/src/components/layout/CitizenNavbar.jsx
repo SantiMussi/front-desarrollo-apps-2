@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Ticket, User, Menu, X } from "lucide-react";
+import { Search, Ticket, User, Menu, X, Headset } from "lucide-react";
 import logo from "../../assets/logo.png";
 
 /* CitizenNavbar */
@@ -27,6 +27,13 @@ export default function CitizenNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
+          <Link
+            to="/agente/tickets"
+            className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
+          >
+            <Headset className="h-3.5 w-3.5" strokeWidth={2} />
+            Vista agente (temporal)
+          </Link>
           {/* <button
             type="button"
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] text-neutral-500
@@ -76,19 +83,23 @@ export default function CitizenNavbar() {
         <nav className="border-t border-neutral-100 bg-white px-5 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             {[
+              { icon: Headset, label: "Vista agente (temporal)", to: "/agente/tickets" },
               { icon: Search, label: "Buscar" },
               { icon: Ticket, label: "Mi Reclamo" },
               { icon: User, label: "Ingresar como Vecino" },
-            ].map(({ icon: Icon, label }) => (
-              <button
+            ].map(({ icon: Icon, label, to }) => {
+              const Component = to ? Link : "button";
+              return (
+              <Component
                 key={label}
-                type="button"
+                {...(!to && { type: "button" })}
+                {...(to && { to, onClick: () => setIsMobileMenuOpen(false) })}
                 className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50"
               >
                 <Icon className="h-4 w-4" strokeWidth={2} />
                 {label}
-              </button>
-            ))}
+              </Component>
+            );})}
           </div>
         </nav>
       )}
