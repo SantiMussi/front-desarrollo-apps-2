@@ -177,53 +177,7 @@ export default function TicketsInboxPage() {
   };
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
-      {/* Inner Sidebar for Tickets */}
-      <div className="w-full md:w-64 border-r border-slate-200 bg-[#fafafa] flex-shrink-0">
-        <div className="p-4 md:p-6 pb-2">
-          <h2 className="text-xl font-bold text-slate-900">Tickets</h2>
-        </div>
-        
-        <div className="px-3 py-2 space-y-1">
-          <SidebarItem 
-            label="Todos abiertos" 
-            count={counts.todosAbiertos} 
-            active={activeTab === "Todos abiertos"} 
-            onClick={() => setActiveTab("Todos abiertos")}
-          />
-          <SidebarItem 
-            label="Asignados a mí" 
-            count={counts.asignados} 
-            active={activeTab === "Asignados a mí"} 
-            onClick={() => setActiveTab("Asignados a mí")}
-          />
-          <SidebarItem 
-            label="Sin asignar" 
-            count={counts.sinAsignar} 
-            active={activeTab === "Sin asignar"} 
-            onClick={() => setActiveTab("Sin asignar")}
-          />
-          <SidebarItem 
-            label="SLA Vencido / En Riesgo" 
-            count={counts.vencidos} 
-            active={activeTab === "SLA Vencido / En Riesgo"} 
-            onClick={() => setActiveTab("SLA Vencido / En Riesgo")}
-            danger
-          />
-          
-          <div className="pt-4 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Resueltos
-          </div>
-          <SidebarItem 
-            label="Resueltos recientemente" 
-            active={activeTab === "Resueltos"} 
-            onClick={() => setActiveTab("Resueltos")}
-          />
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+    <div className="flex h-full flex-col min-w-0 bg-white">
         {/* Top Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 border-b border-slate-200 gap-4">
           <h2 className="text-2xl font-bold text-slate-800">{activeTab}</h2>
@@ -246,6 +200,45 @@ export default function TicketsInboxPage() {
             <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200">
               <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="Profile" className="w-full h-full object-cover" />
             </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex overflow-x-auto border-b border-slate-200 px-4 md:px-6 hide-scrollbar">
+          <div className="flex space-x-6 min-w-max">
+            <TabItem 
+              label="Todos abiertos" 
+              count={counts.todosAbiertos} 
+              active={activeTab === "Todos abiertos"} 
+              onClick={() => setActiveTab("Todos abiertos")}
+            />
+            <TabItem 
+              label="Asignados a mí" 
+              count={counts.asignados} 
+              active={activeTab === "Asignados a mí"} 
+              onClick={() => setActiveTab("Asignados a mí")}
+            />
+            <TabItem 
+              label="Sin asignar" 
+              count={counts.sinAsignar} 
+              active={activeTab === "Sin asignar"} 
+              onClick={() => setActiveTab("Sin asignar")}
+            />
+            <TabItem 
+              label="SLA Vencido / En Riesgo" 
+              count={counts.vencidos} 
+              active={activeTab === "SLA Vencido / En Riesgo"} 
+              onClick={() => setActiveTab("SLA Vencido / En Riesgo")}
+              danger
+            />
+            
+            <div className="w-px h-6 bg-slate-200 my-auto mx-2" />
+            
+            <TabItem 
+              label="Resueltos recientemente" 
+              active={activeTab === "Resueltos"} 
+              onClick={() => setActiveTab("Resueltos")}
+            />
           </div>
         </div>
 
@@ -439,31 +432,27 @@ export default function TicketsInboxPage() {
           <span>{filteredTickets.length > 0 ? `1-${filteredTickets.length} de ${filteredTickets.length} incidencias` : '0 incidencias'}</span>
           <span>Página 1 de 1</span>
         </div>
-      </div>
     </div>
   );
 }
 
-function SidebarItem({ label, count, active, danger, onClick }) {
+function TabItem({ label, count, active, danger, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between pl-4 pr-3 py-2 rounded-r-lg text-sm transition-colors relative ${
+      className={`flex items-center gap-2 pb-3 pt-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
         active 
-          ? "bg-slate-100/70 font-semibold text-[#0F2C59]" 
-          : "text-slate-600 hover:bg-slate-50"
+          ? "border-[#0F2C59] text-[#0F2C59]" 
+          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
       }`}
     >
-      {active && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#0F2C59] rounded-r-md" />
-      )}
       <span>{label}</span>
       {count !== undefined && (
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
           danger 
             ? "bg-[#D63031]/10 text-[#D63031]" 
             : active 
-              ? "bg-slate-200 text-[#0F2C59]" 
+              ? "bg-[#0F2C59]/10 text-[#0F2C59]" 
               : "bg-slate-100 text-slate-500"
         }`}>
           {count}
