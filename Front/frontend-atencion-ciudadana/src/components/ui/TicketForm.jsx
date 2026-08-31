@@ -94,8 +94,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  // Called when the user clicks or drags on the map
-  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhood }) => {
+  // Called when the user clicks/drags on the map (source="map")
+  // or when forward geocode completes from typing (source="geocode")
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhood, source }) => {
     let matchedNeighborhoodId = undefined;
     if (neighborhood) {
       const normalizedQuery = neighborhood.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -112,8 +113,10 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       ...prev,
       latitude: lat,
       longitude: lng,
-      addressSource: "map",
-      ...(addr ? { address: addr } : {}),
+      // "map" → user clicked/dragged, update address + block re-geocoding
+      // "geocode" → forward geocode result, DON'T overwrite the typed address
+      addressSource: source === "map" ? "map" : "geocode",
+      ...(source === "map" && addr ? { address: addr } : {}),
       ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
     }));
     

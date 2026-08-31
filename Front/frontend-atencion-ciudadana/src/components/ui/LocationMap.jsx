@@ -74,14 +74,14 @@ async function reverseGeocode(lat, lng) {
 }
 
 // Forward geocode using Nominatim (search address → coordinates)
-async function forwardGeocode(address) {
+async function forwardGeocode(address, signal) {
   try {
     const query = encodeURIComponent(`${address}, Buenos Aires, Argentina`);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1&accept-language=es`,
       { 
         headers: { "User-Agent": "AtencionCiudadanaApp/1.0" },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+        signal: signal || (AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
       }
     );
     if (!res.ok) throw new Error("Network response was not ok");
@@ -98,6 +98,7 @@ async function forwardGeocode(address) {
     }
     return null;
   } catch (error) {
+    if (error.name === "AbortError") return null;
     console.error("Forward geocoding error:", error);
     return null;
   }
@@ -127,6 +128,7 @@ function RecenterMap({ position }) {
 export default function LocationMap({ address, addressSource, latitude, longitude, onLocationSelect, disabled }) {
   const [geocoding, setGeocoding] = useState(false);
   const markerRef = useRef(null);
+  const abortRef = useRef(null);
   
   // Use exact coordinates provided by parent as the truth
   const markerPos = latitude && longitude ? [latitude, longitude] : null;
@@ -135,13 +137,18 @@ export default function LocationMap({ address, addressSource, latitude, longitud
   const handleMapClick = useCallback(
     async (latlng) => {
       if (disabled) return;
+      // Cancel any in-flight forward geocode — map click takes priority
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
       const { lat, lng } = latlng;
       setGeocoding(true);
 
       try {
         // Reverse geocode to get address
         const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-        onLocationSelect({ lat, lng, address: addr, neighborhood });
+        onLocationSelect({ lat, lng, address: addr, neighborhood, source: "map" });
       } finally {
         setGeocoding(false);
       }
@@ -153,11 +160,16 @@ export default function LocationMap({ address, addressSource, latitude, longitud
   const handleMarkerDragEnd = useCallback(async () => {
     const marker = markerRef.current;
     if (!marker) return;
+    // Cancel any in-flight forward geocode — drag takes priority
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
     const { lat, lng } = marker.getLatLng();
     setGeocoding(true);
     try {
       const { address: addr, neighborhood } = await reverseGeocode(lat, lng);
-      onLocationSelect({ lat, lng, address: addr, neighborhood });
+      onLocationSelect({ lat, lng, address: addr, neighborhood, source: "map" });
     } finally {
       setGeocoding(false);
     }
@@ -167,19 +179,33 @@ export default function LocationMap({ address, addressSource, latitude, longitud
   const handleSearchAddress = useCallback(
     async (searchAddress) => {
       if (!searchAddress || searchAddress.trim().length < 5) return;
+
+      // Abort any previous in-flight forward geocode
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setGeocoding(true);
       try {
-        const result = await forwardGeocode(searchAddress);
+        const result = await forwardGeocode(searchAddress, controller.signal);
+        // If this request was aborted, result is null — don't update state
+        if (controller.signal.aborted) return;
         if (result) {
+          // source: "geocode" — only update coords + neighborhood, NOT address
+          // (the address is already in the input from user typing)
           onLocationSelect({ 
             lat: result.lat, 
             lng: result.lng, 
-            address: searchAddress,
-            neighborhood: result.neighborhood 
+            neighborhood: result.neighborhood,
+            source: "geocode"
           });
         }
       } finally {
-        setGeocoding(false);
+        if (!controller.signal.aborted) {
+          setGeocoding(false);
+        }
       }
     },
     [onLocationSelect]
@@ -201,13 +227,20 @@ export default function LocationMap({ address, addressSource, latitude, longitud
 
   useEffect(() => {
     // Only forward-geocode when the address was typed by the user (source === "input"),
-    // NOT when it was set programmatically from a map click/drag (source === "map").
+    // NOT when it was set programmatically from a map click/drag (source === "map")
+    // or after a geocode already completed (source === "geocode").
     if (addressSource === "input" && address && address.trim().length >= 5) {
+      // Abort any in-flight geocode from a previous search immediately
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
       debouncedSearch(address);
-    } else {
-      // Cancel any pending search when source is not "input"
+    } else if (addressSource === "map") {
+      // Only cancel debounce when the update came from an explicit map interaction
       debouncedSearch.cancel();
     }
+    // When addressSource === "geocode", do nothing — don't cancel any pending debounce
   }, [address, addressSource, debouncedSearch]);
 
   return (
