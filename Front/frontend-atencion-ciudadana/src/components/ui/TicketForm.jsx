@@ -209,6 +209,11 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     }
   }, [trackingCode, error, onStatusChange]);
 
+  const isSubmitDisabled = loading || 
+    !formData.latitude || 
+    !formData.longitude || 
+    Object.keys(validateForm(formData, requestType.specificFields)).length > 0;
+
   if (trackingCode) {
     return (
       <motion.div 
@@ -518,7 +523,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isSubmitDisabled}
           className="inline-flex items-center gap-2 rounded-lg bg-[#D63031] px-6 py-2.5 text-[13px] font-semibold text-white
                      transition-all duration-200 hover:bg-[#c0282a] hover:shadow-md hover:shadow-[#D63031]/15
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031] focus-visible:ring-offset-2
