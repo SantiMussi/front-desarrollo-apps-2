@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { MOCK_CATEGORIES } from "../data/mockCategories";
 import { fetchCategories, fetchSubcategories, fetchRequestTypes } from "../services/apiClient";
 
-const USE_MOCK = false; // Cambiado a false para usar el backend real
+const USE_MOCK = false;
 
 // Helper para encontrar el ícono de la categoría
 function getCategoryIcon(catName) {
@@ -40,19 +40,19 @@ export function useCategories() {
         } else {
           // Llamada real al backend
           const backendCats = await fetchCategories();
-          
+
           const fullTree = await Promise.all(
             backendCats.map(async (cat) => {
               const backendSubs = await fetchSubcategories(cat.id);
-              
+
               const subcategories = await Promise.all(
                 backendSubs.map(async (sub) => {
                   const reqTypes = await fetchRequestTypes(sub.id);
-                  
+
                   const mappedReqTypes = reqTypes.map(rt => ({
                     ...rt,
-                    code: rt.id.toString(), // Para compatibilidad con el front
-                    specificFields: [] // Se cargarán en el TicketForm
+                    code: rt.id.toString(),
+                    specificFields: []
                   }));
 
                   return {
