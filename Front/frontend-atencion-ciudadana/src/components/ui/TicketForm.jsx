@@ -158,7 +158,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       ...(source === "map" && addr ? { address: addr } : {}),
       ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
     }));
-    
+
     setFieldErrors((prev) => {
       const newErrors = { ...prev, address: undefined };
       if (matchedNeighborhoodId) {
@@ -225,7 +225,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   };
 
   const handleRetry = () => {
-    handleSubmit({ preventDefault: () => {} });
+    handleSubmit({ preventDefault: () => { } });
   };
 
   // Cuando el formulario se envió exitosamente, avisar al padre que ya no está "dirty"
@@ -245,19 +245,19 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   }, [trackingCode, error, onStatusChange]);
 
   const isSubmitDisabled = loading || loadingFields ||
-    !formData.latitude || 
-    !formData.longitude || 
+    !formData.latitude ||
+    !formData.longitude ||
     Object.keys(validateForm(formData, specificFields)).length > 0;
 
   if (trackingCode) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
         className="flex flex-col items-center text-center py-10"
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1, rotate: 360 }}
           transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
@@ -266,8 +266,8 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           <div className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-20"></div>
           <CheckCircle className="h-10 w-10 text-emerald-600" strokeWidth={2} />
         </motion.div>
-        
-        <motion.h3 
+
+        <motion.h3
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -275,8 +275,8 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         >
           ¡Reclamo Registrado!
         </motion.h3>
-        
-        <motion.p 
+
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -285,7 +285,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           Tu solicitud ha sido ingresada exitosamente. Utilizá el siguiente código para consultar su estado en cualquier momento.
         </motion.p>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -314,7 +314,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
@@ -385,16 +385,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <button
           type="button"
           onClick={() => setFormData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
-          className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${
-            formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
-          }`}
+          className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
+            }`}
           role="switch"
           aria-checked={formData.isAnonymous}
         >
           <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-              formData.isAnonymous ? "translate-x-5" : "translate-x-0"
-            }`}
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${formData.isAnonymous ? "translate-x-5" : "translate-x-0"
+              }`}
           />
         </button>
       </div>
