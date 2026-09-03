@@ -31,11 +31,13 @@ function validateForm(formData, specificFields) {
     errors.neighborhoodId = "Seleccioná un barrio";
   }
 
-  specificFields.forEach((field) => {
-    if (field.required && !formData.specificData[field.key]) {
-      errors[`specific_${field.key}`] = `${field.label} es obligatorio`;
-    }
-  });
+  if (Array.isArray(specificFields)) {
+    specificFields.forEach((field) => {
+      if (field.required && !formData.specificData[field.key]) {
+        errors[`specific_${field.key}`] = `${field.label} es obligatorio`;
+      }
+    });
+  }
 
   return errors;
 }
@@ -53,8 +55,16 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     async function loadFields() {
       setLoadingFields(true);
       try {
-        const formFields = await fetchRequestTypeForm(requestType.code || requestType.id);
-        if (!cancelled) setSpecificFields(formFields || []);
+        const res = await fetchRequestTypeForm(requestType.code || requestType.id);
+        let arr = [];
+        if (Array.isArray(res)) {
+          arr = res;
+        } else if (res && Array.isArray(res.fields)) {
+          arr = res.fields;
+        } else if (res && Array.isArray(res.data)) {
+          arr = res.data;
+        }
+        if (!cancelled) setSpecificFields(arr);
       } catch (err) {
         console.error("Error loading specific fields:", err);
       } finally {
