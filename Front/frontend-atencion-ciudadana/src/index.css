@@ -32,13 +32,36 @@ body {
   flex-direction: column;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 ::selection {
   background: #D63031;
   color: white;
+}
+
+/* Custom Scrollbar for Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc; /* neutral-50 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0F2C59;
+  border-radius: 6px;
+  border: 2px solid #f8fafc;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D63031;
+}
+
+/* Custom Scrollbar for Firefox */
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #0F2C59 #f8fafc;
 }
 
 /* Animated underline for footer links */
