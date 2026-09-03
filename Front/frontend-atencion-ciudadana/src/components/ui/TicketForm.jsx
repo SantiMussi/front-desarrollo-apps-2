@@ -8,6 +8,7 @@ import Spinner from "./Spinner";
 import Alert from "./Alert";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
 import { NEIGHBORHOODS } from "../../data/mockCategories";
+import { fetchRequestTypeForm } from "../../services/apiClient";
 
 function validateForm(formData, specificFields) {
   const errors = {};
@@ -43,6 +44,30 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const navigate = useNavigate();
   const { submit, loading, error, trackingCode, reset } = useCreateTicket();
   const [copied, setCopied] = useState(false);
+
+  const [specificFields, setSpecificFields] = useState(requestType.specificFields || []);
+  const [loadingFields, setLoadingFields] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFields() {
+      setLoadingFields(true);
+      try {
+        const formFields = await fetchRequestTypeForm(requestType.code || requestType.id);
+        if (!cancelled) setSpecificFields(formFields || []);
+      } catch (err) {
+        console.error("Error loading specific fields:", err);
+      } finally {
+        if (!cancelled) setLoadingFields(false);
+      }
+    }
+    if (requestType.specificFields && requestType.specificFields.length > 0) {
+      setSpecificFields(requestType.specificFields);
+    } else {
+      loadFields();
+    }
+    return () => { cancelled = true; };
+  }, [requestType]);
 
   const [formData, setFormData] = useState({
     summary: "",
@@ -151,7 +176,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const errors = validateForm(formData, requestType.specificFields);
+    const errors = validateForm(formData, specificFields);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -209,10 +234,10 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     }
   }, [trackingCode, error, onStatusChange]);
 
-  const isSubmitDisabled = loading || 
+  const isSubmitDisabled = loading || loadingFields ||
     !formData.latitude || 
     !formData.longitude || 
-    Object.keys(validateForm(formData, requestType.specificFields)).length > 0;
+    Object.keys(validateForm(formData, specificFields)).length > 0;
 
   if (trackingCode) {
     return (
@@ -434,7 +459,11 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         />
       </div>
 
-      {requestType.specificFields.length > 0 && (
+      {loadingFields ? (
+        <div className="py-6 flex justify-center">
+          <Spinner size="sm" />
+        </div>
+      ) : specificFields.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <div className="h-px w-4 bg-[#D63031]" />
@@ -442,7 +471,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
               Datos específicos
             </span>
           </div>
-          {requestType.specificFields.map((field) => (
+          {specificFields.map((field) => (
             <FormField
               key={field.key}
               label={field.label}

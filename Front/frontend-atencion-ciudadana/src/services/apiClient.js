@@ -21,10 +21,21 @@ async function request(endpoint, options = {}) {
   return response.json();
 }
 
-// TODO: Conectar al endpoint real cuando el backend esté disponible
-// GET /api/categories
+// GET /api/catalog/categories
 export async function fetchCategories() {
-  return request("/categories");
+  return request("/catalog/categories");
+}
+
+export async function fetchSubcategories(categoryId) {
+  return request(`/catalog/categories/${categoryId}/subcategories`);
+}
+
+export async function fetchRequestTypes(subcategoryId) {
+  return request(`/catalog/subcategories/${subcategoryId}/request-types`);
+}
+
+export async function fetchRequestTypeForm(requestTypeId) {
+  return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
 // TODO: Conectar al endpoint real cuando el backend esté disponible

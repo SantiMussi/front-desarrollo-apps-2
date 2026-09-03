@@ -4,12 +4,14 @@ import { ArrowRight, ClipboardList, FileText, CreditCard, CheckCircle } from "lu
 import CategoryCard from "../../components/ui/CategoryCard";
 import SearchBar from "../../components/ui/SearchBar";
 import logo from "../../assets/logo.png";
-import { MOCK_CATEGORIES } from "../../data/mockCategories";
+import { useCategories } from "../../hooks/useCategories";
+import Spinner from "../../components/ui/Spinner";
 
 /* HomePage */
 export default function HomePage() {
   const navigate = useNavigate();
   const [trackingCode, setTrackingCode] = useState("");
+  const { categories, loading, error } = useCategories();
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)] bg-[#fafafa]">
@@ -205,12 +207,21 @@ export default function HomePage() {
               </h2>
             </div>
             <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
-              {MOCK_CATEGORIES.length} categorías
+              {loading ? "..." : categories.length} categorías
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {MOCK_CATEGORIES.map((category) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Spinner size="lg" />
+            </div>
+          ) : error ? (
+            <div className="py-10 text-center text-red-500">
+              <p>Error al cargar las categorías: {error}</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {categories.map((category) => (
               <CategoryCard
                 key={category.id}
                 title={category.title}
@@ -227,7 +238,8 @@ export default function HomePage() {
                 }}
               />
             ))}
-          </div>
+            </div>
+          )}
         </section>
 
       </div>
