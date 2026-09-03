@@ -41,6 +41,11 @@ export default function HelpPortalPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [selectedRequestType, formDirty]);
 
+  // Hacer scroll automático hacia arriba al avanzar o retroceder de paso
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [selectedCategory, selectedSubcategory, selectedRequestType]);
+
   const guardNavigation = useCallback(
     (action) => {
       if (selectedRequestType && formDirty) {
