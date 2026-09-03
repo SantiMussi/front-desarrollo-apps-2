@@ -15,7 +15,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)] bg-[#fafafa]">
-      {/* HERO ASYMMETRICAL & EDITORIAL (Con "Chucu" pero sin cara de IA) */}
+      {/* HERO*/}
       <section className="relative w-full bg-white border-b border-neutral-200 overflow-hidden">
         {/* Top accent line */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0F2C59] to-[#D63031]" />
@@ -177,13 +177,13 @@ export default function HomePage() {
                 value={trackingCode}
                 onChange={(e) => setTrackingCode(e.target.value)}
                 className="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[13px] text-neutral-900 placeholder-neutral-400 outline-none
-                           transition-colors focus:border-[#D63031]/30 focus:bg-white focus:ring-1 focus:ring-[#D63031]/10"
+                            transition-colors focus:border-[#D63031]/30 focus:bg-white focus:ring-1 focus:ring-[#D63031]/10"
               />
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-4 py-1.5 text-[13px] font-medium text-white
-                           transition-all duration-200 hover:bg-[#1a3f7a]
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F2C59] focus-visible:ring-offset-2"
+                            transition-all duration-200 hover:bg-[#1a3f7a]
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F2C59] focus-visible:ring-offset-2"
               >
                 Consultar
                 <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
@@ -222,22 +222,22 @@ export default function HomePage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                title={category.title}
-                description={category.description}
-                iconName={category.iconName}
-                itemCount={category.itemCount}
-                badgeText={category.badgeText}
-                onClick={() => {
-                  if (category.id === "otro") {
-                    navigate("/portal-ayuda?category=otro&subcategory=otro-general&requestType=OTRO_CONSULTA_GENERAL");
-                  } else {
-                    navigate(`/portal-ayuda?category=${category.id}`);
-                  }
-                }}
-              />
-            ))}
+                <CategoryCard
+                  key={category.id}
+                  title={category.title}
+                  description={category.description}
+                  iconName={category.iconName}
+                  itemCount={category.itemCount}
+                  badgeText={category.badgeText}
+                  onClick={() => {
+                    if (category.id === "otro") {
+                      navigate("/portal-ayuda?category=otro&subcategory=otro-general&requestType=OTRO_CONSULTA_GENERAL");
+                    } else {
+                      navigate(`/portal-ayuda?category=${category.id}`);
+                    }
+                  }}
+                />
+              ))}
             </div>
           )}
         </section>
