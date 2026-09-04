@@ -8,6 +8,9 @@ import SplashScreen from "./components/ui/SplashScreen";
 import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
 import TicketDetailPage from "./pages/agent/TicketDetailPage";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function CitizenLayout() {
   return (
@@ -32,12 +35,17 @@ export default function App() {
           <Route path="/portal-ayuda" element={<HelpPortalPage />} />
         </Route>
 
-        <Route path="/agente" element={<AgentLayout />}>
-          <Route path="tickets" element={<TicketsInboxPage />} />
-           <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
-          <Route path="dashboard" element={<div className="p-8">Dashboard Módulo</div>} />
-          <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
-          <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
+        <Route path="/ingresar" element={<LoginPage />} />
+        <Route path="/registro" element={<RegisterPage />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/agente" element={<AgentLayout />}>
+            <Route path="tickets" element={<TicketsInboxPage />} />
+            <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
+            <Route path="dashboard" element={<div className="p-8">Dashboard Módulo</div>} />
+            <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
+            <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

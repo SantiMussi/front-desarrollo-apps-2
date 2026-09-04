@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Ticket, User, Menu, X, Headset } from "lucide-react";
+import { Search, Ticket, User, Menu, X, Headset, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
+import { useAuth } from "../../context/AuthContext";
+import UserAvatar from "../ui/UserAvatar";
 
 /* CitizenNavbar */
 export default function CitizenNavbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const displayName = user?.firstName || user?.nombre || user?.name || user?.email;
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-200/60 bg-white/95 backdrop-blur-md">
@@ -57,14 +61,15 @@ export default function CitizenNavbar() {
 
           <div className="mx-2 h-4 w-px bg-neutral-200" />
 
-          <button
-            type="button"
+          <Link
+            to={user ? "/agente/tickets" : "/ingresar"}
             className="flex items-center gap-1.5 rounded-lg border border-[#0F2C59]/10 bg-[#0F2C59]/5 px-3 py-1.5 text-[13px] font-medium text-[#0F2C59]
                        transition-all hover:bg-[#0F2C59]/10"
           >
-            <User className="h-3.5 w-3.5" strokeWidth={2} />
-            Vecino
-          </button>
+            {user ? <UserAvatar user={user} size="sm" /> : <User className="h-3.5 w-3.5" strokeWidth={2} />}
+            {displayName || "Ingresar"}
+          </Link>
+          {user && <button type="button" onClick={logout} aria-label="Cerrar sesión" className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-[#D63031]"><LogOut className="h-4 w-4" /></button>}
         </nav>
 
         {/* Mobile toggle */}
@@ -86,7 +91,7 @@ export default function CitizenNavbar() {
               { icon: Headset, label: "Vista agente (temporal)", to: "/agente/tickets" },
               { icon: Search, label: "Buscar" },
               { icon: Ticket, label: "Mi Reclamo" },
-              { icon: User, label: "Ingresar como Vecino" },
+              { icon: User, label: displayName || "Ingresar", to: user ? "/agente/tickets" : "/ingresar" },
             ].map(({ icon: Icon, label, to }) => {
               const Component = to ? Link : "button";
               return (

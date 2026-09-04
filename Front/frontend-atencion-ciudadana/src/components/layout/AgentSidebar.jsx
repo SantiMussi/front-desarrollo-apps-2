@@ -2,10 +2,14 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X, LifeBuoy } from "lucide-react";
 import logo from "../../assets/logo.png";
+import { useAuth } from "../../context/AuthContext";
+import UserAvatar from "../ui/UserAvatar";
 
 export default function AgentSidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const displayName = [user?.firstName || user?.nombre || user?.name, user?.lastName || user?.apellido].filter(Boolean).join(" ") || user?.email || "Usuario";
 
   const navItems = [
     { name: "Dashboard", path: "/agente/dashboard", icon: LayoutDashboard },
@@ -47,11 +51,15 @@ export default function AgentSidebar() {
         </nav>
 
         <div className="p-4 border-t border-slate-200/60 mt-auto">
+          <div className="mb-3 flex items-center gap-3 rounded-xl bg-white/70 p-3">
+            <UserAvatar user={user} />
+            <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{displayName}</p><p className="truncate text-xs text-slate-500">{user?.email}</p></div>
+          </div>
           <Link to="/portal-ayuda" className="mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#0F2C59] transition-colors hover:bg-blue-50">
             <LifeBuoy className="h-5 w-5" />
             Ir al centro de ayuda
           </Link>
-          <button className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors">
+          <button onClick={logout} className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors">
             <LogOut className="h-5 w-5" />
             Cerrar Sesión
           </button>
@@ -100,7 +108,7 @@ export default function AgentSidebar() {
                 <LifeBuoy className="h-5 w-5" />
                 Ir al centro de ayuda
               </Link>
-              <button className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+              <button onClick={logout} className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
                 <LogOut className="h-5 w-5" />
                 Cerrar Sesión
               </button>
