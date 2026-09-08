@@ -42,12 +42,38 @@ function validateForm(formData, specificFields) {
   return errors;
 }
 
+function normalizeSpecificFields(fields) {
+  const usedKeys = new Set();
+
+  return fields.map((field, index) => {
+    const baseKey = String(
+      field.key ?? field.name ?? field.id ?? field.code ?? field.label ?? `field_${index}`
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "") || `field_${index}`;
+
+    let key = baseKey;
+    let suffix = 2;
+    while (usedKeys.has(key)) {
+      key = `${baseKey}_${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(key);
+
+    return { ...field, key };
+  });
+}
+
 export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
   const navigate = useNavigate();
   const { submit, loading, error, trackingCode, reset } = useCreateTicket();
   const [copied, setCopied] = useState(false);
 
-  const [specificFields, setSpecificFields] = useState(requestType.specificFields || []);
+  const [specificFields, setSpecificFields] = useState(
+    normalizeSpecificFields(requestType.specificFields || [])
+  );
   const [loadingFields, setLoadingFields] = useState(false);
 
   useEffect(() => {
@@ -64,16 +90,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         } else if (res && Array.isArray(res.data)) {
           arr = res.data;
         }
-        if (!cancelled) setSpecificFields(arr);
+        if (!cancelled) setSpecificFields(normalizeSpecificFields(arr));
       } catch (err) {
         console.error("Error loading specific fields:", err);
       } finally {
         if (!cancelled) setLoadingFields(false);
       }
     }
-    if (requestType.specificFields && requestType.specificFields.length > 0) {
-      setSpecificFields(requestType.specificFields);
-    } else {
+    if (!requestType.specificFields || requestType.specificFields.length === 0) {
       loadFields();
     }
     return () => { cancelled = true; };
