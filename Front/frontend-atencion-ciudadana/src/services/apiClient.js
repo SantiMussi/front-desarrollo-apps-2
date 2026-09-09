@@ -71,11 +71,51 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
-// TODO: Conectar al endpoint real cuando el backend esté disponible
 // POST /api/tickets
-export async function createTicket(payload) {
-  return request("/tickets", {
+export async function createTicket(payload, attachments = []) {
+  const url = `${BASE_URL}/tickets`;
+  const token = getStoredToken();
+  const headers = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  let body;
+  if (attachments && attachments.length > 0) {
+    const formData = new FormData();
+    formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+    attachments.forEach(att => {
+      formData.append("evidence", att.file);
+    });
+    body = formData;
+    // Don't set Content-Type for FormData; fetch sets it automatically with the correct boundary
+  } else {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(payload);
+  }
+
+  const response = await fetch(url, {
     method: "POST",
-    body: JSON.stringify(payload),
+    headers,
+    body,
   });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    console.error("Backend error response:", errorBody);
+    
+    let message = errorBody?.message || errorBody?.error || errorBody?.detail || `Error ${response.status}: ${response.statusText}`;
+    // If the backend returns a list of field validation errors (like Spring often does):
+    if (errorBody?.errors && Array.isArray(errorBody.errors)) {
+       message += " - " + errorBody.errors.map(e => `${e.field}: ${e.defaultMessage || e.message}`).join(", ");
+    } else if (errorBody?.fieldErrors) {
+       message += " - " + JSON.stringify(errorBody.fieldErrors);
+    }
+    
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = errorBody?.code;
+    throw error;
+  }
+
+  return response.json();
 }

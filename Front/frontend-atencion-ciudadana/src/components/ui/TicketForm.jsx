@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff } from "lucide-react";
+import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import FormField from "./FormField";
 import LocationMap from "./LocationMap";
@@ -24,7 +24,11 @@ function validateForm(formData, specificFields) {
   }
 
   if (!formData.address.trim()) {
-    errors.address = "La dirección es obligatoria";
+    errors.address = "La calle es obligatoria";
+  }
+
+  if (!formData.streetNumber.trim()) {
+    errors.streetNumber = "La altura es obligatoria";
   }
 
   if (!formData.neighborhoodId) {
@@ -42,10 +46,26 @@ function validateForm(formData, specificFields) {
   return errors;
 }
 
+// El backend (GET /catalog/request-types/{id}/form) devuelve cada campo con
+// `type` en MAYÚSCULAS y con `options` / `placeholder` dentro de `config`.
+// FormField espera el `type` en minúscula y `options` / `placeholder` planos.
+const API_TYPE_MAP = {
+  TEXT: "text",
+  TEXTAREA: "textarea",
+  SELECT: "select",
+  NUMBER: "number",
+  DATE: "date",
+  BOOLEAN: "boolean", // control Sí / No
+};
+
 function normalizeSpecificFields(fields) {
   const usedKeys = new Set();
 
-  return fields.map((field, index) => {
+  const ordered = [...fields].sort(
+    (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+  );
+
+  return ordered.map((field, index) => {
     const baseKey = String(
       field.key ?? field.name ?? field.id ?? field.code ?? field.label ?? `field_${index}`
     )
@@ -62,13 +82,26 @@ function normalizeSpecificFields(fields) {
     }
     usedKeys.add(key);
 
-    return { ...field, key };
+    const backendType = String(field.type ?? "TEXT").toUpperCase();
+
+    return {
+      ...field,
+      key,
+      code: field.code ?? key,
+      backendType,
+      type: API_TYPE_MAP[backendType] ?? "text",
+      label: field.label ?? field.code ?? key,
+      placeholder: field.placeholder ?? field.config?.placeholder ?? "",
+      options: field.options ?? field.config?.options ?? [],
+      required: Boolean(field.required),
+      displayOrder: field.displayOrder ?? index,
+    };
   });
 }
 
 export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
   const navigate = useNavigate();
-  const { submit, loading, error, trackingCode, reset } = useCreateTicket();
+  const { submit, loading, error, errorCode, trackingCode, reset, setError, setErrorCode } = useCreateTicket();
   const [copied, setCopied] = useState(false);
 
   const [specificFields, setSpecificFields] = useState(
@@ -107,6 +140,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     summary: "",
     description: "",
     address: "",
+    streetNumber: "",
     addressSource: null, // "input" when typed, "map" when set from map
     neighborhoodId: "",
     latitude: null,
@@ -136,9 +170,11 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      // When the user manually edits the address, mark source as "input"
-      // and clear coordinates so the map will forward-geocode via debounce
-      ...(name === "address" ? { addressSource: "input", latitude: null, longitude: null } : {}),
+      // When the user manually edits the street or house number, mark source as
+      // "input" and clear coordinates so the map will forward-geocode via debounce
+      ...(name === "address" || name === "streetNumber"
+        ? { addressSource: "input", latitude: null, longitude: null }
+        : {}),
     }));
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
@@ -155,7 +191,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   // Called when the user clicks/drags on the map (source="map")
   // or when forward geocode completes from typing (source="geocode")
-  const handleLocationSelect = useCallback(({ lat, lng, address: addr, neighborhoods, source }) => {
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, neighborhoods, source }) => {
     let matchedNeighborhoodId = undefined;
     if (neighborhoods && neighborhoods.length > 0) {
       for (const nb of neighborhoods) {
@@ -176,15 +212,24 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       ...prev,
       latitude: lat,
       longitude: lng,
-      // "map" → user clicked/dragged, update address + block re-geocoding
-      // "geocode" → forward geocode result, DON'T overwrite the typed address
+      // "map" → user clicked/dragged: the map is the source of truth for the
+      // location, so set street ("Calle") and house number ("Altura") separately.
+      // "geocode" → forward geocode result, DON'T overwrite the typed address.
       addressSource: source === "map" ? "map" : "geocode",
-      ...(source === "map" && addr ? { address: addr } : {}),
+      ...(source === "map"
+        ? {
+            address: street || addr || prev.address,
+            streetNumber: streetNumber ?? "",
+          }
+        : {}),
       ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
     }));
 
     setFieldErrors((prev) => {
       const newErrors = { ...prev, address: undefined };
+      if (source === "map" && streetNumber) {
+        newErrors.streetNumber = undefined;
+      }
       if (matchedNeighborhoodId) {
         newErrors.neighborhoodId = undefined;
       }
@@ -216,30 +261,45 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       return;
     }
 
+    // El backend valida cada campo por tipo (FormValidationService):
+    // BOOLEAN debe ser booleano real, NUMBER numérico, y los campos
+    // opcionales vacíos no deben viajar en el payload.
+    const mappedFormData = {};
+    Object.entries(formData.specificData || {}).forEach(([key, rawValue]) => {
+      const field = specificFields.find((f) => f.key === key);
+      if (!field) return;
+      if (rawValue === "" || rawValue === null || rawValue === undefined) return;
+
+      let value = rawValue;
+      if (field.backendType === "BOOLEAN") {
+        value = rawValue === true || rawValue === "true";
+      } else if (field.backendType === "NUMBER") {
+        value = Number(rawValue);
+        if (Number.isNaN(value)) return;
+      }
+      mappedFormData[field.code] = value;
+    });
+
     const payload = {
-      requestTypeCode: requestType.code,
-      citizenId: null, // TODO: Obtener del módulo de autenticación
-      isAnonymous: formData.isAnonymous,
+      requestTypeId: Number(requestType.id || requestType.code || 0),
       summary: formData.summary,
       description: formData.description,
+      formData: mappedFormData,
       location: {
-        address: formData.address,
+        addressLine: `${formData.address} ${formData.streetNumber}`.trim(),
+        street: formData.address,
+        streetNumber: formData.streetNumber,
         neighborhoodId: formData.neighborhoodId,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-      },
-      attachments: attachments.map((a) => ({
-        name: a.name,
-        mimeType: a.mimeType,
-        url: "", // TODO: Subir archivos al storage
-      })),
-      specificData: formData.specificData,
+        latitude: Number(formData.latitude) || 0,
+        longitude: Number(formData.longitude) || 0,
+        reference: ""
+      }
     };
 
     console.log("[TicketForm] Payload a enviar al backend:", JSON.stringify(payload, null, 2));
     console.log("[TicketForm] Archivos adjuntos:", attachments);
 
-    await submit(payload);
+    await submit(payload, attachments);
   };
 
   const handleCopyCode = () => {
@@ -272,6 +332,73 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     !formData.latitude ||
     !formData.longitude ||
     Object.keys(validateForm(formData, specificFields)).length > 0;
+
+  if (errorCode === 'EVIDENCE_REQUIRED') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+        className="flex flex-col items-center text-center py-10"
+      >
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
+          <AlertCircle className="h-10 w-10 text-[#D63031]" strokeWidth={2} />
+        </div>
+
+        <h3 className="text-2xl font-extrabold text-[#0F2C59] tracking-tight">
+          Información adicional requerida
+        </h3>
+
+        <p className="mt-3 text-[15px] text-neutral-600 max-w-md leading-relaxed">
+          Debido a la naturaleza crítica o de alto riesgo del reporte, nuestro
+          sistema requiere documentación respaldatoria adicional para
+          procesar la solicitud correctamente.
+        </p>
+
+        <div className="mt-8 flex flex-col items-start text-left gap-2 rounded-xl border border-red-200 bg-red-50 px-6 py-5 w-full max-w-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-[#D63031]" fill="white" />
+            <span className="font-semibold text-[#D63031]">Riesgo Detectado: Alto/Crítico</span>
+          </div>
+          <p className="text-sm text-[#D63031] mt-1">
+            Se requiere adjuntar evidencia fotográfica clara de la zona afectada y, de ser
+            posible, una descripción detallada de los daños estructurales inmediatos
+            para agilizar la intervención.
+          </p>
+        </div>
+
+        <div className="mt-10 flex gap-3 w-full max-w-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setErrorCode(null);
+              setError(null);
+            }}
+            className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-[#ff6b6b] px-6 py-3.5 text-[14px] font-semibold text-white
+                       transition-all duration-300 hover:bg-[#fa5252] shadow-sm active:scale-95"
+          >
+            <Paperclip className="h-4 w-4" />
+            Completar información
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/");
+            }}
+            className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-[#0F2C59]
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            Guardar como borrador
+          </button>
+        </div>
+        
+        <button className="mt-6 flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 font-medium transition-colors">
+            <Shield className="h-4 w-4" />
+            Ver políticas de seguridad y riesgo
+        </button>
+      </motion.div>
+    );
+  }
 
   if (trackingCode) {
     return (
@@ -459,17 +586,34 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
             Ubicación
           </span>
         </div>
-        <FormField
-          label="Dirección (calle y altura)"
-          name="address"
-          type="text"
-          placeholder="Ej: Av. Santa Fe 1234"
-          value={formData.address}
-          onChange={handleChange}
-          error={fieldErrors.address}
-          required
-          disabled={loading}
-        />
+        <div className="flex gap-4">
+          <div className="flex-[2]">
+            <FormField
+              label="Calle"
+              name="address"
+              type="text"
+              placeholder="Ej: Av. Santa Fe"
+              value={formData.address}
+              onChange={handleChange}
+              error={fieldErrors.address}
+              required
+              disabled={loading}
+            />
+          </div>
+          <div className="flex-1">
+            <FormField
+              label="Altura"
+              name="streetNumber"
+              type="text"
+              placeholder="Ej: 1234"
+              value={formData.streetNumber}
+              onChange={handleChange}
+              error={fieldErrors.streetNumber}
+              required
+              disabled={loading}
+            />
+          </div>
+        </div>
         <FormField
           label="Barrio"
           name="neighborhoodId"
@@ -483,6 +627,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         />
         <LocationMap
           address={formData.address}
+          streetNumber={formData.streetNumber}
           addressSource={formData.addressSource}
           latitude={formData.latitude}
           longitude={formData.longitude}

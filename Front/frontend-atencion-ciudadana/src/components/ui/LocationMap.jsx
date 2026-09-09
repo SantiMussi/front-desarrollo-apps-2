@@ -50,12 +50,11 @@ async function reverseGeocode(lat, lng) {
     if (!res.ok) throw new Error("Network response was not ok");
     const data = await res.json();
     if (data && data.display_name) {
-      // Build a clean address from parts
+      // Build a clean address from parts — street and house number kept separate
       const addr = data.address || {};
-      const parts = [];
-      if (addr.road) parts.push(addr.road);
-      if (addr.house_number) parts.push(addr.house_number);
-      
+      const street = addr.road || "";
+      const streetNumber = addr.house_number || "";
+
       const neighborhoods = [
         addr.neighbourhood,
         addr.suburb,
@@ -63,19 +62,19 @@ async function reverseGeocode(lat, lng) {
         addr.quarter,
         addr.borough
       ].filter(Boolean);
-      
+
       let addressString = "";
-      if (parts.length === 0) {
+      if (!street) {
         addressString = data.display_name.split(",").slice(0, 2).join(",").trim();
       } else {
-        addressString = parts.join(" ");
+        addressString = [street, streetNumber].filter(Boolean).join(" ");
       }
-      return { address: addressString, neighborhoods };
+      return { address: addressString, street, streetNumber, neighborhoods };
     }
-    return { address: "", neighborhoods: [] };
+    return { address: "", street: "", streetNumber: "", neighborhoods: [] };
   } catch (error) {
     console.error("Reverse geocoding error:", error);
-    return { address: "", neighborhoods: [] };
+    return { address: "", street: "", streetNumber: "", neighborhoods: [] };
   }
 }
 
@@ -137,7 +136,7 @@ function RecenterMap({ position }) {
   return null;
 }
 
-export default function LocationMap({ address, addressSource, latitude, longitude, onLocationSelect, disabled }) {
+export default function LocationMap({ address, streetNumber, addressSource, latitude, longitude, onLocationSelect, disabled }) {
   const [geocoding, setGeocoding] = useState(false);
   const markerRef = useRef(null);
   const abortRef = useRef(null);
@@ -159,8 +158,8 @@ export default function LocationMap({ address, addressSource, latitude, longitud
 
       try {
         // Reverse geocode to get address
-        const { address: addr, neighborhoods } = await reverseGeocode(lat, lng);
-        onLocationSelect({ lat, lng, address: addr, neighborhoods, source: "map" });
+        const { address: addr, street, streetNumber, neighborhoods } = await reverseGeocode(lat, lng);
+        onLocationSelect({ lat, lng, address: addr, street, streetNumber, neighborhoods, source: "map" });
       } finally {
         setGeocoding(false);
       }
@@ -180,8 +179,8 @@ export default function LocationMap({ address, addressSource, latitude, longitud
     const { lat, lng } = marker.getLatLng();
     setGeocoding(true);
     try {
-      const { address: addr, neighborhoods } = await reverseGeocode(lat, lng);
-      onLocationSelect({ lat, lng, address: addr, neighborhoods, source: "map" });
+      const { address: addr, street, streetNumber, neighborhoods } = await reverseGeocode(lat, lng);
+      onLocationSelect({ lat, lng, address: addr, street, streetNumber, neighborhoods, source: "map" });
     } finally {
       setGeocoding(false);
     }
@@ -241,19 +240,25 @@ export default function LocationMap({ address, addressSource, latitude, longitud
     // Only forward-geocode when the address was typed by the user (source === "input"),
     // NOT when it was set programmatically from a map click/drag (source === "map")
     // or after a geocode already completed (source === "geocode").
-    if (addressSource === "input" && address && address.trim().length >= 5) {
+    // The query combines street ("Calle") + house number ("Altura") so that
+    // typing the number alone re-locates the pin.
+    const query = [address, streetNumber]
+      .filter((part) => part && String(part).trim())
+      .join(" ")
+      .trim();
+    if (addressSource === "input" && query.length >= 5) {
       // Abort any in-flight geocode from a previous search immediately
       if (abortRef.current) {
         abortRef.current.abort();
         abortRef.current = null;
       }
-      debouncedSearch(address);
+      debouncedSearch(query);
     } else if (addressSource === "map") {
       // Only cancel debounce when the update came from an explicit map interaction
       debouncedSearch.cancel();
     }
     // When addressSource === "geocode", do nothing — don't cancel any pending debounce
-  }, [address, addressSource, debouncedSearch]);
+  }, [address, streetNumber, addressSource, debouncedSearch]);
 
   return (
     <div className="flex flex-col gap-2">

@@ -193,6 +193,40 @@ export default function FormField({
 
 
 
+  if (type === "boolean") {
+    const boolOptions = [
+      { value: "true", label: "Sí" },
+      { value: "false", label: "No" },
+    ];
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-neutral-700">
+          {label}
+          {required && <span className="text-[#D63031] ml-0.5">*</span>}
+        </label>
+        <div className="flex gap-2">
+          {boolOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange({ target: { name, value: opt.value } })}
+              className={`flex-1 rounded-lg border px-3.5 py-2.5 text-[14px] font-medium transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed ${
+                  String(value) === opt.value
+                    ? "border-[#D63031] bg-[#D63031]/5 text-[#D63031]"
+                    : "border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100"
+                }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {error && <p className="text-[12px] text-red-500">{error}</p>}
+      </div>
+    );
+  }
+
   if (type === "searchable-select") {
     return (
       <SearchableSelect 
