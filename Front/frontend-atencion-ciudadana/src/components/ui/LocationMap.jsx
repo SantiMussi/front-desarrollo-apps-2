@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -25,17 +25,6 @@ const redIcon = new L.Icon({
 // CABA bounds to restrict the map view
 const CABA_CENTER = [-34.6118, -58.4173];
 const CABA_ZOOM = 12;
-
-// Debounce helper — returns a function with a .cancel() method
-function debounce(fn, ms) {
-  let timer;
-  const debounced = (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-  debounced.cancel = () => clearTimeout(timer);
-  return debounced;
-}
 
 // Reverse geocode using Nominatim
 async function reverseGeocode(lat, lng) {
@@ -222,43 +211,31 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
     [onLocationSelect]
   );
 
-  // Debounced search when address prop changes
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((addr) => {
-        handleSearchAddress(addr);
-      }, 1200),
-    [handleSearchAddress]
-  );
-
-  // Cleanup debounced timer on unmount
+  // Debounced forward-geocode driven by the typed address.
+  // Only when the address/number was typed by the user (source === "input"),
+  // NOT when set programmatically from a map click/drag ("map") or after a
+  // geocode already completed ("geocode").
+  // The query combines street ("Calle") + house number ("Altura") so that
+  // typing the number alone re-locates the pin. The setTimeout + clearTimeout
+  // cleanup is the debounce: each change reschedules, unmount clears it.
   useEffect(() => {
-    return () => debouncedSearch.cancel();
-  }, [debouncedSearch]);
+    if (addressSource !== "input") return undefined;
 
-  useEffect(() => {
-    // Only forward-geocode when the address was typed by the user (source === "input"),
-    // NOT when it was set programmatically from a map click/drag (source === "map")
-    // or after a geocode already completed (source === "geocode").
-    // The query combines street ("Calle") + house number ("Altura") so that
-    // typing the number alone re-locates the pin.
     const query = [address, streetNumber]
       .filter((part) => part && String(part).trim())
       .join(" ")
       .trim();
-    if (addressSource === "input" && query.length >= 5) {
-      // Abort any in-flight geocode from a previous search immediately
-      if (abortRef.current) {
-        abortRef.current.abort();
-        abortRef.current = null;
-      }
-      debouncedSearch(query);
-    } else if (addressSource === "map") {
-      // Only cancel debounce when the update came from an explicit map interaction
-      debouncedSearch.cancel();
+    if (query.length < 5) return undefined;
+
+    // Abort any in-flight geocode from a previous search immediately
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
     }
-    // When addressSource === "geocode", do nothing — don't cancel any pending debounce
-  }, [address, streetNumber, addressSource, debouncedSearch]);
+
+    const timer = setTimeout(() => handleSearchAddress(query), 1200);
+    return () => clearTimeout(timer);
+  }, [address, streetNumber, addressSource, handleSearchAddress]);
 
   return (
     <div className="flex flex-col gap-2">
