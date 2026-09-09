@@ -71,6 +71,15 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
+// GET /api/catalog/neighborhoods
+// Se espera una lista de barrios con su UUID real de la tabla `neighborhood`:
+//   [{ id: "uuid", name: "Palermo" }, ...]
+// Todavía NO existe en el back. Mientras responda 404, `useNeighborhoods` cae
+// al listado local (src/data/mockCategories.js → NEIGHBORHOODS).
+export async function fetchNeighborhoods() {
+  return request("/catalog/neighborhoods");
+}
+
 // POST /api/tickets
 export async function createTicket(payload, attachments = []) {
   const url = `${BASE_URL}/tickets`;

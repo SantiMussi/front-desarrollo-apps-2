@@ -7,8 +7,16 @@ import LocationMap from "./LocationMap";
 import Spinner from "./Spinner";
 import Alert from "./Alert";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
-import { NEIGHBORHOODS } from "../../data/mockCategories";
+import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { fetchRequestTypeForm } from "../../services/apiClient";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const normalizeText = (s) =>
+  String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
 
 function validateForm(formData, specificFields) {
   const errors = {};
@@ -102,6 +110,7 @@ function normalizeSpecificFields(fields) {
 export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
   const navigate = useNavigate();
   const { submit, loading, error, errorCode, trackingCode, reset, setError, setErrorCode } = useCreateTicket();
+  const { neighborhoods } = useNeighborhoods();
   const [copied, setCopied] = useState(false);
 
   const [specificFields, setSpecificFields] = useState(
@@ -191,14 +200,18 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   // Called when the user clicks/drags on the map (source="map")
   // or when forward geocode completes from typing (source="geocode")
-  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, neighborhoods, source }) => {
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, neighborhoods: geoNeighborhoods, source }) => {
+    // Matchea los barrios candidatos que devuelve el geocoder (por nombre)
+    // contra la lista real de barrios. Funciona igual con el mock o con los
+    // datos del back: el match es por nombre y devuelve el id (UUID cuando
+    // el back este listo).
     let matchedNeighborhoodId = undefined;
-    if (neighborhoods && neighborhoods.length > 0) {
-      for (const nb of neighborhoods) {
+    if (geoNeighborhoods && geoNeighborhoods.length > 0) {
+      for (const nb of geoNeighborhoods) {
         if (!nb) continue;
-        const normalizedQuery = nb.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const match = NEIGHBORHOODS.find(n => {
-          const normalizedName = n.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedQuery = normalizeText(nb);
+        const match = neighborhoods.find((n) => {
+          const normalizedName = normalizeText(n.name);
           return normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
         });
         if (match) {
@@ -235,7 +248,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       }
       return newErrors;
     });
-  }, []);
+  }, [neighborhoods]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -280,6 +293,23 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       mappedFormData[field.code] = value;
     });
 
+    // El back espera `neighborhoodId` como UUID de la tabla `neighborhood`.
+    // Si el selector ya trabaja con barrios del back (ids UUID), se manda tal
+    // cual. Mientras se use el listado local (ids tipo "PALERMO"), el campo va
+    // `null` (es opcional) y el nombre del barrio queda como referencia para no
+    // perder el dato. Al poblar la tabla + endpoint no hay que tocar nada acá.
+    const selectedNeighborhoodId = formData.neighborhoodId ?? "";
+    const neighborhoodId = UUID_RE.test(selectedNeighborhoodId) ? selectedNeighborhoodId : null;
+    const selectedNeighborhoodName = neighborhoods.find(
+      (n) => n.id === selectedNeighborhoodId
+    )?.name;
+
+    const hasCoords =
+      formData.latitude != null &&
+      formData.longitude != null &&
+      !Number.isNaN(Number(formData.latitude)) &&
+      !Number.isNaN(Number(formData.longitude));
+
     const payload = {
       requestTypeId: Number(requestType.id || requestType.code || 0),
       summary: formData.summary,
@@ -289,10 +319,12 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         addressLine: `${formData.address} ${formData.streetNumber}`.trim(),
         street: formData.address,
         streetNumber: formData.streetNumber,
-        neighborhoodId: formData.neighborhoodId,
-        latitude: Number(formData.latitude) || 0,
-        longitude: Number(formData.longitude) || 0,
-        reference: ""
+        neighborhoodId,
+        latitude: hasCoords ? Number(formData.latitude) : null,
+        longitude: hasCoords ? Number(formData.longitude) : null,
+        reference: !neighborhoodId && selectedNeighborhoodName
+          ? `Barrio: ${selectedNeighborhoodName}`
+          : ""
       }
     };
 
@@ -618,7 +650,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           label="Barrio"
           name="neighborhoodId"
           type="searchable-select"
-          options={NEIGHBORHOODS.map((n) => ({ value: n.id, label: n.name }))}
+          options={neighborhoods.map((n) => ({ value: n.id, label: n.name }))}
           value={formData.neighborhoodId}
           onChange={handleChange}
           error={fieldErrors.neighborhoodId}
