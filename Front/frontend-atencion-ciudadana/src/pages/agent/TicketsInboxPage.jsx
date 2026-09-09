@@ -16,6 +16,7 @@ import {
 import TicketTable from "../../components/ui/TicketTable";
 
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
+import { getSlaIndicator, isTicketEscalated } from "../../utils/ticketIndicators";
 
 const CURRENT_AGENT_ID = "AGENT-014";
 
@@ -48,11 +49,8 @@ const inboxTickets = MOCK_TICKETS.map((ticket) => {
     citizen: ticket.anonymous
       ? { name: "Anónimo", initials: "AN", email: null }
       : { name: citizen?.name || "Ciudadano no encontrado", initials: citizen?.initials || "??", email: citizen?.email || null },
-    sla: ticket.currentStatus === "RESOLVED"
-      ? "Confirmación pendiente"
-      : ["CLOSED", "CANCELLED", "DUPLICATE"].includes(ticket.currentStatus)
-        ? "-"
-        : "En plazo"
+    slaIndicator: getSlaIndicator(ticket),
+    isEscalated: isTicketEscalated(ticket)
   };
 });
 
@@ -66,7 +64,8 @@ export default function TicketsInboxPage() {
     category: "",
     priority: "",
     neighborhood: "",
-    status: ""
+    status: "",
+    attention: ""
   });
 
   const handleFilterChange = (key, value) => {
@@ -81,7 +80,7 @@ export default function TicketsInboxPage() {
       todosAbiertos: inboxTickets.filter(t => !TERMINAL_STATUSES.includes(t.currentStatus)).length,
       asignados: inboxTickets.filter(t => t.assignedAgentId === CURRENT_AGENT_ID).length,
       sinAsignar: inboxTickets.filter(t => !t.assignedAgentId).length,
-      vencidos: inboxTickets.filter(t => t.sla && t.sla.includes("Vencido")).length,
+      slaAlerts: inboxTickets.filter(t => ["at-risk", "overdue"].includes(t.slaIndicator.status)).length,
     };
   }, []);
 
@@ -91,7 +90,7 @@ export default function TicketsInboxPage() {
       if (activeTab === "Asignados a mí" && ticket.assignedAgentId !== CURRENT_AGENT_ID) return false;
       if (activeTab === "Todos abiertos" && TERMINAL_STATUSES.includes(ticket.currentStatus)) return false;
       if (activeTab === "Sin asignar" && ticket.assignedAgentId) return false;
-      if (activeTab === "SLA Vencido / En Riesgo" && (!ticket.sla || !ticket.sla.includes("Vencido"))) return false;
+      if (activeTab === "SLA Vencido / En Riesgo" && !["at-risk", "overdue"].includes(ticket.slaIndicator.status)) return false;
       if (activeTab === "Resueltos" && ticket.status !== "Resuelto") return false;
       
       // 2. Search query
@@ -108,6 +107,8 @@ export default function TicketsInboxPage() {
       if (filters.priority && ticket.priority !== filters.priority) return false;
       if (filters.neighborhood && ticket.neighborhood !== filters.neighborhood) return false;
       if (filters.status && ticket.status !== filters.status) return false;
+      if (filters.attention === "sla" && !["at-risk", "overdue"].includes(ticket.slaIndicator.status)) return false;
+      if (filters.attention === "escalated" && !ticket.isEscalated) return false;
 
       return true;
     });
@@ -149,7 +150,7 @@ export default function TicketsInboxPage() {
               case 'assignee': return `"${t.assignee ? t.assignee.name : "Sin asignar"}"`;
               case 'status': return t.status;
               case 'createdAt': return t.createdAt;
-              case 'sla': return t.sla || "-";
+              case 'sla': return t.slaIndicator.percentage === null ? t.slaIndicator.label : `${t.slaIndicator.label} (${t.slaIndicator.percentage}%)`;
               default: return "";
             }
           });
@@ -226,7 +227,7 @@ export default function TicketsInboxPage() {
             />
             <TabItem 
               label="SLA Vencido / En Riesgo" 
-              count={counts.vencidos} 
+              count={counts.slaAlerts}
               active={activeTab === "SLA Vencido / En Riesgo"} 
               onClick={() => setActiveTab("SLA Vencido / En Riesgo")}
               danger
@@ -259,7 +260,7 @@ export default function TicketsInboxPage() {
             
             {activeFilterCount > 0 && (
               <button 
-                onClick={() => setFilters({category: "", priority: "", neighborhood: "", status: ""})}
+                onClick={() => setFilters({category: "", priority: "", neighborhood: "", status: "", attention: ""})}
                 className="text-xs text-slate-500 hover:text-slate-700 underline"
               >
                 Limpiar filtros
@@ -366,7 +367,7 @@ export default function TicketsInboxPage() {
 
         {/* Expandable Filter Area */}
         {showFilters && (
-          <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
               <select 
@@ -417,6 +418,18 @@ export default function TicketsInboxPage() {
                 {MOCK_STATUSES.map(est => (
                   <option key={est} value={TICKET_STATUS_LABELS[est] || est}>{TICKET_STATUS_LABELS[est] || est}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Atención</label>
+              <select
+                value={filters.attention}
+                onChange={(e) => handleFilterChange("attention", e.target.value)}
+                className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
+              >
+                <option value="">Todos</option>
+                <option value="sla">SLA vencido / en riesgo</option>
+                <option value="escalated">Escalados</option>
               </select>
             </div>
           </div>
