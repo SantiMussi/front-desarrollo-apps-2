@@ -1,6 +1,6 @@
 import StatusBadge from "./StatusBadge";
 import { motion } from "framer-motion";
-import { CircleHelp, Lightbulb, Plus, TriangleAlert } from "lucide-react";
+import { AlertOctagon, CircleHelp, Clock3, Lightbulb, Plus, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const TICKET_TYPE_CONFIG = {
@@ -60,7 +60,16 @@ export default function TicketTable({ tickets, columns }) {
           </span>
         );
       }
-      case 'summary': return <span className="text-slate-700">{ticket.summary}</span>;
+      case 'summary': return (
+        <div className="min-w-[220px]">
+          <span className="text-slate-700">{ticket.summary}</span>
+          {ticket.isEscalated && (
+            <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700" title="El escalamiento se mantiene independientemente del estado">
+              <AlertOctagon className="h-3 w-3" aria-hidden="true" /> Escalado
+            </span>
+          )}
+        </div>
+      );
       case 'citizen': return (
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600">
@@ -88,25 +97,7 @@ export default function TicketTable({ tickets, columns }) {
       case 'status': return <StatusBadge status={ticket.status} />;
       case 'createdAt': return <span className="text-slate-500 text-xs">{ticket.createdAt}</span>;
       case 'sla': return (
-        <span className="text-xs font-medium">
-          {ticket.sla === "-" ? (
-            <span className="text-slate-400">-</span>
-          ) : ticket.sla.includes("Vencido") ? (
-            <span className="text-[#D63031] flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              {ticket.sla}
-            </span>
-          ) : (
-            <span className="text-slate-500 flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {ticket.sla}
-            </span>
-          )}
-        </span>
+        <SlaBadge indicator={ticket.slaIndicator} />
       );
       default: return null;
     }
@@ -133,7 +124,7 @@ export default function TicketTable({ tickets, columns }) {
             <tr
               key={ticket.id}
               onClick={() => navigate(`/agente/tickets/${ticket.id}`)}
-              className="hover:bg-slate-50 transition-colors cursor-pointer"
+              className={`transition-colors cursor-pointer ${ticket.slaIndicator?.status === "overdue" ? "bg-red-50/40 hover:bg-red-50" : ticket.slaIndicator?.status === "at-risk" ? "bg-amber-50/45 hover:bg-amber-50" : "hover:bg-slate-50"}`}
               tabIndex={0}
               onKeyDown={(event) => event.key === "Enter" && navigate(`/agente/tickets/${ticket.id}`)}
               aria-label={`Abrir ticket ${ticket.id}: ${ticket.summary}`}
@@ -148,5 +139,25 @@ export default function TicketTable({ tickets, columns }) {
         </motion.tbody>
       </table>
     </div>
+  );
+}
+
+function SlaBadge({ indicator }) {
+  if (!indicator || indicator.status === "not-applicable") return <span className="text-xs text-slate-400">—</span>;
+
+  const urgent = indicator.status === "overdue";
+  const atRisk = indicator.status === "at-risk";
+  const className = urgent
+    ? "border-red-200 bg-red-50 text-red-700"
+    : atRisk
+      ? "border-amber-300 bg-amber-50 text-amber-800"
+      : "border-slate-200 bg-slate-50 text-slate-600";
+
+  return (
+    <span className={`inline-flex min-w-max items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`} title={indicator.percentage === null ? indicator.label : `${indicator.percentage}% del plazo SLA consumido`}>
+      {urgent ? <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" /> : <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />}
+      <span>{indicator.label}</span>
+      {indicator.percentage !== null && <span className="font-bold">{indicator.percentage}%</span>}
+    </span>
   );
 }
