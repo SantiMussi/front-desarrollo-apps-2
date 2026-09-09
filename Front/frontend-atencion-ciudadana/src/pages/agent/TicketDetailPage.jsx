@@ -3,7 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, CircleHelp, Clock3, FileQuestion, Lightbulb, MapPin, Paperclip, Plus, Send, Smile, Tag, TriangleAlert, Users, X } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
+import TicketTransitionDialog from "../../components/ui/TicketTransitionForm";
 import UserAvatar from "../../components/ui/UserAvatar";
+import { RESPONSIBLE_AREAS, getResponsibleAreaId } from "../../constants/responsibleAreas";
 import {
   MOCK_CITIZENS, MOCK_REQUEST_TYPES_LIST, MOCK_SUBCATEGORIES_LIST, MOCK_CATEGORIES_LIST,
   MOCK_TICKETS, MOCK_TICKET_ACTIVITIES_LIST, MOCK_TICKET_LOCATIONS_LIST, MOCK_TICKET_MESSAGES_LIST,
@@ -11,7 +13,6 @@ import {
 } from "../../data/mockTickets";
 
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
-const AREA = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Mantenimiento vial", "AREA-SANITATION": "Higiene urbana", "AREA-GREEN": "Espacios verdes", "AREA-TRAFFIC": "Tránsito y movilidad" };
 const CURRENT_AGENT_ID = "AGENT-014";
 const EDITOR_CLASS = "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 const TICKET_TYPE_CONFIG = {
@@ -36,13 +37,15 @@ export default function TicketDetailPage() {
   const [localMessages, setLocalMessages] = useState([]);
   const [fields, setFields] = useState(() => ({
     requestTypeId: ticket?.requestTypeId,
-    responsibleAreaId: ticket?.responsibleAreaId,
+    responsibleAreaId: getResponsibleAreaId(ticket?.requestTypeId),
     assignedAgentId: ticket?.assignedAgentId || "",
     priority: ticket?.currentPriorityFactor,
     affectedCount: ticket?.affectedCount ?? 0,
     tags: ticket ? [MOCK_REQUEST_TYPES_LIST.find((item) => item.id === ticket.requestTypeId)?.code?.toLowerCase()].filter(Boolean) : []
   }));
   const [tagInput, setTagInput] = useState("");
+  const [derivationOpen, setDerivationOpen] = useState(false);
+  const [transitionFields, setTransitionFields] = useState(null);
 
   const data = useMemo(() => {
     if (!ticket) return null;
@@ -67,7 +70,7 @@ export default function TicketDetailPage() {
   const updateRequestType = (requestTypeId) => {
     const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === Number(requestTypeId));
     if (!request || requestTypeLocked) return;
-    setFields((current) => ({ ...current, requestTypeId: request.id, responsibleAreaId: request.responsibleAreaId, priority: request.initialPriority, tags: [request.code.toLowerCase()] }));
+    setFields((current) => ({ ...current, requestTypeId: request.id, responsibleAreaId: getResponsibleAreaId(request.id), priority: request.initialPriority, tags: [request.code.toLowerCase()] }));
   };
   
   const addTag = () => {
@@ -82,6 +85,29 @@ export default function TicketDetailPage() {
     if (!comment.trim()) return;
     setLocalMessages((items) => [...items, { id: `local-${Date.now()}`, text: comment, visibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
     setComment("");
+  };
+
+  const requestTransition = (nextStatus) => {
+    if (status === "IN_REVIEW" && nextStatus === "ROUTED") {
+      setTransitionFields({ ...fields, responsibleAreaId: getResponsibleAreaId(fields.requestTypeId) });
+      setDerivationOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  const confirmDerivation = ({ comment: derivationComment, visibility: derivationVisibility }) => {
+    setFields(transitionFields);
+    if (derivationComment) {
+      setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
+    }
+    setStatus("ROUTED");
+    setDerivationOpen(false);
+  };
+
+  const updateTransitionRequestType = (requestTypeId) => {
+    const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === Number(requestTypeId));
+    setTransitionFields((current) => ({ ...current, requestTypeId: Number(requestTypeId), responsibleAreaId: getResponsibleAreaId(requestTypeId), priority: request?.initialPriority || current.priority }));
   };
 
   if (!ticket) {
@@ -129,7 +155,7 @@ export default function TicketDetailPage() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{ticket.summary}</h1>
           </div>
-        	<StatusTransitionMenu status={status} onChange={setStatus} />
+        	<StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} />
         </div>
       </div>
 
@@ -172,7 +198,7 @@ export default function TicketDetailPage() {
               <Field label="Responsable"><select aria-label="Agente responsable" value={fields.assignedAgentId} onChange={(event) => setFields((current) => ({ ...current, assignedAgentId: event.target.value }))} className={EDITOR_CLASS}><option value="">Sin asignar</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select><button type="button" onClick={() => setFields((current) => ({ ...current, assignedAgentId: CURRENT_AGENT_ID }))} className="mt-1.5 text-[11px] font-semibold text-[#0F2C59] hover:underline">Asignarme a mí</button></Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen || { initials: "AN" }} size="sm" />{ticket.anonymous ? "Anónimo" : data.citizen?.name}</span></Field>
               <Field label="Prioridad"><select aria-label="Prioridad" value={fields.priority} onChange={(event) => setFields((current) => ({ ...current, priority: event.target.value }))} className={EDITOR_CLASS}>{Object.entries(PRIORITY).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
-              <Field label="Área responsable"><select aria-label="Área responsable" value={fields.responsibleAreaId} onChange={(event) => setFields((current) => ({ ...current, responsibleAreaId: event.target.value }))} className={EDITOR_CLASS}>{Object.entries(AREA).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
+              <Field label="Área responsable"><select aria-label="Área responsable" disabled value={fields.responsibleAreaId} className={EDITOR_CLASS}>{Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => <option key={id} value={id}>{id} · {label}</option>)}</select></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
               <Field label="Afectados"><input aria-label="Cantidad de afectados" type="number" min="0" value={fields.affectedCount} onChange={(event) => setFields((current) => ({ ...current, affectedCount: Math.max(0, Number(event.target.value)) }))} className={EDITOR_CLASS} /></Field>
               <Field label="Canal">{ticket.preferredNotificationChannel || "Sin preferencia"}</Field>
@@ -204,6 +230,22 @@ export default function TicketDetailPage() {
           <div className="px-1 py-2 text-[11px] text-slate-500"><div className="flex justify-between py-1"><span>Creado</span><span>{formatDate(ticket.createdAt)}</span></div><div className="flex justify-between py-1"><span>Actualizado</span><span>{formatDate(ticket.updatedAt)}</span></div></div>
         </aside>
       </div>
+      {derivationOpen && transitionFields && <TicketTransitionDialog
+        open={derivationOpen}
+        eyebrow={`Cambio de estado · ${ticket.publicId}`}
+        title="Derivar ticket"
+        description="Revisá los datos antes de enviarlo al área responsable."
+        fields={[
+          { id: "transition-request-type", label: "Tipo de solicitud", value: transitionFields.requestTypeId, onChange: updateTransitionRequestType, options: MOCK_REQUEST_TYPES_LIST.filter((item) => item.active).map((item) => ({ value: item.id, label: item.name })) },
+          { id: "transition-area", label: "Área asignada", value: transitionFields.responsibleAreaId, disabled: true, helpText: "Se asigna según el tipo de solicitud", options: Object.entries(RESPONSIBLE_AREAS).map(([id, name]) => ({ value: id, label: `${id} · ${name}` })) },
+          { id: "transition-agent", label: "Agente asignado", value: transitionFields.assignedAgentId, onChange: (assignedAgentId) => setTransitionFields((current) => ({ ...current, assignedAgentId })), options: [{ value: "", label: "Sin asignar" }, ...agents.map((agent) => ({ value: agent.id, label: agent.name }))] },
+          { id: "transition-priority", label: "Prioridad", value: transitionFields.priority, onChange: (priority) => setTransitionFields((current) => ({ ...current, priority })), options: Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label })) },
+        ]}
+        confirmation={<>Vas a derivar este ticket a <strong>{RESPONSIBLE_AREAS[transitionFields.responsibleAreaId]}</strong>.</>}
+        confirmLabel="Confirmar derivación"
+        onCancel={() => setDerivationOpen(false)}
+        onConfirm={confirmDerivation}
+      />}
     </div>
   );
 }

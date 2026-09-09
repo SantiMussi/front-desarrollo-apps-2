@@ -58,7 +58,7 @@ const STATUS_TONES = {
   CANCELLED: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
-export default function StatusTransitionMenu({ status, onChange, align = "right" }) {
+export default function StatusTransitionMenu({ status, onChange, onTransitionRequest, align = "right" }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = useId();
@@ -81,7 +81,7 @@ export default function StatusTransitionMenu({ status, onChange, align = "right"
   }, [open]);
 
   const selectTransition = (nextStatus) => {
-    onChange?.(nextStatus);
+    if (onTransitionRequest?.(nextStatus) !== false) onChange?.(nextStatus);
     setOpen(false);
   };
 
