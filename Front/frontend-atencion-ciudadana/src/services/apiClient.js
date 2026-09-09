@@ -26,6 +26,7 @@ async function request(endpoint, options = {}) {
     const message = errorBody?.message || errorBody?.error || errorBody?.detail || `Error ${response.status}: ${response.statusText}`;
     const error = new Error(message);
     error.status = response.status;
+    error.code = errorBody?.code || null;
     throw error;
   }
 
@@ -148,4 +149,21 @@ export async function createTicket(payload, attachments = []) {
   }
 
   return response.json();
+}
+
+// POST /api/tickets/{ticketId}/resolution — resolución manual por un agente/admin.
+// Solo para tickets gestionados por M2 (responsibleAreaId === "M2") en estado
+// IN_PROGRESS. body: { type: ResolutionType, publicMessage, internalMessage? }.
+// 201 → { resolutionId, ticketId, status: "RESOLVED", type, publicMessage,
+//         internalMessage, resolvedAt }. Errores: 400, 401, 403 (FORBIDDEN),
+// 404 (NOT_FOUND), 409 (TICKET_RESOLUTION_CONFLICT), 415.
+export async function resolveTicket(ticketId, { type, publicMessage, internalMessage }) {
+  return request(`/tickets/${ticketId}/resolution`, {
+    method: "POST",
+    body: JSON.stringify({
+      type,
+      publicMessage,
+      ...(internalMessage ? { internalMessage } : {}),
+    }),
+  });
 }

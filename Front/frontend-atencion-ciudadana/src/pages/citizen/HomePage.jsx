@@ -167,7 +167,7 @@ export default function HomePage() {
             onSubmit={(e) => {
               e.preventDefault();
               const value = trackingCode.trim();
-              if (value) navigate(`/seguimiento/${encodeURIComponent(value)}`);
+              if (value) navigate(`/seguimiento?codigo=${encodeURIComponent(value)}`);
             }}
             className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3"
           >

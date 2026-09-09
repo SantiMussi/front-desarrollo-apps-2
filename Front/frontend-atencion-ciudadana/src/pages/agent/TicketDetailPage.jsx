@@ -4,8 +4,11 @@ import { ArrowLeft, CircleHelp, Clock3, FileQuestion, Lightbulb, MapPin, Papercl
 import DetailCard from "../../components/ui/DetailCard";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
 import TicketTransitionDialog from "../../components/ui/TicketTransitionForm";
+import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { RESPONSIBLE_AREAS, getResponsibleAreaId } from "../../constants/responsibleAreas";
+import { RESOLUTION_TYPE_LABELS } from "../../constants/resolutionTypes";
+import { useResolveTicket } from "../../hooks/useResolveTicket";
 import {
   MOCK_CITIZENS, MOCK_REQUEST_TYPES_LIST, MOCK_SUBCATEGORIES_LIST, MOCK_CATEGORIES_LIST,
   MOCK_TICKETS, MOCK_TICKET_ACTIVITIES_LIST, MOCK_TICKET_LOCATIONS_LIST, MOCK_TICKET_MESSAGES_LIST,
@@ -46,6 +49,9 @@ export default function TicketDetailPage() {
   const [tagInput, setTagInput] = useState("");
   const [derivationOpen, setDerivationOpen] = useState(false);
   const [transitionFields, setTransitionFields] = useState(null);
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [localActivities, setLocalActivities] = useState([]);
+  const { resolve, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
 
   const data = useMemo(() => {
     if (!ticket) return null;
@@ -93,7 +99,39 @@ export default function TicketDetailPage() {
       setDerivationOpen(true);
       return false;
     }
+    if (nextStatus === "RESOLVED") {
+      resetResolve();
+      setResolveOpen(true);
+      return false; // la resolución se registra vía el diálogo + endpoint
+    }
     return true;
+  };
+
+  // El endpoint de resolución manual solo admite tickets de M2 en IN_PROGRESS.
+  const resolveEligible = status === "IN_PROGRESS" && fields.responsibleAreaId === "M2";
+  const resolveIneligibleReason =
+    fields.responsibleAreaId !== "M2"
+      ? `Este ticket lo gestiona ${RESPONSIBLE_AREAS[fields.responsibleAreaId] || fields.responsibleAreaId}. El pase a Resuelto lo realiza esa área mediante el flujo de integración.`
+      : "El ticket debe estar En gestión para poder registrar su resolución manual.";
+
+  const handleResolveConfirm = async ({ type, publicMessage, internalMessage, source }) => {
+    const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
+    if (!result) return; // el diálogo muestra el error
+    setStatus("RESOLVED");
+    const when = result.resolvedAt || new Date().toISOString();
+    setLocalActivities((items) => [
+      ...items,
+      {
+        id: `resolution-${Date.now()}`,
+        message: `Resuelto — ${RESOLUTION_TYPE_LABELS[type] || type}${source === "simulator" ? " · respuesta simulada del área" : ""}.`,
+        occurredAt: when,
+      },
+    ]);
+    setLocalMessages((items) => [
+      ...items,
+      { id: `resolution-msg-${Date.now()}`, text: publicMessage, visibility: "PUBLIC", createdAt: when, authorType: "AGENT" },
+    ]);
+    setResolveOpen(false);
   };
 
   const confirmDerivation = ({ comment: derivationComment, visibility: derivationVisibility }) => {
@@ -186,7 +224,7 @@ export default function TicketDetailPage() {
                 <div className="mt-7 space-y-6">{[...data.messages, ...localMessages].map((message) => { const author = message.authorType === "AGENT" ? (data.assignee || { name: "Carlos Gómez", initials: "CG" }) : data.citizen; return <article key={message.id} className="flex gap-3"><UserAvatar user={author} /><div><div className="flex flex-wrap items-center gap-2"><strong className="text-xs">{author?.name || "Equipo municipal"}</strong><span className="text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>{message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}</div><p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p></div></article>; })}
                   {!data.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
                 </div>
-              </> : <div className="mt-5 space-y-4">{data.activities.map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
+              </> : <div className="mt-5 space-y-4">{[...data.activities, ...localActivities].map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
             </section>
           </div>
         </main>
@@ -246,6 +284,17 @@ export default function TicketDetailPage() {
         onCancel={() => setDerivationOpen(false)}
         onConfirm={confirmDerivation}
       />}
+      {resolveOpen && (
+        <ResolveTicketDialog
+          ticketPublicId={ticket.publicId}
+          eligible={resolveEligible}
+          ineligibleReason={resolveIneligibleReason}
+          loading={resolving}
+          error={resolveError}
+          onCancel={() => setResolveOpen(false)}
+          onConfirm={handleResolveConfirm}
+        />
+      )}
     </div>
   );
 }

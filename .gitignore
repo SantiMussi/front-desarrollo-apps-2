@@ -1,0 +1,5 @@
+# Herramientas locales / editores
+.claude/
+.idea/
+.vscode/
+.DS_Store

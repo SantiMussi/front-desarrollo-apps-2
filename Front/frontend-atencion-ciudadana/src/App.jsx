@@ -11,7 +11,6 @@ import TicketDetailPage from "./pages/agent/TicketDetailPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
-import PublicTicketDetailPage from "./pages/citizen/PublicTicketDetailPage";
 import MisReclamosPage from "./pages/citizen/MisReclamosPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -37,7 +36,6 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/portal-ayuda" element={<HelpPortalPage />} />
           <Route path="/seguimiento" element={<TrackingPage />} />
-          <Route path="/seguimiento/:codigo" element={<PublicTicketDetailPage />} />
 
           {/* Rutas del ciudadano que requieren sesión */}
           <Route element={<ProtectedRoute />}>

@@ -522,7 +522,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         >
           <button
             type="button"
-            onClick={() => navigate(`/seguimiento/${encodeURIComponent(trackingCode)}`)}
+            onClick={() => navigate(`/seguimiento?codigo=${encodeURIComponent(trackingCode)}`)}
             className="group flex justify-center items-center gap-2 rounded-xl bg-[#0F2C59] px-6 py-3.5 text-[14px] font-semibold text-white
                        transition-all duration-300 hover:bg-[#1a3f7a] shadow-sm hover:shadow-md active:scale-95"
           >
