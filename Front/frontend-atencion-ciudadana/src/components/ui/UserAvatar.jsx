@@ -1,7 +1,9 @@
 export default function UserAvatar({ user, size = "md" }) {
   const sizes = size === "sm" ? "h-6 w-6 text-[9px]" : "h-8 w-8 text-[11px]";
-  const name = user?.firstName || user?.nombre || user?.name || "";
-  const surname = user?.lastName || user?.apellido || "";
+  const fromDisplayName = (user?.displayName || "").trim().split(/\s+/);
+  const name = user?.firstName || user?.nombre || user?.name || fromDisplayName[0] || "";
+  const surname =
+    user?.lastName || user?.apellido || fromDisplayName.slice(1).join(" ") || "";
   const initials = `${name.charAt(0)}${surname.charAt(0)}`.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?";
   const avatar = user?.avatar || user?.avatarUrl || user?.picture;
   if (avatar) return <img src={avatar} alt={`Avatar de ${name}`} className={`${sizes} shrink-0 rounded-full object-cover`} />;

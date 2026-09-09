@@ -163,7 +163,14 @@ export default function HomePage() {
       <div className="flex-1 bg-[#fafafa]">
         {/* Tracking strip */}
         <section className="border-b border-neutral-200/60 bg-white">
-          <div className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = trackingCode.trim();
+              if (value) navigate(`/seguimiento/${encodeURIComponent(value)}`);
+            }}
+            className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3"
+          >
             <div className="flex items-center gap-2.5 text-[13px] text-neutral-500 shrink-0">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#D63031]/5">
                 <ClipboardList className="h-3.5 w-3.5 text-[#D63031]" strokeWidth={1.5} />
@@ -180,7 +187,7 @@ export default function HomePage() {
                             transition-colors focus:border-[#D63031]/30 focus:bg-white focus:ring-1 focus:ring-[#D63031]/10"
               />
               <button
-                type="button"
+                type="submit"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-4 py-1.5 text-[13px] font-medium text-white
                             transition-all duration-200 hover:bg-[#1a3f7a]
                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F2C59] focus-visible:ring-offset-2"
@@ -189,7 +196,7 @@ export default function HomePage() {
                 <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
               </button>
             </div>
-          </div>
+          </form>
         </section>
 
         {/* Categories */}

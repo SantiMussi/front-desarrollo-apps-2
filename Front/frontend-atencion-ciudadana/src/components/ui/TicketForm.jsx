@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield } from "lucide-react";
+import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import FormField from "./FormField";
 import LocationMap from "./LocationMap";
 import Spinner from "./Spinner";
 import Alert from "./Alert";
+import LoginPromptModal from "./LoginPromptModal";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
+import { useAuth } from "../../context/AuthContext";
 import { fetchRequestTypeForm } from "../../services/apiClient";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -111,7 +113,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const navigate = useNavigate();
   const { submit, loading, error, errorCode, trackingCode, reset, setError, setErrorCode } = useCreateTicket();
   const { neighborhoods } = useNeighborhoods();
+  const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   const [specificFields, setSpecificFields] = useState(
     normalizeSpecificFields(requestType.specificFields || [])
@@ -265,15 +269,9 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const errors = validateForm(formData, specificFields);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-
+  // Arma el payload y lo envía. No valida ni chequea auth: eso lo hace
+  // handleSubmit antes de llamar acá (o el efecto de reanudar-tras-login).
+  const submitTicket = useCallback(async () => {
     // El backend valida cada campo por tipo (FormValidationService):
     // BOOLEAN debe ser booleano real, NUMBER numérico, y los campos
     // opcionales vacíos no deben viajar en el payload.
@@ -332,6 +330,25 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     console.log("[TicketForm] Archivos adjuntos:", attachments);
 
     await submit(payload, attachments);
+  }, [formData, specificFields, neighborhoods, requestType, attachments, submit]);
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+
+    const errors = validateForm(formData, specificFields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    // No se puede crear un reclamo sin sesión: abrimos el modal de login.
+    // El formulario no se desmonta, así que lo cargado se conserva.
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true);
+      return;
+    }
+
+    await submitTicket();
   };
 
   const handleCopyCode = () => {
@@ -505,12 +522,21 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         >
           <button
             type="button"
+            onClick={() => navigate(`/seguimiento/${encodeURIComponent(trackingCode)}`)}
+            className="group flex justify-center items-center gap-2 rounded-xl bg-[#0F2C59] px-6 py-3.5 text-[14px] font-semibold text-white
+                       transition-all duration-300 hover:bg-[#1a3f7a] shadow-sm hover:shadow-md active:scale-95"
+          >
+            <Search className="h-4 w-4" />
+            Ver estado del reclamo
+          </button>
+          <button
+            type="button"
             onClick={() => {
               reset();
               onNewTicket();
             }}
-            className="group flex justify-center items-center gap-2 rounded-xl bg-[#0F2C59] px-6 py-3.5 text-[14px] font-semibold text-white
-                       transition-all duration-300 hover:bg-[#1a3f7a] shadow-sm hover:shadow-md active:scale-95"
+            className="group flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-neutral-600
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
           >
             <RotateCcw className="h-4 w-4 transition-transform group-hover:-rotate-180 duration-500" />
             Nuevo reclamo
@@ -530,6 +556,18 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   }
 
   return (
+    <>
+    <LoginPromptModal
+      isOpen={loginPromptOpen}
+      onClose={() => setLoginPromptOpen(false)}
+      onAuthenticated={() => {
+        // El token ya quedó en localStorage (storeToken corre dentro de login),
+        // así que createTicket lo va a mandar en el header aunque el estado de
+        // isAuthenticated todavía no se haya propagado en este tick.
+        setLoginPromptOpen(false);
+        submitTicket();
+      }}
+    />
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <Alert
@@ -781,5 +819,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         </button>
       </div>
     </form>
+    </>
   );
 }

@@ -71,6 +71,27 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
+// GET /api/tickets/mine — reclamos del ciudadano autenticado.
+// Todavía NO existe en el back. Se espera una lista con, al menos:
+// { publicId, currentStatus, summary, description, createdAt, statusChangedAt,
+//   requestType {name}, category {name}, subcategory {name} }
+// Mientras responda 404, `useMyTickets` cae a datos de ejemplo.
+export async function fetchMyTickets() {
+  return request("/tickets/mine");
+}
+
+// POST /api/tracking/access — consulta pública por código de seguimiento.
+// No requiere auth. Devuelve solo datos públicos del ticket (TrackingTicketResponse):
+// { publicId, currentStatus, summary, createdAt, statusChangedAt,
+//   firstResponseDueAt, resolutionDueAt, requestType, category, subcategory }
+// 404 si el código no existe; 400 si viene vacío.
+export async function trackTicket(trackingCode) {
+  return request("/tracking/access", {
+    method: "POST",
+    body: JSON.stringify({ trackingCode }),
+  });
+}
+
 // GET /api/catalog/neighborhoods
 // Se espera una lista de barrios con su UUID real de la tabla `neighborhood`:
 //   [{ id: "uuid", name: "Palermo" }, ...]

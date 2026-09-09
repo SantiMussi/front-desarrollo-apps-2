@@ -10,7 +10,9 @@ import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
 import TicketDetailPage from "./pages/agent/TicketDetailPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
-// eslint-disable-next-line no-unused-vars
+import TrackingPage from "./pages/citizen/TrackingPage";
+import PublicTicketDetailPage from "./pages/citizen/PublicTicketDetailPage";
+import MisReclamosPage from "./pages/citizen/MisReclamosPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function CitizenLayout() {
@@ -34,6 +36,22 @@ export default function App() {
         <Route element={<CitizenLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/portal-ayuda" element={<HelpPortalPage />} />
+          <Route path="/seguimiento" element={<TrackingPage />} />
+          <Route path="/seguimiento/:codigo" element={<PublicTicketDetailPage />} />
+
+          {/* Rutas del ciudadano que requieren sesión */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/mis-reclamos" element={<MisReclamosPage />} />
+            <Route
+              path="/mis-reclamos/:publicId"
+              element={<div className="mx-auto max-w-3xl p-10 text-neutral-500">Detalle del reclamo — próximamente</div>}
+            />
+            {/* TODO: reemplazar por la página real */}
+            <Route
+              path="/cuenta"
+              element={<div className="mx-auto max-w-3xl p-10 text-neutral-500">Cuenta — próximamente</div>}
+            />
+          </Route>
         </Route>
 
         <Route path="/ingresar" element={<LoginPage />} />

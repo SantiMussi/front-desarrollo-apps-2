@@ -1,5 +1,13 @@
 import { Phone, Mail, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
+
+const TRAMITE_LINKS = [
+	{ label: "Iniciar Reclamo", to: "/portal-ayuda" },
+	{ label: "Consultar Ticket", to: "/seguimiento" },
+	{ label: "Habilitaciones", to: null },
+	{ label: "Turnos Online", to: null },
+];
 
 function Footer({areaName, areaEmail}){
     return(
@@ -41,15 +49,17 @@ function Footer({areaName, areaEmail}){
 										Trámites
 									</p>
 									<ul className="flex flex-col gap-2">
-										{["Iniciar Reclamo", "Consultar Ticket", "Habilitaciones", "Turnos Online"].map(
-											(label) => (
-												<li key={label}>
-													<a href="#" className="link-hover text-[12px] text-neutral-500 hover:text-[#0F2C59] transition-colors">
+										{TRAMITE_LINKS.map(({ label, to }) => (
+											<li key={label}>
+												{to ? (
+													<Link to={to} className="link-hover text-[12px] text-neutral-500 hover:text-[#0F2C59] transition-colors">
 														{label}
-													</a>
-												</li>
-											)
-										)}
+													</Link>
+												) : (
+													<span className="text-[12px] text-neutral-300">{label}</span>
+												)}
+											</li>
+										))}
 									</ul>
 								</div>
 							</div>
