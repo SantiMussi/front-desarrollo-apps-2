@@ -64,7 +64,7 @@ export default function TicketDetailPage() {
   }, [ticket, fields.requestTypeId, fields.assignedAgentId]);
 
   const agents = useMemo(() => MOCK_USERS_LIST.filter((user) => user.active && user.role === "AGENT"), []);
-  const requestTypeLocked = status !== "REGISTERED";
+  const requestTypeLocked = status !== "REGISTERED" && status !== "IN_REVIEW";
   const tags = fields.tags;
   
   const updateRequestType = (requestTypeId) => {
@@ -194,7 +194,7 @@ export default function TicketDetailPage() {
         <aside className="bg-slate-50/60 px-3 py-6 space-y-4">
           <DetailCard title="Detalles">
             <dl className="divide-y divide-slate-100">
-              <Field label="Tipo de solicitud"><select aria-label="Tipo de solicitud" disabled={requestTypeLocked} value={fields.requestTypeId} onChange={(event) => updateRequestType(event.target.value)} className={EDITOR_CLASS}>{MOCK_REQUEST_TYPES_LIST.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{requestTypeLocked && <span className="mt-1.5 block text-[10px] font-normal leading-4 text-amber-700">No se puede modificar desde En revisión.</span>}</Field>
+              <Field label="Tipo de solicitud"><select aria-label="Tipo de solicitud" disabled={requestTypeLocked} value={fields.requestTypeId} onChange={(event) => updateRequestType(event.target.value)} className={EDITOR_CLASS}>{MOCK_REQUEST_TYPES_LIST.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{requestTypeLocked && <span className="mt-1.5 block text-[10px] font-normal leading-4 text-amber-700">No se puede modificar después de estar En revisión.</span>}</Field>
               <Field label="Responsable"><select aria-label="Agente responsable" value={fields.assignedAgentId} onChange={(event) => setFields((current) => ({ ...current, assignedAgentId: event.target.value }))} className={EDITOR_CLASS}><option value="">Sin asignar</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select><button type="button" onClick={() => setFields((current) => ({ ...current, assignedAgentId: CURRENT_AGENT_ID }))} className="mt-1.5 text-[11px] font-semibold text-[#0F2C59] hover:underline">Asignarme a mí</button></Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen || { initials: "AN" }} size="sm" />{ticket.anonymous ? "Anónimo" : data.citizen?.name}</span></Field>
               <Field label="Prioridad"><select aria-label="Prioridad" value={fields.priority} onChange={(event) => setFields((current) => ({ ...current, priority: event.target.value }))} className={EDITOR_CLASS}>{Object.entries(PRIORITY).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
