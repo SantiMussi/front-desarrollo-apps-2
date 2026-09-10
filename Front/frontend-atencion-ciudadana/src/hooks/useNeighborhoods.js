@@ -5,7 +5,6 @@ import { fetchNeighborhoods } from "../services/apiClient";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Normaliza cualquier forma de respuesta a [{ id, name }] ordenado por nombre.
 function normalize(raw) {
   const arr = Array.isArray(raw)
     ? raw
@@ -28,17 +27,6 @@ function normalize(raw) {
 
 const MOCK_LIST = normalize(NEIGHBORHOODS);
 
-/**
- * Lista de barrios para el selector y el matching con el mapa.
- *
- * Intenta traerlos del back (`GET /api/catalog/neighborhoods`, con UUID real).
- * Si el endpoint todavía no existe o falla, usa el listado local para no
- * romper la UI. Cuando el back esté listo, no hay que tocar nada más: el
- * selector pasa a usar UUIDs y el payload de creación de ticket ya los manda.
- *
- * @returns {{ neighborhoods: {id:string,name:string}[], loading: boolean,
- *            source: "backend" | "mock", isRemote: boolean, error: string | null }}
- */
 export function useNeighborhoods() {
   const [neighborhoods, setNeighborhoods] = useState(MOCK_LIST);
   const [loading, setLoading] = useState(true);
@@ -53,7 +41,6 @@ export function useNeighborhoods() {
       setError(null);
       try {
         const list = normalize(await fetchNeighborhoods());
-        // Solo lo consideramos "backend" si vino algo y con UUIDs reales.
         const looksReal = list.length > 0 && list.every((n) => UUID_RE.test(n.id));
         if (cancelled) return;
         if (looksReal) {
@@ -65,7 +52,6 @@ export function useNeighborhoods() {
         }
       } catch (err) {
         if (cancelled) return;
-        // 404 esperado mientras el endpoint no exista → fallback silencioso.
         setNeighborhoods(MOCK_LIST);
         setSource("mock");
         setError(err?.message ?? null);

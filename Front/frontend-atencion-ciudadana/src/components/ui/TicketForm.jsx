@@ -14,6 +14,8 @@ import { fetchRequestTypeForm } from "../../services/apiClient";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const UNKNOWN_VALUE = "__UNKNOWN__";
+
 const normalizeText = (s) =>
   String(s ?? "")
     .toLowerCase()
@@ -47,7 +49,13 @@ function validateForm(formData, specificFields) {
 
   if (Array.isArray(specificFields)) {
     specificFields.forEach((field) => {
-      if (field.required && !formData.specificData[field.key]) {
+      if (!field.required) return;
+      const value = formData.specificData[field.key];
+      if (field.allowUnknown) {
+        if (value === undefined || value === null || value === "") {
+          errors[`specific_${field.key}`] = `Respondé "${field.label}" o marcá "No sé / Prefiero no responder"`;
+        }
+      } else if (!value) {
         errors[`specific_${field.key}`] = `${field.label} es obligatorio`;
       }
     });
@@ -56,16 +64,13 @@ function validateForm(formData, specificFields) {
   return errors;
 }
 
-// El backend (GET /catalog/request-types/{id}/form) devuelve cada campo con
-// `type` en MAYÚSCULAS y con `options` / `placeholder` dentro de `config`.
-// FormField espera el `type` en minúscula y `options` / `placeholder` planos.
 const API_TYPE_MAP = {
   TEXT: "text",
   TEXTAREA: "textarea",
   SELECT: "select",
   NUMBER: "number",
   DATE: "date",
-  BOOLEAN: "boolean", // control Sí / No
+  BOOLEAN: "boolean",
 };
 
 function normalizeSpecificFields(fields) {
@@ -104,6 +109,7 @@ function normalizeSpecificFields(fields) {
       placeholder: field.placeholder ?? field.config?.placeholder ?? "",
       options: field.options ?? field.config?.options ?? [],
       required: Boolean(field.required),
+      allowUnknown: Boolean(field.allowUnknown),
       displayOrder: field.displayOrder ?? index,
     };
   });
@@ -121,14 +127,17 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     normalizeSpecificFields(requestType.specificFields || [])
   );
   const [loadingFields, setLoadingFields] = useState(false);
+  const [fieldsError, setFieldsError] = useState(false);
+  const [fieldsReloadKey, setFieldsReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function loadFields() {
       setLoadingFields(true);
+      setFieldsError(false);
       try {
         const res = await fetchRequestTypeForm(requestType.code || requestType.id);
-        let arr = [];
+        let arr = null;
         if (Array.isArray(res)) {
           arr = res;
         } else if (res && Array.isArray(res.fields)) {
@@ -136,9 +145,20 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         } else if (res && Array.isArray(res.data)) {
           arr = res.data;
         }
-        if (!cancelled) setSpecificFields(normalizeSpecificFields(arr));
+        if (cancelled) return;
+        if (arr === null) {
+          setFieldsError(true);
+        } else {
+          setSpecificFields(normalizeSpecificFields(arr));
+        }
       } catch (err) {
-        console.error("Error loading specific fields:", err);
+        if (cancelled) return;
+        if (err?.status === 404) {
+          setSpecificFields([]);
+        } else {
+          console.error("Error loading specific fields:", err);
+          setFieldsError(true);
+        }
       } finally {
         if (!cancelled) setLoadingFields(false);
       }
@@ -147,14 +167,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       loadFields();
     }
     return () => { cancelled = true; };
-  }, [requestType]);
+  }, [requestType, fieldsReloadKey]);
 
   const [formData, setFormData] = useState({
     summary: "",
     description: "",
     address: "",
     streetNumber: "",
-    addressSource: null, // "input" when typed, "map" when set from map
+    addressSource: null,
     neighborhoodId: "",
     latitude: null,
     longitude: null,
@@ -165,7 +185,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const [fieldErrors, setFieldErrors] = useState({});
   const [attachments, setAttachments] = useState([]);
 
-  // Notificar al padre cuando el formulario tiene datos
   useEffect(() => {
     if (!onDirtyChange) return;
     const isDirty =
@@ -183,8 +202,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      // When the user manually edits the street or house number, mark source as
-      // "input" and clear coordinates so the map will forward-geocode via debounce
       ...(name === "address" || name === "streetNumber"
         ? { addressSource: "input", latitude: null, longitude: null }
         : {}),
@@ -202,13 +219,20 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  // Called when the user clicks/drags on the map (source="map")
-  // or when forward geocode completes from typing (source="geocode")
+  const handleUnknownToggle = (fieldKey, checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      specificData: {
+        ...prev.specificData,
+        [fieldKey]: checked ? UNKNOWN_VALUE : "",
+      },
+    }));
+    setFieldErrors((prev) => ({ ...prev, [`specific_${fieldKey}`]: undefined }));
+  };
+
+  const handleReloadFields = () => setFieldsReloadKey((k) => k + 1);
+
   const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, neighborhoods: geoNeighborhoods, source }) => {
-    // Matchea los barrios candidatos que devuelve el geocoder (por nombre)
-    // contra la lista real de barrios. Funciona igual con el mock o con los
-    // datos del back: el match es por nombre y devuelve el id (UUID cuando
-    // el back este listo).
     let matchedNeighborhoodId = undefined;
     if (geoNeighborhoods && geoNeighborhoods.length > 0) {
       for (const nb of geoNeighborhoods) {
@@ -229,9 +253,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       ...prev,
       latitude: lat,
       longitude: lng,
-      // "map" → user clicked/dragged: the map is the source of truth for the
-      // location, so set street ("Calle") and house number ("Altura") separately.
-      // "geocode" → forward geocode result, DON'T overwrite the typed address.
       addressSource: source === "map" ? "map" : "geocode",
       ...(source === "map"
         ? {
@@ -269,16 +290,17 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Arma el payload y lo envía. No valida ni chequea auth: eso lo hace
-  // handleSubmit antes de llamar acá (o el efecto de reanudar-tras-login).
   const submitTicket = useCallback(async () => {
-    // El backend valida cada campo por tipo (FormValidationService):
-    // BOOLEAN debe ser booleano real, NUMBER numérico, y los campos
-    // opcionales vacíos no deben viajar en el payload.
     const mappedFormData = {};
     Object.entries(formData.specificData || {}).forEach(([key, rawValue]) => {
       const field = specificFields.find((f) => f.key === key);
       if (!field) return;
+
+      if (rawValue === UNKNOWN_VALUE) {
+        if (field.allowUnknown) mappedFormData[field.code] = null;
+        return;
+      }
+
       if (rawValue === "" || rawValue === null || rawValue === undefined) return;
 
       let value = rawValue;
@@ -291,11 +313,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       mappedFormData[field.code] = value;
     });
 
-    // El back espera `neighborhoodId` como UUID de la tabla `neighborhood`.
-    // Si el selector ya trabaja con barrios del back (ids UUID), se manda tal
-    // cual. Mientras se use el listado local (ids tipo "PALERMO"), el campo va
-    // `null` (es opcional) y el nombre del barrio queda como referencia para no
-    // perder el dato. Al poblar la tabla + endpoint no hay que tocar nada acá.
     const selectedNeighborhoodId = formData.neighborhoodId ?? "";
     const neighborhoodId = UUID_RE.test(selectedNeighborhoodId) ? selectedNeighborhoodId : null;
     const selectedNeighborhoodName = neighborhoods.find(
@@ -326,14 +343,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       }
     };
 
-    console.log("[TicketForm] Payload a enviar al backend:", JSON.stringify(payload, null, 2));
-    console.log("[TicketForm] Archivos adjuntos:", attachments);
-
     await submit(payload, attachments);
   }, [formData, specificFields, neighborhoods, requestType, attachments, submit]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
+
+    if (loadingFields || fieldsError) return;
 
     const errors = validateForm(formData, specificFields);
     if (Object.keys(errors).length > 0) {
@@ -341,8 +357,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       return;
     }
 
-    // No se puede crear un reclamo sin sesión: abrimos el modal de login.
-    // El formulario no se desmonta, así que lo cargado se conserva.
     if (!isAuthenticated) {
       setLoginPromptOpen(true);
       return;
@@ -361,8 +375,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     handleSubmit({ preventDefault: () => { } });
   };
 
-  // Cuando el formulario se envió exitosamente, avisar al padre que ya no está "dirty"
-  // para que el modal de confirmación no aparezca al navegar hacia atrás.
   useEffect(() => {
     if (trackingCode && onDirtyChange) {
       onDirtyChange(false);
@@ -377,7 +389,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     }
   }, [trackingCode, error, onStatusChange]);
 
-  const isSubmitDisabled = loading || loadingFields ||
+  const isSubmitDisabled = loading || loadingFields || fieldsError ||
     !formData.latitude ||
     !formData.longitude ||
     Object.keys(validateForm(formData, specificFields)).length > 0;
@@ -440,7 +452,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
             Guardar como borrador
           </button>
         </div>
-        
+
         <button className="mt-6 flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 font-medium transition-colors">
             <Shield className="h-4 w-4" />
             Ver políticas de seguridad y riesgo
@@ -561,9 +573,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       isOpen={loginPromptOpen}
       onClose={() => setLoginPromptOpen(false)}
       onAuthenticated={() => {
-        // El token ya quedó en localStorage (storeToken corre dentro de login),
-        // así que createTicket lo va a mandar en el header aunque el estado de
-        // isAuthenticated todavía no se haya propagado en este tick.
         setLoginPromptOpen(false);
         submitTicket();
       }}
@@ -594,7 +603,6 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <p className="text-[12px] text-neutral-500 mt-0.5">{requestType.description}</p>
       </div>
 
-      {/* Toggle anónimo */}
       <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3.5">
         <div className="flex items-center gap-2.5">
           <EyeOff className="h-4 w-4 text-neutral-400" strokeWidth={1.5} />
@@ -710,6 +718,29 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <div className="py-6 flex justify-center">
           <Spinner size="sm" />
         </div>
+      ) : fieldsError ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-px w-4 bg-[#D63031]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+              Datos específicos
+            </span>
+          </div>
+          <Alert variant="error" title="No se pudieron cargar los campos del formulario">
+            <p>
+              Necesitamos estos datos para procesar tu solicitud. Revisá tu conexión
+              e intentá nuevamente antes de enviar.
+            </p>
+            <button
+              type="button"
+              onClick={handleReloadFields}
+              className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-red-700 hover:text-red-900 underline underline-offset-2"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reintentar
+            </button>
+          </Alert>
+        </div>
       ) : specificFields.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-1">
@@ -718,21 +749,37 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
               Datos específicos
             </span>
           </div>
-          {specificFields.map((field) => (
-            <FormField
-              key={field.key}
-              label={field.label}
-              name={`specific_${field.key}`}
-              type={field.type}
-              placeholder={field.placeholder}
-              options={field.options || []}
-              value={formData.specificData[field.key] || ""}
-              onChange={handleSpecificChange}
-              error={fieldErrors[`specific_${field.key}`]}
-              required={field.required}
-              disabled={loading}
-            />
-          ))}
+          {specificFields.map((field) => {
+            const isUnknown = formData.specificData[field.key] === UNKNOWN_VALUE;
+            return (
+              <div key={field.key} className="space-y-1.5">
+                <FormField
+                  label={field.label}
+                  name={`specific_${field.key}`}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  options={field.options || []}
+                  value={isUnknown ? "" : (formData.specificData[field.key] || "")}
+                  onChange={handleSpecificChange}
+                  error={fieldErrors[`specific_${field.key}`]}
+                  required={field.required && !field.allowUnknown}
+                  disabled={loading || isUnknown}
+                />
+                {field.allowUnknown && (
+                  <label className="flex items-center gap-2 text-[12px] text-neutral-500 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isUnknown}
+                      disabled={loading}
+                      onChange={(e) => handleUnknownToggle(field.key, e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-neutral-300 text-[#D63031] focus:ring-[#D63031]/20"
+                    />
+                    No sé / Prefiero no responder
+                  </label>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -746,7 +793,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         </div>
 
         <label
-          className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-neutral-200 bg-neutral-50 
+          className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-neutral-200 bg-neutral-50
                       px-4 py-6 text-[13px] text-neutral-400 transition-colors hover:border-[#D63031]/30 hover:text-[#D63031]/70
                       ${loading ? "pointer-events-none opacity-50" : ""}`}
         >

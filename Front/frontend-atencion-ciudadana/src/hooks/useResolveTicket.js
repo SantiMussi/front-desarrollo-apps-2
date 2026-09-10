@@ -21,10 +21,6 @@ function messageForError(err) {
   return err?.message || "No pudimos registrar la resolución. Intentá de nuevo.";
 }
 
-/**
- * Registra la resolución manual de un ticket (POST /api/tickets/{id}/resolution).
- * @returns {{ resolve, loading, error, errorCode, resolution, reset }}
- */
 export function useResolveTicket() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

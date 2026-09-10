@@ -10,7 +10,6 @@ export const TICKET_STATUS_LABELS = {
   CANCELLED: "Cancelado",
 };
 
-// Paleta por estado, reutilizada en la vista del vecino (chips, puntos, barras).
 export const STATUS_TONES = {
   blue: { dot: "bg-blue-500", pill: "bg-blue-50 text-blue-700", bar: "bg-blue-400" },
   amber: { dot: "bg-amber-500", pill: "bg-amber-50 text-amber-700", bar: "bg-amber-400" },
@@ -33,9 +32,7 @@ export const STATUS_TONE_BY_STATUS = {
 export const statusTone = (status) =>
   STATUS_TONES[STATUS_TONE_BY_STATUS[status] ?? "gray"];
 
-// Estados terminales: no admiten confirmación / reapertura ni chat abierto.
 export const TERMINAL_STATUSES = new Set(["CLOSED", "CANCELLED", "DUPLICATE"]);
 
-// Transiciones de la instancia de confirmación de resolución (vista vecino).
-export const CONFIRM_TARGET_STATUS = "CLOSED"; // al confirmar la solución
-export const REOPEN_TARGET_STATUS = "IN_PROGRESS"; // al reabrir para retomar tratamiento
+export const CONFIRM_TARGET_STATUS = "CLOSED";
+export const REOPEN_TARGET_STATUS = "IN_PROGRESS";

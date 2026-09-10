@@ -7,14 +7,11 @@ import {
 } from "../services/apiClient";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
 
-// Placeholder de foto (data URI) — se reemplaza por attachment.url cuando el back lo provea.
 const photo = (label, from, to) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="480" height="360" fill="url(#g)"/><text x="50%" y="52%" font-family="system-ui,Arial" font-size="22" fill="#ffffffcc" text-anchor="middle">${label}</text></svg>`
   )}`;
 
-// ── Datos de ejemplo (mientras no existe GET /api/tickets/mine/{publicId}) ──
-// La forma imita la respuesta esperada del back para que conectar sea directo.
 const SAMPLE_DETAILS = {
   "OP-0000012298": {
     publicId: "OP-0000012298",
@@ -171,14 +168,6 @@ function normalize(raw, publicId) {
 
 const isBackendMissing = (err) => [401, 403, 404].includes(err?.status);
 
-/**
- * Detalle del reclamo del vecino + acciones de confirmación / reapertura.
- *
- * Mientras el back no exponga los endpoints, usa datos de ejemplo y aplica las
- * transiciones localmente (optimista) para poder demostrar el flujo. Cuando el
- * back esté listo, las acciones ya llaman al endpoint correcto y solo hay que
- * quitar los fallbacks locales.
- */
 export function useMyTicketDetail(publicId) {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -215,20 +204,19 @@ export function useMyTicketDetail(publicId) {
     };
   }, [load]);
 
-  // Aplica una transición al estado local + agrega entrada al historial.
   const applyLocalTransition = useCallback((newStatus, actionType, message) => {
     const now = new Date().toISOString();
     setTicket((prev) =>
       prev
         ? {
-            ...prev,
-            currentStatus: newStatus,
-            statusChangedAt: now,
-            history: [
-              ...prev.history,
-              { id: `local-${Date.now()}`, actionType, newStatus, message, occurredAt: now },
-            ],
-          }
+          ...prev,
+          currentStatus: newStatus,
+          statusChangedAt: now,
+          history: [
+            ...prev.history,
+            { id: `local-${Date.now()}`, actionType, newStatus, message, occurredAt: now },
+          ],
+        }
         : prev
     );
   }, []);
@@ -288,7 +276,6 @@ export function useMyTicketDetail(publicId) {
       try {
         await rateTicketAttention(publicId, stars);
       } catch {
-        /* nice-to-have: si falla, la calificación local igual queda */
       }
     },
     [publicId]

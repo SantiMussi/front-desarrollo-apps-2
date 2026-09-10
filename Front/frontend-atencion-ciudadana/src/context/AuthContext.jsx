@@ -57,9 +57,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!getStoredToken()) return;
-    // Revalidate the persisted session once when the provider mounts.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshUser().catch(() => {}).finally(() => setIsLoading(false));
+    refreshUser().catch(() => { }).finally(() => setIsLoading(false));
   }, [refreshUser]);
 
   const authenticate = useCallback(async (credentials) => {
@@ -86,8 +84,6 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// This small module intentionally colocates the provider and its hook.
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth debe utilizarse dentro de AuthProvider");

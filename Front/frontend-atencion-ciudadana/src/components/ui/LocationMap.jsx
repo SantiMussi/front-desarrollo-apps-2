@@ -4,7 +4,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Search, Loader2 } from "lucide-react";
 
-// Fix default marker icon issue with bundlers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -12,7 +11,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// Custom red marker icon to match the app theme
 const redIcon = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
@@ -22,11 +20,9 @@ const redIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// CABA bounds to restrict the map view
 const CABA_CENTER = [-34.6118, -58.4173];
 const CABA_ZOOM = 12;
 
-// Reverse geocode using Nominatim
 async function reverseGeocode(lat, lng) {
   try {
     const res = await fetch(
@@ -39,7 +35,6 @@ async function reverseGeocode(lat, lng) {
     if (!res.ok) throw new Error("Network response was not ok");
     const data = await res.json();
     if (data && data.display_name) {
-      // Build a clean address from parts — street and house number kept separate
       const addr = data.address || {};
       const street = addr.road || "";
       const streetNumber = addr.house_number || "";
@@ -67,7 +62,6 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
-// Forward geocode using Nominatim (search address → coordinates)
 async function forwardGeocode(address, signal) {
   try {
     const query = encodeURIComponent(`${address}, Buenos Aires, Argentina`);
@@ -104,7 +98,6 @@ async function forwardGeocode(address, signal) {
   }
 }
 
-// Inner component to handle map click events
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -114,7 +107,6 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
-// Inner component to recenter the map when position changes externally
 function RecenterMap({ position }) {
   const map = useMap();
   useEffect(() => {
@@ -129,15 +121,12 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
   const [geocoding, setGeocoding] = useState(false);
   const markerRef = useRef(null);
   const abortRef = useRef(null);
-  
-  // Use exact coordinates provided by parent as the truth
+
   const markerPos = latitude && longitude ? [latitude, longitude] : null;
 
-  // Handle click on map
   const handleMapClick = useCallback(
     async (latlng) => {
       if (disabled) return;
-      // Cancel any in-flight forward geocode — map click takes priority
       if (abortRef.current) {
         abortRef.current.abort();
         abortRef.current = null;
@@ -146,7 +135,6 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
       setGeocoding(true);
 
       try {
-        // Reverse geocode to get address
         const { address: addr, street, streetNumber, neighborhoods } = await reverseGeocode(lat, lng);
         onLocationSelect({ lat, lng, address: addr, street, streetNumber, neighborhoods, source: "map" });
       } finally {
@@ -156,11 +144,9 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
     [disabled, onLocationSelect]
   );
 
-  // Handle marker drag
   const handleMarkerDragEnd = useCallback(async () => {
     const marker = markerRef.current;
     if (!marker) return;
-    // Cancel any in-flight forward geocode — drag takes priority
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
@@ -175,12 +161,10 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
     }
   }, [onLocationSelect]);
 
-  // Forward geocode when user types an address and triggers search
   const handleSearchAddress = useCallback(
     async (searchAddress) => {
       if (!searchAddress || searchAddress.trim().length < 5) return;
 
-      // Abort any previous in-flight forward geocode
       if (abortRef.current) {
         abortRef.current.abort();
       }
@@ -190,14 +174,11 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
       setGeocoding(true);
       try {
         const result = await forwardGeocode(searchAddress, controller.signal);
-        // If this request was aborted, result is null — don't update state
         if (controller.signal.aborted) return;
         if (result) {
-          // source: "geocode" — only update coords + neighborhood, NOT address
-          // (the address is already in the input from user typing)
-          onLocationSelect({ 
-            lat: result.lat, 
-            lng: result.lng, 
+          onLocationSelect({
+            lat: result.lat,
+            lng: result.lng,
             neighborhoods: result.neighborhoods,
             source: "geocode"
           });
@@ -211,13 +192,6 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
     [onLocationSelect]
   );
 
-  // Debounced forward-geocode driven by the typed address.
-  // Only when the address/number was typed by the user (source === "input"),
-  // NOT when set programmatically from a map click/drag ("map") or after a
-  // geocode already completed ("geocode").
-  // The query combines street ("Calle") + house number ("Altura") so that
-  // typing the number alone re-locates the pin. The setTimeout + clearTimeout
-  // cleanup is the debounce: each change reschedules, unmount clears it.
   useEffect(() => {
     if (addressSource !== "input") return undefined;
 
@@ -227,7 +201,6 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
       .trim();
     if (query.length < 5) return undefined;
 
-    // Abort any in-flight geocode from a previous search immediately
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
@@ -283,7 +256,6 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
           )}
         </MapContainer>
 
-        {/* Overlay hint when no marker */}
         {!markerPos && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
             <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-neutral-100">

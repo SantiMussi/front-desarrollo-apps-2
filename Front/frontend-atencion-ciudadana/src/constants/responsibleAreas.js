@@ -9,7 +9,7 @@ export const RESPONSIBLE_AREAS = {
   M8: "Desarrollo Social",
 };
 
-export const REQUEST_TYPE_AREA = { // TEMP - en la bdd estan las areas como Mx, siendo x el número
+export const REQUEST_TYPE_AREA = {
   101: "M6",
   102: "M3",
   103: "M6",

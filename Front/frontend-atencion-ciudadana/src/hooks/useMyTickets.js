@@ -65,13 +65,6 @@ function normalize(raw) {
   }));
 }
 
-/**
- * Reclamos del ciudadano autenticado. Intenta `GET /api/tickets/mine`; si el
- * endpoint todavía no existe o falla, usa datos de ejemplo para poder
- * maquetar la pantalla. Cuando el back esté listo no hay que tocar nada.
- *
- * @returns {{ tickets, loading, error, source: "backend" | "sample", reload }}
- */
 export function useMyTickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,9 +79,6 @@ export function useMyTickets() {
       setTickets(list);
       setSource("backend");
     } catch (err) {
-      // Mientras el endpoint no exista devuelve 404 (con sesión) o 401/403
-      // (sin sesión, Spring corta antes) → fallback silencioso a los ejemplos.
-      // Solo mostramos error ante fallas realmente inesperadas (5xx, red).
       setTickets(SAMPLE_TICKETS);
       setSource("sample");
       if (err?.status && ![401, 403, 404].includes(err.status)) {
