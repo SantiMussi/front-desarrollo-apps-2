@@ -1,69 +1,59 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Loader2, AlertCircle, RotateCcw } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import PublicTicketStatus from "../../components/ui/PublicTicketStatus";
 import { trackTicket } from "../../services/apiClient";
 
-/**
- * Pantalla pública de seguimiento: se ingresa un código y se muestra el
- * estado público del ticket (sin datos internos). Un código inexistente o
- * inválido produce un mensaje controlado. Es de solo lectura.
- */
 export default function TrackingPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [code, setCode] = useState(() => searchParams.get("codigo") ?? "");
-  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [code, setCode] = useState(() => location.state?.codigo ?? "");
+  const [status, setStatus] = useState("idle");
   const [ticket, setTicket] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const autoRan = useRef(false);
 
-  const lookup = useCallback(
-    async (rawCode, { syncUrl = true } = {}) => {
-      const value = rawCode.trim();
-      if (!value) {
-        setStatus("error");
-        setErrorMessage("Ingresá un código de seguimiento.");
-        return;
-      }
-
-      setStatus("loading");
-      setErrorMessage("");
-      setTicket(null);
-
-      if (syncUrl) setSearchParams({ codigo: value }, { replace: true });
-
-      try {
-        const data = await trackTicket(value);
-        setTicket(data);
-        setStatus("success");
-      } catch (err) {
-        setStatus("error");
-        if (err?.status === 404) {
-          setErrorMessage(
-            "No encontramos ninguna solicitud con ese código. Revisá que esté escrito correctamente."
-          );
-        } else if (err?.status === 400) {
-          setErrorMessage("El código ingresado no es válido.");
-        } else {
-          setErrorMessage(
-            err?.message || "No pudimos consultar el estado. Intentá de nuevo en unos minutos."
-          );
-        }
-      }
-    },
-    [setSearchParams]
-  );
-
-  // Deep link: /seguimiento?codigo=ABC — consulta automática al entrar.
-  useEffect(() => {
-    const fromUrl = searchParams.get("codigo");
-    if (fromUrl && !autoRan.current) {
-      autoRan.current = true;
-      lookup(fromUrl, { syncUrl: false });
+  const lookup = useCallback(async (rawCode) => {
+    const value = rawCode.trim();
+    if (!value) {
+      setStatus("error");
+      setErrorMessage("Ingresá un código de seguimiento.");
+      return;
     }
-  }, [searchParams, lookup]);
+
+    setStatus("loading");
+    setErrorMessage("");
+    setTicket(null);
+
+    try {
+      setTicket(await trackTicket(value));
+      setStatus("success");
+    } catch (err) {
+      setStatus("error");
+      if (err?.status === 404) {
+        setErrorMessage(
+          "No encontramos ninguna solicitud con ese código. Revisá que esté escrito correctamente."
+        );
+      } else if (err?.status === 400) {
+        setErrorMessage("El código ingresado no es válido.");
+      } else {
+        setErrorMessage(
+          err?.message || "No pudimos consultar el estado. Intentá de nuevo en unos minutos."
+        );
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const fromState = location.state?.codigo;
+    if (fromState && !autoRan.current) {
+      autoRan.current = true;
+      lookup(fromState);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, lookup, navigate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -75,7 +65,6 @@ export default function TrackingPage() {
     setTicket(null);
     setStatus("idle");
     setErrorMessage("");
-    setSearchParams({}, { replace: true });
   };
 
   return (
@@ -116,7 +105,6 @@ export default function TrackingPage() {
           </button>
         </form>
 
-        {/* Error controlado */}
         {status === "error" && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
@@ -128,7 +116,6 @@ export default function TrackingPage() {
           </motion.div>
         )}
 
-        {/* Resultado */}
         {status === "success" && ticket && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -150,7 +137,6 @@ export default function TrackingPage() {
           </motion.div>
         )}
 
-        {/* Estado inicial */}
         {status === "idle" && (
           <p className="mt-6 text-center text-[13px] text-neutral-400">
             La consulta es pública y de solo lectura: muestra el estado de la solicitud, sin datos internos.

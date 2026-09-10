@@ -1,7 +1,6 @@
 import { CheckCircle2, Clock, FileText, Ban } from "lucide-react";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 
-// Estados del back agrupados en 3 pasos visibles para el vecino.
 const STEPS = ["Registrado", "En gestión", "Resuelto"];
 const STEP_BY_STATUS = {
   REGISTERED: 0,
@@ -93,13 +92,10 @@ function InfoRow({ label, value }) {
   );
 }
 
-/**
- * Tarjeta con el estado público de un ticket (respuesta de POST /api/tracking/access).
- * Presentacional: recibe `ticket` y lo dibuja, sin datos internos.
- */
 export default function PublicTicketStatus({ ticket }) {
   if (!ticket) return null;
-  const openTicket = ticket.currentStatus !== "RESOLVED" && ticket.currentStatus !== "CLOSED";
+  const currentStatus = ticket.currentStatus;
+  const openTicket = !["RESOLVED", "CLOSED", "CANCELLED"].includes(currentStatus);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -117,7 +113,7 @@ export default function PublicTicketStatus({ ticket }) {
             </div>
           </div>
           <span className="rounded-md bg-[#0F2C59]/5 px-2.5 py-1 text-[12px] font-semibold text-[#0F2C59]">
-            {TICKET_STATUS_LABELS[ticket.currentStatus] ?? ticket.currentStatus}
+            {TICKET_STATUS_LABELS[currentStatus] ?? currentStatus}
           </span>
         </div>
       </div>
@@ -126,7 +122,7 @@ export default function PublicTicketStatus({ ticket }) {
         <p className="text-[15px] font-semibold text-neutral-800">{ticket.summary}</p>
 
         <div className="mt-6">
-          <StatusStepper status={ticket.currentStatus} />
+          <StatusStepper status={currentStatus} />
         </div>
 
         <div className="mt-6">
