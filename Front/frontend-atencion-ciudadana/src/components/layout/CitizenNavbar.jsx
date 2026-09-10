@@ -34,9 +34,12 @@ export default function CitizenNavbar() {
 
   const closeUserMenu = () => setIsUserMenuOpen(false);
 
+  const isStaff = ["AGENT", "ADMIN"].includes(user?.role);
+
   // Links inside the account dropdown (differ for logged-in vs guest)
   const menuLinks = user
     ? [
+        ...(isStaff ? [{ icon: Headset, label: "Vista agente", to: "/agente/tickets" }] : []),
         { icon: Ticket, label: "Mis reclamos", to: "/mis-reclamos" },
         { icon: KeyRound, label: "Ingresar un código de seguimiento", to: "/seguimiento" },
         { icon: UserCircle, label: "Cuenta", to: "/cuenta" },
@@ -67,16 +70,6 @@ export default function CitizenNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          <Link
-            to="/agente/tickets"
-            className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-[13px] font-medium text-amber-800 transition-colors hover:bg-amber-100"
-          >
-            <Headset className="h-3.5 w-3.5" strokeWidth={2} />
-            Vista agente (temporal)
-          </Link>
-
-          <div className="mx-2 h-4 w-px bg-neutral-200" />
-
           {/* Account dropdown */}
           <div className="relative" ref={userMenuRef}>
             <button
@@ -165,15 +158,6 @@ export default function CitizenNavbar() {
           )}
 
           <div className="flex flex-col gap-1">
-            <Link
-              to="/agente/tickets"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-amber-800 hover:bg-amber-50"
-            >
-              <Headset className="h-4 w-4" strokeWidth={2} />
-              Vista agente (temporal)
-            </Link>
-
             {menuLinks.map(({ icon: Icon, label, to }) => (
               <Link
                 key={to}

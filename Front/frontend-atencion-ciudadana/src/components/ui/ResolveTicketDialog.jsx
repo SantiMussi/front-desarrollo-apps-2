@@ -5,23 +5,23 @@ import { RESOLUTION_TYPES, SIMULATED_AREA_RESPONSES } from "../../constants/reso
 const CONTROL =
   "mt-1.5 w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100";
 
-// Se monta solo cuando el diálogo está abierto (el padre hace `{open && <... />}`),
-// así el estado del formulario se resetea naturalmente en cada apertura.
 export default function ResolveTicketDialog({
   ticketPublicId,
-  eligible = true,
-  ineligibleReason,
+  mode = "manual",
+  incompatibleReason,
   loading = false,
   error,
   onCancel,
   onConfirm,
 }) {
   const titleId = useId();
+  const isSimulator = mode === "simulator";
+  const eligible = mode === "manual" || mode === "simulator";
+
   const [type, setType] = useState("");
   const [publicMessage, setPublicMessage] = useState("");
   const [internalMessage, setInternalMessage] = useState("");
   const [simulatedId, setSimulatedId] = useState("");
-  const [source, setSource] = useState("manual"); // "manual" | "simulator"
 
   useEffect(() => {
     const onEsc = (e) => e.key === "Escape" && !loading && onCancel();
@@ -33,18 +33,24 @@ export default function ResolveTicketDialog({
     setSimulatedId(id);
     const response = SIMULATED_AREA_RESPONSES.find((r) => r.id === id);
     if (!response) {
-      setSource("manual");
+      setType("");
+      setPublicMessage("");
+      setInternalMessage("");
       return;
     }
-    setSource("simulator");
     setType(response.type);
     setPublicMessage(response.publicMessage);
     setInternalMessage(response.internalMessage ?? "");
   };
 
   const canConfirm = useMemo(
-    () => eligible && !loading && Boolean(type) && publicMessage.trim().length > 0,
-    [eligible, loading, type, publicMessage]
+    () =>
+      eligible &&
+      !loading &&
+      Boolean(type) &&
+      publicMessage.trim().length > 0 &&
+      (!isSimulator || Boolean(simulatedId)),
+    [eligible, loading, type, publicMessage, isSimulator, simulatedId]
   );
 
   return (
@@ -65,10 +71,13 @@ export default function ResolveTicketDialog({
               Resolución · {ticketPublicId}
             </p>
             <h2 id={titleId} className="mt-0.5 text-lg font-semibold text-slate-900">
-              Marcar como resuelto
+              {isSimulator ? "Registrar respuesta del área" : "Marcar como resuelto"}
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              Registrá el resultado de la solicitud. El ticket pasa a <strong>Resuelto</strong>.
+              {isSimulator
+                ? "Registrá el resultado que informa el área responsable (simulado en esta entrega). El ticket pasa a "
+                : "Registrá el resultado de la solicitud. El ticket pasa a "}
+              <strong>Resuelto</strong>.
             </p>
           </div>
           <button
@@ -87,52 +96,47 @@ export default function ResolveTicketDialog({
             <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3.5">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div className="text-sm text-amber-900">
-                <p className="font-semibold">No se puede resolver manualmente</p>
+                <p className="font-semibold">No se puede resolver en este estado</p>
                 <p className="mt-0.5 text-[13px] leading-relaxed">
-                  {ineligibleReason ||
-                    "El ticket debe estar En gestión y ser gestionado por Atención Ciudadana (M2)."}
+                  {incompatibleReason ||
+                    "El ticket no está en un estado compatible con la resolución."}
                 </p>
               </div>
             </div>
           ) : (
             <>
-              {/* Simulador */}
-              <label className="block text-xs font-semibold text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-[#0F2C59]" />
-                  Simular respuesta del área responsable
-                  <span className="font-normal text-slate-400">(opcional)</span>
-                </span>
-                <select
-                  value={simulatedId}
-                  onChange={(e) => applySimulated(e.target.value)}
-                  className={CONTROL}
-                >
-                  <option value="">— Cargar la resolución manualmente —</option>
-                  {SIMULATED_AREA_RESPONSES.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-                {source === "simulator" && (
-                  <span className="mt-1 block text-[11px] font-normal text-emerald-700">
-                    Resultado simulado cargado. Podés ajustarlo antes de confirmar.
+              {isSimulator && (
+                <label className="block text-xs font-semibold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-[#0F2C59]" />
+                    Respuesta del área responsable <span className="text-[#D63031]">*</span>
                   </span>
-                )}
-              </label>
-
-              <div className="my-4 h-px bg-slate-100" />
+                  <select
+                    value={simulatedId}
+                    onChange={(e) => applySimulated(e.target.value)}
+                    className={CONTROL}
+                  >
+                    <option value="">Seleccioná la respuesta del área…</option>
+                    {SIMULATED_AREA_RESPONSES.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                  {simulatedId && (
+                    <span className="mt-1 block text-[11px] font-normal text-emerald-700">
+                      Podés ajustar el resultado y los mensajes antes de confirmar.
+                    </span>
+                  )}
+                  <span className="my-4 block h-px bg-slate-100" />
+                </label>
+              )}
 
               <label className="block text-xs font-semibold text-slate-700">
                 Tipo de resultado <span className="text-[#D63031]">*</span>
                 <select
                   value={type}
-                  onChange={(e) => {
-                    setType(e.target.value);
-                    setSource("manual");
-                    setSimulatedId("");
-                  }}
+                  onChange={(e) => setType(e.target.value)}
                   className={CONTROL}
                 >
                   <option value="">Seleccionar…</option>
@@ -199,14 +203,14 @@ export default function ResolveTicketDialog({
                   type,
                   publicMessage: publicMessage.trim(),
                   internalMessage: internalMessage.trim(),
-                  source,
+                  source: isSimulator ? "simulator" : "manual",
                 })
               }
               disabled={!canConfirm}
               className="inline-flex items-center gap-2 rounded-md bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#173d73] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" />
-              {loading ? "Registrando…" : "Confirmar resolución"}
+              {loading ? "Registrando…" : isSimulator ? "Registrar respuesta del área" : "Confirmar resolución"}
             </button>
           )}
         </footer>

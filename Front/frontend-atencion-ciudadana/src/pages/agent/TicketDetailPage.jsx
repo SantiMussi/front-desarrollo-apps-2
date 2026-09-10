@@ -102,23 +102,30 @@ export default function TicketDetailPage() {
     if (nextStatus === "RESOLVED") {
       resetResolve();
       setResolveOpen(true);
-      return false; // la resolución se registra vía el diálogo + endpoint
+      return false;
     }
     return true;
   };
 
-  // El endpoint de resolución manual solo admite tickets de M2 en IN_PROGRESS.
-  const resolveEligible = status === "IN_PROGRESS" && fields.responsibleAreaId === "M2";
-  const resolveIneligibleReason =
-    fields.responsibleAreaId !== "M2"
-      ? `Este ticket lo gestiona ${RESPONSIBLE_AREAS[fields.responsibleAreaId] || fields.responsibleAreaId}. El pase a Resuelto lo realiza esa área mediante el flujo de integración.`
-      : "El ticket debe estar En gestión para poder registrar su resolución manual.";
+  const areaIsM2 = fields.responsibleAreaId === "M2";
+  const resolveMode =
+    areaIsM2 && status === "IN_PROGRESS"
+      ? "manual"
+      : !areaIsM2 && (status === "ROUTED" || status === "IN_PROGRESS")
+        ? "simulator"
+        : null;
+  const resolveIncompatibleReason = areaIsM2
+    ? "El ticket debe estar En gestión para registrar su resolución."
+    : `El ticket lo gestiona ${RESPONSIBLE_AREAS[fields.responsibleAreaId] || fields.responsibleAreaId}. Su resolución se registra desde Derivado o En gestión, con la respuesta del área.`;
 
   const handleResolveConfirm = async ({ type, publicMessage, internalMessage, source }) => {
-    const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
-    if (!result) return; // el diálogo muestra el error
+    let when = new Date().toISOString();
+    if (resolveMode === "manual") {
+      const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
+      if (!result) return;
+      when = result.resolvedAt || when;
+    }
     setStatus("RESOLVED");
-    const when = result.resolvedAt || new Date().toISOString();
     setLocalActivities((items) => [
       ...items,
       {
@@ -287,8 +294,8 @@ export default function TicketDetailPage() {
       {resolveOpen && (
         <ResolveTicketDialog
           ticketPublicId={ticket.publicId}
-          eligible={resolveEligible}
-          ineligibleReason={resolveIneligibleReason}
+          mode={resolveMode}
+          incompatibleReason={resolveIncompatibleReason}
           loading={resolving}
           error={resolveError}
           onCancel={() => setResolveOpen(false)}

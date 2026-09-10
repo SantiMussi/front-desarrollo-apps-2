@@ -53,7 +53,7 @@ export default function App() {
         <Route path="/ingresar" element={<LoginPage />} />
         <Route path="/registro" element={<RegisterPage />} />
 
-        {/* <Route element={<ProtectedRoute />}> */}
+        <Route element={<ProtectedRoute roles={["AGENT", "ADMIN"]} />}>
           <Route path="/agente" element={<AgentLayout />}>
             <Route path="tickets" element={<TicketsInboxPage />} />
             <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
@@ -61,7 +61,7 @@ export default function App() {
             <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
             <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
           </Route>
-        {/* </Route> */}
+        </Route>
       </Routes>
     </BrowserRouter>
   );

@@ -23,7 +23,7 @@ function normalizeResponse(response) {
   const data = response?.data ?? response;
   return {
     token: data?.token ?? data?.accessToken ?? data?.access_token,
-    user: data?.user ?? data?.usuario ?? data?.account ?? null,
+    user: data?.identity ?? data?.user ?? data?.usuario ?? data?.account ?? null,
   };
 }
 
