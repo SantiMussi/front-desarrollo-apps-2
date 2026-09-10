@@ -81,6 +81,46 @@ export async function fetchMyTickets() {
   return request("/tickets/mine");
 }
 
+// GET /api/tickets/mine/{publicId} — detalle del reclamo para el vecino.
+// Todavía NO existe. Se espera un objeto con (al menos):
+// { publicId, currentStatus, summary, description, createdAt, statusChangedAt,
+//   resolutionConfirmationDueAt, requestType {name}, category {name},
+//   subcategory {name}, location {addressLine, neighborhood, ...},
+//   attachments: [{ id, name, url? }],
+//   messages: [{ id, authorType: "CITIZEN"|"AGENT", text, createdAt }],
+//   history: [{ id, actionType, newStatus, message, occurredAt }],
+//   resolution?: { type, publicMessage, resolvedAt } }
+export async function fetchMyTicketDetail(publicId) {
+  return request(`/tickets/mine/${encodeURIComponent(publicId)}`);
+}
+
+// POST /api/tickets/mine/{publicId}/resolution-confirmation — el vecino confirma
+// la solución. El ticket avanza al estado final (CLOSED). NO existe todavía.
+export async function confirmTicketResolution(publicId) {
+  return request(`/tickets/mine/${encodeURIComponent(publicId)}/resolution-confirmation`, {
+    method: "POST",
+  });
+}
+
+// POST /api/tickets/mine/{publicId}/reopen — el vecino indica que el problema
+// continúa. El ticket vuelve a un estado de tratamiento (IN_PROGRESS).
+// body: { reason }. NO existe todavía.
+export async function reopenTicket(publicId, { reason } = {}) {
+  return request(`/tickets/mine/${encodeURIComponent(publicId)}/reopen`, {
+    method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+// POST /api/tickets/mine/{publicId}/rating — calificación de la atención (1-5).
+// Opcional / "nice to have" del diseño. NO existe todavía.
+export async function rateTicketAttention(publicId, stars) {
+  return request(`/tickets/mine/${encodeURIComponent(publicId)}/rating`, {
+    method: "POST",
+    body: JSON.stringify({ stars }),
+  });
+}
+
 // POST /api/tracking/access — consulta pública por código de seguimiento.
 // No requiere auth. Devuelve solo datos públicos del ticket (TrackingTicketResponse):
 // { publicId, currentStatus, summary, createdAt, statusChangedAt,

@@ -12,6 +12,7 @@ import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
 import MisReclamosPage from "./pages/citizen/MisReclamosPage";
+import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function CitizenLayout() {
@@ -40,10 +41,7 @@ export default function App() {
           {/* Rutas del ciudadano que requieren sesión */}
           <Route element={<ProtectedRoute />}>
             <Route path="/mis-reclamos" element={<MisReclamosPage />} />
-            <Route
-              path="/mis-reclamos/:publicId"
-              element={<div className="mx-auto max-w-3xl p-10 text-neutral-500">Detalle del reclamo — próximamente</div>}
-            />
+            <Route path="/mis-reclamos/:publicId" element={<MisReclamoDetailPage />} />
             {/* TODO: reemplazar por la página real */}
             <Route
               path="/cuenta"
