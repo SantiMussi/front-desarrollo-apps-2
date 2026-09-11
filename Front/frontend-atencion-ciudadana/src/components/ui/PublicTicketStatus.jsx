@@ -100,7 +100,7 @@ function InfoRow({ label, value }) {
 
 export default function PublicTicketStatus({ ticket }) {
   if (!ticket) return null;
-  const currentStatus = ticket.currentStatus;
+  const currentStatus = ticket.status ?? ticket.currentStatus;
   const openTicket = !["RESOLVED", "CLOSED", "CANCELLED", "DUPLICATE"].includes(currentStatus);
 
   return (

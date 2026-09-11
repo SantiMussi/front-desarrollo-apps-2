@@ -56,7 +56,7 @@ export default function TicketTable({ tickets, columns }) {
                 </span>
               </span>
             )}
-            {ticket.id}
+            {ticket.publicId || ticket.id}
           </span>
         );
       }

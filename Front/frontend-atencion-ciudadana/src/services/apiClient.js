@@ -158,6 +158,16 @@ export async function createTicket(payload, attachments = []) {
   return response.json();
 }
 
+export async function fetchAgentTickets(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    query.set(key, value);
+  });
+  const qs = query.toString();
+  return request(`/tickets${qs ? `?${qs}` : ""}`);
+}
+
 export async function resolveTicket(ticketId, { type, publicMessage, internalMessage }) {
   return request(`/tickets/${ticketId}/resolution`, {
     method: "POST",
