@@ -8,9 +8,13 @@ const STEP_BY_STATUS = {
   ROUTED: 0,
   IN_PROGRESS: 1,
   PENDING_INFORMATION: 1,
-  DUPLICATE: 1,
   RESOLVED: 2,
   CLOSED: 2,
+};
+
+const NON_PROGRESS_MESSAGES = {
+  CANCELLED: "Esta solicitud fue cancelada.",
+  DUPLICATE: "Esta solicitud fue identificada como duplicada de otro reclamo ya registrado.",
 };
 
 const formatDate = (value) =>
@@ -31,16 +35,18 @@ const formatDateTime = (value) =>
     : "—";
 
 function StatusStepper({ status }) {
-  const currentStep = STEP_BY_STATUS[status] ?? 0;
+  const nonProgressMessage = NON_PROGRESS_MESSAGES[status];
 
-  if (status === "CANCELLED") {
+  if (nonProgressMessage) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
         <Ban className="h-5 w-5 shrink-0 text-neutral-500" strokeWidth={2} />
-        <p className="text-[13px] font-medium text-neutral-600">Esta solicitud fue cancelada.</p>
+        <p className="text-[13px] font-medium text-neutral-600">{nonProgressMessage}</p>
       </div>
     );
   }
+
+  const currentStep = STEP_BY_STATUS[status] ?? 0;
 
   return (
     <div className="flex items-center">
@@ -95,7 +101,7 @@ function InfoRow({ label, value }) {
 export default function PublicTicketStatus({ ticket }) {
   if (!ticket) return null;
   const currentStatus = ticket.currentStatus;
-  const openTicket = !["RESOLVED", "CLOSED", "CANCELLED"].includes(currentStatus);
+  const openTicket = !["RESOLVED", "CLOSED", "CANCELLED", "DUPLICATE"].includes(currentStatus);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">

@@ -28,7 +28,9 @@ export default function TrackingPage() {
     setTicket(null);
 
     try {
-      setTicket(await trackTicket(value));
+      const data = await trackTicket(value);
+      console.log("[TrackingPage] /tracking/access response:", data);
+      setTicket(data);
       setStatus("success");
     } catch (err) {
       setStatus("error");
