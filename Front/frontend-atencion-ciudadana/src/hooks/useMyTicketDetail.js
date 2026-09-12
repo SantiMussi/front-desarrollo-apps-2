@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  answerTicketInformation,
   confirmTicketResolution,
   fetchMyTicketDetail,
+  fetchMyTickets,
   rateTicketAttention,
   reopenTicket,
 } from "../services/apiClient";
@@ -144,9 +146,22 @@ function sampleFor(publicId) {
   };
 }
 
-function normalize(raw, publicId) {
+function buildFallbackHistory(t) {
+  if (!t.createdAt) return [];
+  const items = [
+    { id: "created", actionType: "TICKET_CREATED", newStatus: "REGISTERED", message: "Reclamo creado", occurredAt: t.createdAt },
+  ];
+  const current = t.currentStatus ?? t.status;
+  if (current && current !== "REGISTERED" && t.statusChangedAt) {
+    items.push({ id: "current", actionType: "STATE_CHANGED", newStatus: current, message: null, occurredAt: t.statusChangedAt });
+  }
+  return items;
+}
+
+export function normalizeTicketDetail(raw, publicId) {
   const t = raw ?? {};
   return {
+    id: t.id ?? null,
     publicId: String(t.publicId ?? t.id ?? publicId),
     currentStatus: t.currentStatus ?? t.status ?? "REGISTERED",
     summary: t.summary ?? "",
@@ -154,19 +169,37 @@ function normalize(raw, publicId) {
     createdAt: t.createdAt ?? null,
     statusChangedAt: t.statusChangedAt ?? t.updatedAt ?? t.createdAt ?? null,
     resolutionConfirmationDueAt: t.resolutionConfirmationDueAt ?? t.confirmationDueAt ?? null,
-    requestType: t.requestType ?? null,
-    category: t.category ?? null,
-    subcategory: t.subcategory ?? null,
+    requestType: t.requestType ?? (t.requestTypeName ? { name: t.requestTypeName } : null),
+    category: t.category ?? (t.categoryName ? { name: t.categoryName } : null),
+    subcategory: t.subcategory ?? (t.subcategoryName ? { name: t.subcategoryName } : null),
+    ticketType: t.ticketType ?? null,
+    neighborhoodName: t.neighborhoodName ?? t.location?.neighborhood ?? null,
     location: t.location ?? null,
     resolution: t.resolution ?? null,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
     messages: Array.isArray(t.messages) ? t.messages : [],
-    history: Array.isArray(t.history) ? t.history : Array.isArray(t.activities) ? t.activities : [],
+    history: Array.isArray(t.history) ? t.history : Array.isArray(t.activities) ? t.activities : buildFallbackHistory(t),
     rating: t.rating ?? null,
   };
 }
 
 const isBackendMissing = (err) => [401, 403, 404].includes(err?.status);
+
+function messageForActionError(err) {
+  const status = err?.status;
+  const code = err?.code;
+  if (status === 409 || code === "TICKET_RESOLUTION_CONFLICT" || code === "INFORMATION_REQUEST_CONFLICT") {
+    return err?.message || "El estado actual del ticket no permite esta acción.";
+  }
+  if (status === 410 || code === "INFORMATION_REQUEST_EXPIRED") {
+    return "El plazo para responder venció.";
+  }
+  if (status === 403) return "No tenés permiso para realizar esta acción sobre este ticket.";
+  if (status === 404) return "No encontramos el ticket.";
+  if (status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  if (status === 400) return err?.message || "Faltan datos obligatorios.";
+  return err?.message || "No pudimos completar la acción. Intentá de nuevo.";
+}
 
 export function useMyTicketDetail(publicId) {
   const [ticket, setTicket] = useState(null);
@@ -180,11 +213,21 @@ export function useMyTicketDetail(publicId) {
     setLoading(true);
     setError(null);
     try {
-      const data = normalize(await fetchMyTicketDetail(publicId), publicId);
+      const page = await fetchMyTickets({ size: 200 });
+      const list = Array.isArray(page?.content) ? page.content : [];
+      const match = list.find((t) => String(t.publicId) === String(publicId));
+      if (!match) {
+        const notFound = new Error("No encontramos ese reclamo.");
+        notFound.status = 404;
+        throw notFound;
+      }
+      const raw = await fetchMyTicketDetail(match.id);
+      console.log("[useMyTicketDetail] GET /tickets/{id} response:", raw);
+      const data = normalizeTicketDetail(raw, publicId);
       setTicket(data);
       setSource("backend");
     } catch (err) {
-      setTicket(normalize(sampleFor(publicId), publicId));
+      setTicket(normalizeTicketDetail(sampleFor(publicId), publicId));
       setSource("sample");
       if (err?.status && !isBackendMissing(err)) {
         setError(err.message ?? "No pudimos cargar el detalle del reclamo.");
@@ -226,48 +269,74 @@ export function useMyTicketDetail(publicId) {
       setActionLoading(true);
       setActionError(null);
       try {
-        const updated = await apiCall();
-        if (updated && typeof updated === "object") {
-          setTicket(normalize(updated, publicId));
-        } else {
-          applyLocalTransition(newStatus, actionType, message);
-        }
+        await apiCall();
+        applyLocalTransition(newStatus, actionType, message);
         return true;
       } catch (err) {
-        if (isBackendMissing(err)) {
-          // Endpoint todavía inexistente → simulamos la transición localmente.
-          applyLocalTransition(newStatus, actionType, message);
-          return true;
-        }
-        setActionError(err?.message ?? "No pudimos completar la acción. Intentá de nuevo.");
+        setActionError(messageForActionError(err));
         return false;
       } finally {
         setActionLoading(false);
       }
     },
-    [applyLocalTransition, publicId]
+    [applyLocalTransition]
   );
 
-  const confirmResolution = useCallback(
-    () =>
-      runAction(() => confirmTicketResolution(publicId), {
-        newStatus: CONFIRM_TARGET_STATUS,
-        actionType: "CLOSED",
-        message: "El vecino confirmó la resolución. Ticket cerrado.",
-      }),
-    [publicId, runAction]
-  );
+  const confirmResolution = useCallback(() => {
+    if (!ticket?.id) return Promise.resolve(false);
+    return runAction(() => confirmTicketResolution(ticket.id), {
+      newStatus: CONFIRM_TARGET_STATUS,
+      actionType: "CLOSED",
+      message: "El vecino confirmó la resolución. Ticket cerrado.",
+    });
+  }, [ticket, runAction]);
 
   const requestReopen = useCallback(
-    (reason) =>
-      runAction(() => reopenTicket(publicId, { reason }), {
+    (reason) => {
+      if (!ticket?.id) return Promise.resolve(false);
+      return runAction(() => reopenTicket(ticket.id, { reason }), {
         newStatus: REOPEN_TARGET_STATUS,
         actionType: "REOPENED",
-        message: reason
-          ? `El vecino reabrió el reclamo: "${reason}"`
-          : "El vecino indicó que el problema continúa. Reclamo reabierto.",
-      }),
-    [publicId, runAction]
+        message: `El vecino reabrió el reclamo: "${reason}"`,
+      });
+    },
+    [ticket, runAction]
+  );
+
+  const answerInformation = useCallback(
+    async (responseMessage) => {
+      if (!ticket?.id) return false;
+      setActionLoading(true);
+      setActionError(null);
+      try {
+        const result = await answerTicketInformation(ticket.id, { responseMessage });
+        const now = result.answeredAt || new Date().toISOString();
+        setTicket((prev) =>
+          prev
+            ? {
+              ...prev,
+              currentStatus: result.resumeStatus || prev.currentStatus,
+              statusChangedAt: now,
+              messages: [
+                ...prev.messages,
+                { id: `info-response-${Date.now()}`, authorType: "CITIZEN", text: responseMessage, createdAt: now },
+              ],
+              history: [
+                ...prev.history,
+                { id: `info-response-${Date.now()}`, actionType: "INFORMATION_PROVIDED", newStatus: result.resumeStatus, message: `Respondiste: "${responseMessage}"`, occurredAt: now },
+              ],
+            }
+            : prev
+        );
+        return true;
+      } catch (err) {
+        setActionError(messageForActionError(err));
+        return false;
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [ticket]
   );
 
   const rateAttention = useCallback(
@@ -275,15 +344,16 @@ export function useMyTicketDetail(publicId) {
       setTicket((prev) => (prev ? { ...prev, rating: stars } : prev));
       try {
         await rateTicketAttention(publicId, stars);
-      } catch {
+      } catch (err) {
+        void err;
       }
     },
     [publicId]
   );
 
   const actions = useMemo(
-    () => ({ confirmResolution, requestReopen, rateAttention }),
-    [confirmResolution, requestReopen, rateAttention]
+    () => ({ confirmResolution, requestReopen, rateAttention, answerInformation }),
+    [confirmResolution, requestReopen, rateAttention, answerInformation]
   );
 
   return { ticket, loading, error, source, actions, actionLoading, actionError, reload: load };

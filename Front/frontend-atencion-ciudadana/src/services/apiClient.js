@@ -72,24 +72,37 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
-export async function fetchMyTickets() {
-  return request("/tickets/mine");
+export async function fetchMyTickets(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    query.set(key, value);
+  });
+  const qs = query.toString();
+  return request(`/me/tickets${qs ? `?${qs}` : ""}`);
 }
 
-export async function fetchMyTicketDetail(publicId) {
-  return request(`/tickets/mine/${encodeURIComponent(publicId)}`);
+export async function fetchMyTicketDetail(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}`);
 }
 
-export async function confirmTicketResolution(publicId) {
-  return request(`/tickets/mine/${encodeURIComponent(publicId)}/resolution-confirmation`, {
+export async function confirmTicketResolution(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/resolution/confirm`, {
     method: "POST",
   });
 }
 
-export async function reopenTicket(publicId, { reason } = {}) {
-  return request(`/tickets/mine/${encodeURIComponent(publicId)}/reopen`, {
+export async function reopenTicket(ticketId, { reason }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/resolution/reopen`, {
     method: "POST",
-    body: JSON.stringify(reason ? { reason } : {}),
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function answerTicketInformation(ticketId, { responseMessage }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/information-response`, {
+    method: "POST",
+    body: JSON.stringify({ responseMessage }),
   });
 }
 
@@ -166,6 +179,37 @@ export async function fetchAgentTickets(params = {}) {
   });
   const qs = query.toString();
   return request(`/tickets${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchStaffTicketDetail(ticketId) {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}`);
+}
+
+export async function fetchTicketCitizenView(ticketId) {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}/citizen-view`);
+}
+
+export async function updateTicketClassification(ticketId, requestTypeId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/classification`, {
+    method: "PATCH",
+    body: JSON.stringify({ requestTypeId }),
+  });
+}
+
+export async function reviewTicket(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/review`, {
+    method: "POST",
+  });
+}
+
+export async function requestTicketInformation(ticketId, { messageForCitizen, internalMessage }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/information-request`, {
+    method: "POST",
+    body: JSON.stringify({
+      messageForCitizen,
+      ...(internalMessage ? { internalMessage } : {}),
+    }),
+  });
 }
 
 export async function resolveTicket(ticketId, { type, publicMessage, internalMessage }) {

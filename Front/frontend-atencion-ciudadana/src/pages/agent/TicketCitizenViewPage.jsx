@@ -1,12 +1,12 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useMyTicketDetail } from "../../hooks/useMyTicketDetail";
+import { useTicketCitizenView } from "../../hooks/useTicketCitizenView";
+import { normalizeTicketDetail } from "../../hooks/useMyTicketDetail";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
 
-export default function MisReclamoDetailPage() {
-  const { publicId } = useParams();
-  const { ticket, loading, error, source, actions, actionLoading, actionError } =
-    useMyTicketDetail(publicId);
+export default function TicketCitizenViewPage() {
+  const { ticketId } = useParams();
+  const { view, loading, error } = useTicketCitizenView(ticketId);
 
   if (loading) {
     return (
@@ -16,32 +16,29 @@ export default function MisReclamoDetailPage() {
     );
   }
 
-  if (!ticket) {
+  if (!view) {
     return (
       <div className="mx-auto max-w-2xl px-5 py-16 text-center">
-        <p className="text-[14px] text-neutral-500">
-          {error || "No encontramos este reclamo."}
-        </p>
+        <p className="text-[14px] text-neutral-500">{error || "No encontramos este ticket."}</p>
         <Link
-          to="/mis-reclamos"
+          to={`/agente/tickets/${ticketId}`}
           className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0F2C59] hover:underline"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Volver a Mis Reclamos
+          Volver al ticket
         </Link>
       </div>
     );
   }
 
+  const ticket = normalizeTicketDetail(view, view.publicId);
+
   return (
     <CitizenTicketView
       ticket={ticket}
-      source={source}
-      backTo="/mis-reclamos"
-      backLabel="Mis Reclamos"
-      actions={actions}
-      actionLoading={actionLoading}
-      actionError={actionError}
+      readOnly
+      backTo={`/agente/tickets/${ticketId}`}
+      backLabel="Volver al ticket"
     />
   );
 }

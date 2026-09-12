@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, MessageSquare, Sparkles, X } from "lucide-react";
 import { RESOLUTION_TYPES, SIMULATED_AREA_RESPONSES } from "../../constants/resolutionTypes";
+import Select from "./Select";
 
 const CONTROL =
   "mt-1.5 w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100";
@@ -111,18 +112,14 @@ export default function ResolveTicketDialog({
                     <Sparkles className="h-3.5 w-3.5 text-[#0F2C59]" />
                     Respuesta del área responsable <span className="text-[#D63031]">*</span>
                   </span>
-                  <select
+                  <Select
+                    size="sm"
+                    className="mt-1.5"
                     value={simulatedId}
-                    onChange={(e) => applySimulated(e.target.value)}
-                    className={CONTROL}
-                  >
-                    <option value="">Seleccioná la respuesta del área…</option>
-                    {SIMULATED_AREA_RESPONSES.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(nextValue) => applySimulated(nextValue)}
+                    placeholder="Seleccioná la respuesta del área…"
+                    options={SIMULATED_AREA_RESPONSES.map((r) => ({ value: r.id, label: r.label }))}
+                  />
                   {simulatedId && (
                     <span className="mt-1 block text-[11px] font-normal text-emerald-700">
                       Podés ajustar el resultado y los mensajes antes de confirmar.
@@ -134,18 +131,13 @@ export default function ResolveTicketDialog({
 
               <label className="block text-xs font-semibold text-slate-700">
                 Tipo de resultado <span className="text-[#D63031]">*</span>
-                <select
+                <Select
+                  size="sm"
+                  className="mt-1.5"
                   value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className={CONTROL}
-                >
-                  <option value="">Seleccionar…</option>
-                  {RESOLUTION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(nextValue) => setType(nextValue)}
+                  options={RESOLUTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                />
               </label>
 
               <label className="mt-3 block text-xs font-semibold text-slate-700">

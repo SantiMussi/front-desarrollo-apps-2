@@ -152,8 +152,7 @@ export default function MisReclamosPage() {
       {source === "sample" && !loading && (
         <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-800">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          Datos de ejemplo: el endpoint <code className="font-mono">GET /api/tickets/mine</code> todavía
-          no está disponible.
+          Datos de ejemplo: no pudimos conectar con <code className="font-mono">GET /me/tickets</code>.
         </div>
       )}
 

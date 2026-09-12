@@ -44,10 +44,10 @@ const SAMPLE_TICKETS = [
 function normalize(raw) {
   const arr = Array.isArray(raw)
     ? raw
-    : Array.isArray(raw?.data)
-      ? raw.data
-      : Array.isArray(raw?.content)
-        ? raw.content
+    : Array.isArray(raw?.content)
+      ? raw.content
+      : Array.isArray(raw?.data)
+        ? raw.data
         : Array.isArray(raw?.tickets)
           ? raw.tickets
           : [];
@@ -59,9 +59,9 @@ function normalize(raw) {
     description: t.description ?? "",
     createdAt: t.createdAt ?? null,
     statusChangedAt: t.statusChangedAt ?? t.updatedAt ?? t.createdAt ?? null,
-    requestType: t.requestType ?? null,
-    category: t.category ?? null,
-    subcategory: t.subcategory ?? null,
+    requestType: t.requestType ?? (t.requestTypeName ? { name: t.requestTypeName } : null),
+    category: t.category ?? (t.categoryName ? { name: t.categoryName } : null),
+    subcategory: t.subcategory ?? (t.subcategoryName ? { name: t.subcategoryName } : null),
   }));
 }
 
@@ -75,7 +75,7 @@ export function useMyTickets() {
     setLoading(true);
     setError(null);
     try {
-      const list = normalize(await fetchMyTickets());
+      const list = normalize(await fetchMyTickets({ size: 50, sort: "createdAt,desc" }));
       setTickets(list);
       setSource("backend");
     } catch (err) {

@@ -8,6 +8,7 @@ import SplashScreen from "./components/ui/SplashScreen";
 import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
 import TicketDetailPage from "./pages/agent/TicketDetailPage";
+import TicketCitizenViewPage from "./pages/agent/TicketCitizenViewPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/agente" element={<AgentLayout />}>
             <Route path="tickets" element={<TicketsInboxPage />} />
             <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
+            <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
             <Route path="dashboard" element={<div className="p-8">Dashboard Módulo</div>} />
             <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
             <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />

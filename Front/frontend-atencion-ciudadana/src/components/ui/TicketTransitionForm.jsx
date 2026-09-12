@@ -1,7 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { ArrowRight, LockKeyhole, MessageSquare, X } from "lucide-react";
-
-const CONTROL_CLASS = "mt-1.5 h-9 w-full rounded-md border border-slate-300 bg-white px-2.5 text-sm text-slate-800 outline-none focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100";
+import Select from "./Select";
 
 export default function TicketTransitionDialog({
   open,
@@ -50,15 +49,14 @@ export default function TicketTransitionDialog({
             {fields.map((field) => (
               <label key={field.id} className="col-span-2 text-xs font-semibold text-slate-700 sm:col-span-1">
                 {field.label}
-                <select
-                  id={field.id}
+                <Select
+                  size="sm"
+                  className="mt-1.5"
                   value={field.value}
                   disabled={field.disabled}
-                  onChange={(event) => field.onChange?.(event.target.value)}
-                  className={`${CONTROL_CLASS} ${field.disabled ? "cursor-not-allowed bg-slate-100 text-slate-600" : ""}`}
-                >
-                  {field.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
+                  onChange={(nextValue) => field.onChange?.(nextValue)}
+                  options={field.options}
+                />
                 {field.helpText && <span className="mt-1 flex items-center gap-1 text-[10px] font-normal text-slate-500">{field.disabled && <LockKeyhole className="h-3 w-3" />}{field.helpText}</span>}
               </label>
             ))}
