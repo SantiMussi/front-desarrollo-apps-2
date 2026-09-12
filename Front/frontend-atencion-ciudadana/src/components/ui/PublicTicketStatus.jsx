@@ -102,6 +102,7 @@ export default function PublicTicketStatus({ ticket }) {
   if (!ticket) return null;
   const currentStatus = ticket.status ?? ticket.currentStatus;
   const openTicket = !["RESOLVED", "CLOSED", "CANCELLED", "DUPLICATE"].includes(currentStatus);
+  const resolutionDueAt = ticket.sla?.resolutionDueAt ?? ticket.resolutionDueAt;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -137,13 +138,13 @@ export default function PublicTicketStatus({ ticket }) {
           <InfoRow label="Subcategoría" value={ticket.subcategory?.name} />
           <InfoRow label="Fecha de ingreso" value={formatDate(ticket.createdAt)} />
           <InfoRow label="Última actualización" value={formatDateTime(ticket.statusChangedAt)} />
-          {openTicket && ticket.resolutionDueAt && (
+          {openTicket && resolutionDueAt && (
             <InfoRow
               label="Resolución estimada"
               value={
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-neutral-400" />
-                  {formatDate(ticket.resolutionDueAt)}
+                  {formatDate(resolutionDueAt)}
                 </span>
               }
             />
