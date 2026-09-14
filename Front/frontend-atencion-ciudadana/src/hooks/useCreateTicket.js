@@ -15,14 +15,6 @@ export function useCreateTicket() {
     setTrackingCode(null);
 
     try {
-      // Simular delay y error aleatorio para testing (30% de las veces)
-      if (Math.random() < 0.3) {
-        await new Promise((r) => setTimeout(r, 800));
-        const error = new Error("No se pudo conectar con el servidor. Intentá nuevamente en unos minutos.");
-        error.code = "NETWORK_ERROR";
-        throw error;
-      }
-
       const response = await createTicket(payload, attachments);
       console.log("[useCreateTicket] Respuesta del backend:", response);
       setTrackingCode(response.trackingCode);

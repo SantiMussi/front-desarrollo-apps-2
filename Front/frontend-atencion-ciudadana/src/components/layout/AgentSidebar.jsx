@@ -5,11 +5,23 @@ import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import UserAvatar from "../ui/UserAvatar";
 
+const ROLE_LABELS = {
+  AGENT: "Agente",
+  ADMIN: "Administrador",
+  AREA_RESPONSIBLE: "Responsable de área",
+  CITIZEN: "Ciudadano",
+};
+
 export default function AgentSidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
-  const displayName = [user?.firstName || user?.nombre || user?.name, user?.lastName || user?.apellido].filter(Boolean).join(" ") || user?.email || "Usuario";
+  const displayName =
+    user?.displayName ||
+    [user?.firstName || user?.nombre || user?.name, user?.lastName || user?.apellido].filter(Boolean).join(" ") ||
+    user?.email ||
+    "Usuario";
+  const roleLabel = ROLE_LABELS[user?.role] || user?.role || "";
 
   const navItems = [
     { name: "Dashboard", path: "/agente/dashboard", icon: LayoutDashboard },
@@ -53,7 +65,7 @@ export default function AgentSidebar() {
         <div className="p-4 border-t border-slate-200/60 mt-auto">
           <div className="mb-3 flex items-center gap-3 rounded-xl bg-white/70 p-3">
             <UserAvatar user={user} />
-            <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{displayName}</p><p className="truncate text-xs text-slate-500">{user?.email}</p></div>
+            <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{displayName}</p><p className="truncate text-xs text-slate-500">{roleLabel}</p></div>
           </div>
           <Link to="/portal-ayuda" className="mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-[#0F2C59] transition-colors hover:bg-blue-50">
             <LifeBuoy className="h-5 w-5" />

@@ -24,7 +24,6 @@ export default function LoginPage() {
       await login(form);
       navigate(location.state?.from?.pathname || "/", { replace: true });
     } catch (err) {
-      console.log(form)
       setError(err.message || "No pudimos completar la solicitud.");
     } finally {
       setLoading(false);
