@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     removeStoredToken();
     saveUser(null);
+    window.location.assign("/portal-ayuda");
   }, [saveUser]);
 
   const refreshUser = useCallback(async () => {
