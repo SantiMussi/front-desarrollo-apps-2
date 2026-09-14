@@ -1,13 +1,13 @@
 import { useCallback, useState } from "react";
-import { resolveTicket } from "../services/apiClient";
+import { resolveTicket, simulateAreaResolution } from "../services/apiClient";
 
 function messageForError(err) {
   const status = err?.status;
   const code = err?.code;
-  if (status === 409 || code === "TICKET_RESOLUTION_CONFLICT") {
+  if (status === 409 || code === "TICKET_RESOLUTION_CONFLICT" || code === "TICKET_STATE_CONFLICT") {
     return (
       err?.message ||
-      "El estado actual del ticket o su área responsable no permiten la resolución manual."
+      "El estado actual del ticket o su área responsable no permiten registrar esta resolución."
     );
   }
   if (status === 403 || code === "FORBIDDEN") {
@@ -44,6 +44,23 @@ export function useResolveTicket() {
     }
   }, []);
 
+  const resolveSimulated = useCallback(async (ticketId, payload) => {
+    setLoading(true);
+    setError(null);
+    setErrorCode(null);
+    try {
+      const data = await simulateAreaResolution(ticketId, payload);
+      setResolution(data);
+      return data;
+    } catch (err) {
+      setError(messageForError(err));
+      setErrorCode(err?.code || err?.status || null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const reset = useCallback(() => {
     setLoading(false);
     setError(null);
@@ -51,5 +68,5 @@ export function useResolveTicket() {
     setResolution(null);
   }, []);
 
-  return { resolve, loading, error, errorCode, resolution, reset };
+  return { resolve, resolveSimulated, loading, error, errorCode, resolution, reset };
 }

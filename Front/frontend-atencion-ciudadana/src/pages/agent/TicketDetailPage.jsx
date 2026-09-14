@@ -7,15 +7,16 @@ import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
 import TicketTransitionDialog from "../../components/ui/TicketTransitionForm";
 import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
 import RequestInformationDialog from "../../components/ui/RequestInformationDialog";
+import TicketReasonDialog from "../../components/ui/TicketReasonDialog";
 import UserAvatar from "../../components/ui/UserAvatar";
-import { RESPONSIBLE_AREAS, getResponsibleAreaId } from "../../constants/responsibleAreas";
+import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
 import { RESOLUTION_TYPE_LABELS } from "../../constants/resolutionTypes";
+import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification } from "../../services/apiClient";
-import { MOCK_REQUEST_TYPES_LIST } from "../../data/mockTickets";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket } from "../../services/apiClient";
 
 function reviewErrorMessage(err) {
   if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
@@ -56,14 +57,18 @@ export default function TicketDetailPage() {
   const [localMessages, setLocalMessages] = useState([]);
   const [fields, setFields] = useState(null);
   const [derivationOpen, setDerivationOpen] = useState(false);
-  const [transitionFields, setTransitionFields] = useState(null);
+  const [derivationLoading, setDerivationLoading] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
   const [infoRequestOpen, setInfoRequestOpen] = useState(false);
   const [localActivities, setLocalActivities] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [startWorkLoading, setStartWorkLoading] = useState(false);
   const [classificationLoading, setClassificationLoading] = useState(false);
   const [transitionError, setTransitionError] = useState(null);
-  const { resolve, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
+  const [reasonDialog, setReasonDialog] = useState(null);
+  const [reasonLoading, setReasonLoading] = useState(false);
+  const [reasonError, setReasonError] = useState(null);
+  const { resolve, resolveSimulated, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
   const { requestTypes } = useRequestTypesCatalog();
   const { requestInformation, loading: infoRequestLoading, error: infoRequestError, reset: resetInfoRequest } = useRequestTicketInformation();
 
@@ -136,14 +141,32 @@ export default function TicketDetailPage() {
     }
   };
 
+  const startWork = async () => {
+    if (startWorkLoading) return;
+    setStartWorkLoading(true);
+    setTransitionError(null);
+    try {
+      const updated = await startTicketWork(ticket.id, fields.responsibleAreaId);
+      setStatus(updated.currentStatus);
+      reload();
+    } catch (err) {
+      setTransitionError(err?.message || "No pudimos iniciar el trabajo sobre este ticket.");
+    } finally {
+      setStartWorkLoading(false);
+    }
+  };
+
   const requestTransition = (nextStatus) => {
     if (status === "REGISTERED" && nextStatus === "IN_REVIEW") {
       startReview();
       return false;
     }
     if (status === "IN_REVIEW" && nextStatus === "ROUTED") {
-      setTransitionFields({ ...fields, requestTypeId: MOCK_REQUEST_TYPES_LIST[0]?.id });
       setDerivationOpen(true);
+      return false;
+    }
+    if (status === "ROUTED" && nextStatus === "IN_PROGRESS") {
+      startWork();
       return false;
     }
     if (nextStatus === "RESOLVED") {
@@ -156,7 +179,35 @@ export default function TicketDetailPage() {
       setInfoRequestOpen(true);
       return false;
     }
-    return true;
+    if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "IN_REVIEW") {
+      setReasonError(null);
+      setReasonDialog({ kind: "return" });
+      return false;
+    }
+    if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "CANCELLED") {
+      setReasonError(null);
+      setReasonDialog({ kind: "reject" });
+      return false;
+    }
+    setTransitionError("Esta acción todavía no tiene un endpoint en el back — no se aplicó ningún cambio.");
+    return false;
+  };
+
+  const handleReasonConfirm = async ({ reasonCode, publicMessage, internalMessage }) => {
+    if (reasonLoading || !reasonDialog) return;
+    setReasonLoading(true);
+    setReasonError(null);
+    try {
+      const call = reasonDialog.kind === "return" ? returnTicketToAgent : rejectTicket;
+      const updated = await call(ticket.id, fields.responsibleAreaId, { reasonCode, publicMessage, internalMessage });
+      setStatus(updated.currentStatus);
+      reload();
+      setReasonDialog(null);
+    } catch (err) {
+      setReasonError(err?.message || "No pudimos registrar la acción.");
+    } finally {
+      setReasonLoading(false);
+    }
   };
 
   const areaIsM2 = fields?.responsibleAreaId === "M2";
@@ -177,6 +228,16 @@ export default function TicketDetailPage() {
       if (!result) return;
       when = result.resolvedAt || when;
       reload();
+    } else if (resolveMode === "simulator") {
+      const result = await resolveSimulated(ticket.id, {
+        moduleId: fields.responsibleAreaId,
+        type,
+        publicMessage,
+        internalMessage,
+      });
+      if (!result) return;
+      when = result.statusChangedAt || when;
+      reload();
     }
     setStatus("RESOLVED");
     setLocalActivities((items) => [
@@ -194,13 +255,23 @@ export default function TicketDetailPage() {
     setResolveOpen(false);
   };
 
-  const confirmDerivation = ({ comment: derivationComment, visibility: derivationVisibility }) => {
-    setFields((current) => ({ ...current, ...transitionFields }));
-    if (derivationComment) {
-      setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
+  const confirmDerivation = async ({ comment: derivationComment, visibility: derivationVisibility }) => {
+    if (derivationLoading) return;
+    setDerivationLoading(true);
+    setTransitionError(null);
+    try {
+      const updated = await routeTicket(ticket.id);
+      setStatus(updated.currentStatus);
+      if (derivationComment) {
+        setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
+      }
+      reload();
+      setDerivationOpen(false);
+    } catch (err) {
+      setTransitionError(err?.message || "No pudimos derivar este ticket.");
+    } finally {
+      setDerivationLoading(false);
     }
-    setStatus("ROUTED");
-    setDerivationOpen(false);
   };
 
   const handleInformationRequestConfirm = async ({ messageForCitizen, internalMessage }) => {
@@ -213,11 +284,6 @@ export default function TicketDetailPage() {
     ]);
     reload();
     setInfoRequestOpen(false);
-  };
-
-  const updateTransitionRequestType = (requestTypeId) => {
-    const request = MOCK_REQUEST_TYPES_LIST.find((item) => item.id === Number(requestTypeId));
-    setTransitionFields((current) => ({ ...current, requestTypeId: Number(requestTypeId), responsibleAreaId: getResponsibleAreaId(requestTypeId), priority: request?.initialPriority || current.priority }));
   };
 
   if (loading) {
@@ -374,18 +440,13 @@ export default function TicketDetailPage() {
           <div className="px-1 py-2 text-[11px] text-slate-500"><div className="flex justify-between py-1"><span>Creado</span><span>{formatDate(ticket.createdAt)}</span></div><div className="flex justify-between py-1"><span>Actualizado</span><span>{formatDate(ticket.updatedAt)}</span></div></div>
         </aside>
       </div>
-      {derivationOpen && transitionFields && <TicketTransitionDialog
+      {derivationOpen && <TicketTransitionDialog
         open={derivationOpen}
         eyebrow={`Cambio de estado · ${ticket.publicId}`}
         title="Derivar ticket"
-        description="Revisá los datos antes de enviarlo al área responsable."
-        fields={[
-          { id: "transition-request-type", label: "Tipo de solicitud", value: transitionFields.requestTypeId, onChange: updateTransitionRequestType, options: MOCK_REQUEST_TYPES_LIST.filter((item) => item.active).map((item) => ({ value: item.id, label: item.name })) },
-          { id: "transition-area", label: "Área asignada", value: transitionFields.responsibleAreaId, disabled: true, helpText: "Se asigna según el tipo de solicitud", options: Object.entries(RESPONSIBLE_AREAS).map(([id, name]) => ({ value: id, label: `${id} · ${name}` })) },
-          { id: "transition-priority", label: "Prioridad", value: transitionFields.priority, onChange: (priority) => setTransitionFields((current) => ({ ...current, priority })), options: Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label })) },
-        ]}
-        confirmation={<>Vas a derivar este ticket a <strong>{RESPONSIBLE_AREAS[transitionFields.responsibleAreaId]}</strong>.</>}
-        confirmLabel="Confirmar derivación"
+        description="El ticket pasa a Derivado, con el área ya asignada por la clasificación."
+        confirmation={<>Vas a derivar este ticket a <strong>{RESPONSIBLE_AREAS[fields.responsibleAreaId] || fields.responsibleAreaId}</strong>.</>}
+        confirmLabel={derivationLoading ? "Derivando…" : "Confirmar derivación"}
         onCancel={() => setDerivationOpen(false)}
         onConfirm={confirmDerivation}
       />}
@@ -407,6 +468,25 @@ export default function TicketDetailPage() {
           error={infoRequestError}
           onCancel={() => setInfoRequestOpen(false)}
           onConfirm={handleInformationRequestConfirm}
+        />
+      )}
+      {reasonDialog && (
+        <TicketReasonDialog
+          ticketPublicId={ticket.publicId}
+          eyebrow={reasonDialog.kind === "return" ? "Devolución" : "Cancelación"}
+          title={reasonDialog.kind === "return" ? "Devolver a revisión" : "Rechazar / cancelar solicitud"}
+          description={
+            reasonDialog.kind === "return"
+              ? "El ticket vuelve a En revisión para que el agente lo reclasifique o derive de nuevo."
+              : "El ticket pasa a Cancelado."
+          }
+          confirmLabel={reasonDialog.kind === "return" ? "Confirmar devolución" : "Confirmar cancelación"}
+          reasonOptions={reasonDialog.kind === "reject" ? CANCELLATION_REASONS : undefined}
+          danger={reasonDialog.kind === "reject"}
+          loading={reasonLoading}
+          error={reasonError}
+          onCancel={() => setReasonDialog(null)}
+          onConfirm={handleReasonConfirm}
         />
       )}
     </div>

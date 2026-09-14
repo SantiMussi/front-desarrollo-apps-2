@@ -222,3 +222,65 @@ export async function resolveTicket(ticketId, { type, publicMessage, internalMes
     }),
   });
 }
+
+export async function simulateStatusUpdate(ticketId, { moduleId, updateType, publicMessage, internalMessage, details }) {
+  const now = new Date().toISOString();
+  return request(`/tickets/${encodeURIComponent(ticketId)}/simulate-status-update`, {
+    method: "POST",
+    body: JSON.stringify({
+      specVersion: "1.0",
+      eventId: crypto.randomUUID(),
+      eventType: "updateTicketStatus",
+      occurredAt: now,
+      producer: { moduleId, service: `${moduleId}-simulator` },
+      subject: `tickets/${ticketId}`,
+      data: {
+        ticketId,
+        updateType,
+        publicMessage: publicMessage || null,
+        internalMessage: internalMessage || null,
+        details: details || null,
+        updatedBy: { type: "EXTERNAL_USER", id: `${moduleId}-simulator` },
+        updateOccurredAt: now,
+      },
+    }),
+  });
+}
+
+export async function simulateAreaResolution(ticketId, { moduleId, type, publicMessage, internalMessage }) {
+  return simulateStatusUpdate(ticketId, {
+    moduleId,
+    updateType: "RESOLVED",
+    publicMessage,
+    internalMessage,
+    details: { resolution: { type } },
+  });
+}
+
+export async function returnTicketToAgent(ticketId, moduleId, { reasonCode, publicMessage, internalMessage }) {
+  return simulateStatusUpdate(ticketId, {
+    moduleId,
+    updateType: "RETURNED",
+    publicMessage,
+    internalMessage,
+    details: { returnInfo: { reasonCode } },
+  });
+}
+
+export async function rejectTicket(ticketId, moduleId, { reasonCode, publicMessage, internalMessage }) {
+  return simulateStatusUpdate(ticketId, {
+    moduleId,
+    updateType: "REJECTED",
+    publicMessage,
+    internalMessage,
+    details: { cancellation: { reasonCode } },
+  });
+}
+
+export async function startTicketWork(ticketId, moduleId) {
+  return simulateStatusUpdate(ticketId, { moduleId, updateType: "STARTED" });
+}
+
+export async function routeTicket(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/route`, { method: "POST" });
+}

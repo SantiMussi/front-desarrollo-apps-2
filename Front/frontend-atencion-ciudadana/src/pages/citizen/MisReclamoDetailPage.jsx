@@ -5,7 +5,7 @@ import CitizenTicketView from "../../components/ticket/CitizenTicketView";
 
 export default function MisReclamoDetailPage() {
   const { publicId } = useParams();
-  const { ticket, loading, error, source, actions, actionLoading, actionError } =
+  const { ticket, loading, error, actions, actionLoading, actionError } =
     useMyTicketDetail(publicId);
 
   if (loading) {
@@ -36,7 +36,6 @@ export default function MisReclamoDetailPage() {
   return (
     <CitizenTicketView
       ticket={ticket}
-      source={source}
       backTo="/mis-reclamos"
       backLabel="Mis Reclamos"
       actions={actions}

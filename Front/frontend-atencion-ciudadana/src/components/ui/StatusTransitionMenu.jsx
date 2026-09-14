@@ -11,14 +11,9 @@ const TRANSITIONS = {
   ],
   IN_REVIEW: [
     { status: "PENDING_INFORMATION", action: "Solicitar información extra" },
-    { status: "IN_PROGRESS", action: "Iniciar trabajo interno" },
     { status: "ROUTED", action: "Derivar al área correspondiente" },
-    { status: "DUPLICATE", action: "Marcar como duplicado" },
-    { status: "REGISTERED", action: "Descartar análisis" },
   ],
   PENDING_INFORMATION: [
-    { status: "IN_REVIEW", action: "Continuar análisis" },
-    { status: "IN_PROGRESS", action: "Continuar gestión" },
     { status: "CANCELLED", action: "Cancelar ticket" },
   ],
   ROUTED: [
@@ -31,18 +26,15 @@ const TRANSITIONS = {
   IN_PROGRESS: [
     { status: "RESOLVED", action: "Completar solicitud" },
     { status: "PENDING_INFORMATION", action: "Solicitar información extra" },
-    { status: "ROUTED", action: "Devolver al área asignadora" },
+    { status: "IN_REVIEW", action: "Devolver a revisión" },
     { status: "CANCELLED", action: "Cancelar ticket" },
   ],
-  RESOLVED: [
-    { status: "CLOSED", action: "Validar resolución y cerrar" },
-    { status: "IN_PROGRESS", action: "Reabrir ticket" },
-  ],
+  RESOLVED: [],
   DUPLICATE: [
     { status: "IN_REVIEW", action: "Volver a revisar" },
     { status: "CLOSED", action: "Cerrar con el caso principal" },
   ],
-  CANCELLED: [{ status: "IN_PROGRESS", action: "Reabrir solicitud" }],
+  CANCELLED: [],
   CLOSED: [],
 };
 

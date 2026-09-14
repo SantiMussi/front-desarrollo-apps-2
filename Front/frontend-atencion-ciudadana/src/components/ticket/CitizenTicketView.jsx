@@ -169,7 +169,6 @@ function AttentionRating({ value, onRate }) {
 
 export default function CitizenTicketView({
   ticket,
-  source,
   readOnly = false,
   backTo,
   backLabel,
@@ -262,13 +261,6 @@ export default function CitizenTicketView({
         </div>
         <StatusPill status={ticket.currentStatus} />
       </div>
-
-      {source === "sample" && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Datos de ejemplo: no pudimos conectar con el detalle de este reclamo.
-        </div>
-      )}
 
       {/* Banner de confirmación / reapertura (solo en RESOLVED) */}
       {isResolved && (

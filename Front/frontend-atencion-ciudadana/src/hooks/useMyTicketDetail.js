@@ -9,143 +9,6 @@ import {
 } from "../services/apiClient";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
 
-const photo = (label, from, to) =>
-  `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="480" height="360" fill="url(#g)"/><text x="50%" y="52%" font-family="system-ui,Arial" font-size="22" fill="#ffffffcc" text-anchor="middle">${label}</text></svg>`
-  )}`;
-
-const SAMPLE_DETAILS = {
-  "OP-0000012298": {
-    publicId: "OP-0000012298",
-    currentStatus: "RESOLVED",
-    summary: "Bache en la vía pública",
-    description:
-      "Hay un bache profundo en la intersección de Av. San Juan y Lima que está causando problemas al tráfico y peligro para los ciclistas. Se ha ido agrandando con las últimas lluvias.",
-    createdAt: "2026-10-12T12:30:00Z",
-    statusChangedAt: "2026-10-15T17:45:00Z",
-    resolutionConfirmationDueAt: "2026-10-22T17:45:00Z",
-    requestType: { name: "Informar un bache" },
-    category: { name: "Mantenimiento Vial" },
-    subcategory: { name: "Calles y Pavimento" },
-    location: { addressLine: "Av. San Juan & Lima", neighborhood: "Monserrat", district: "Comuna 1" },
-    resolution: {
-      type: "ACTION_COMPLETED",
-      publicMessage:
-        "El bache ha sido reparado en el día de la fecha. Por favor, confirmá si la solución es satisfactoria. ¡Gracias por tu reporte!",
-      resolvedAt: "2026-10-15T17:45:00Z",
-    },
-    attachments: [
-      { id: "a1", name: "bache-esquina.jpg", url: photo("Foto del reporte", "#5b6b7a", "#2f3b47") },
-      { id: "a2", name: "bache-detalle.jpg", url: photo("Foto del reporte", "#6a5c4a", "#3a3126") },
-    ],
-    messages: [
-      {
-        id: "m1",
-        authorType: "CITIZEN",
-        text: "Buenos días, adjunté las fotos solicitadas sobre el bache. ¿Tienen un estimado de cuándo podrían repararlo?",
-        createdAt: "2026-10-13T13:00:00Z",
-      },
-      {
-        id: "m2",
-        authorType: "AGENT",
-        authorName: "Atención Vecinal",
-        text: "Hola. Recibimos la información correctamente. La cuadrilla está programada para la zona esta semana. Te mantendremos informado.",
-        createdAt: "2026-10-13T14:20:00Z",
-      },
-      {
-        id: "m3",
-        authorType: "AGENT",
-        authorName: "Atención Vecinal",
-        text: "El bache ha sido reparado en el día de la fecha. Por favor, confirmá si la solución es satisfactoria. ¡Gracias por tu reporte!",
-        createdAt: "2026-10-15T17:45:00Z",
-      },
-    ],
-    history: [
-      { id: "h1", actionType: "TICKET_CREATED", newStatus: "REGISTERED", message: "Reclamo creado", occurredAt: "2026-10-12T12:30:00Z" },
-      { id: "h2", actionType: "REVIEW_STARTED", newStatus: "IN_REVIEW", message: "Asignado a Cuadrilla Vial Centro", occurredAt: "2026-10-13T14:15:00Z" },
-      { id: "h3", actionType: "RESOLVED", newStatus: "RESOLVED", message: "Reparación completada", occurredAt: "2026-10-15T17:45:00Z" },
-    ],
-    rating: null,
-  },
-  "OP-0000012340": {
-    publicId: "OP-0000012340",
-    currentStatus: "IN_PROGRESS",
-    summary: "Poda de árbol peligroso",
-    description:
-      "Las ramas están tocando los cables de tensión en la plaza principal. Con viento fuerte golpean contra el balcón del primer piso.",
-    createdAt: "2026-10-05T12:00:00Z",
-    statusChangedAt: "2026-10-08T09:30:00Z",
-    resolutionConfirmationDueAt: null,
-    requestType: { name: "Solicitar poda" },
-    category: { name: "Arbolado, plazas y espacios verdes" },
-    subcategory: { name: "Arbolado público" },
-    location: { addressLine: "Yerbal 2400", neighborhood: "Flores", district: "Comuna 7" },
-    resolution: null,
-    attachments: [],
-    messages: [
-      {
-        id: "m1",
-        authorType: "AGENT",
-        authorName: "Atención Vecinal",
-        text: "Derivamos el pedido al área de Arbolado. Te avisamos cuando la cuadrilla tenga fecha.",
-        createdAt: "2026-10-08T09:35:00Z",
-      },
-    ],
-    history: [
-      { id: "h1", actionType: "TICKET_CREATED", newStatus: "REGISTERED", message: "Reclamo creado", occurredAt: "2026-10-05T12:00:00Z" },
-      { id: "h2", actionType: "REVIEW_STARTED", newStatus: "IN_REVIEW", message: "En revisión", occurredAt: "2026-10-06T10:00:00Z" },
-      { id: "h3", actionType: "STATE_CHANGED", newStatus: "IN_PROGRESS", message: "Cuadrilla asignada", occurredAt: "2026-10-08T09:30:00Z" },
-    ],
-    rating: null,
-  },
-  "OP-0000012345": {
-    publicId: "OP-0000012345",
-    currentStatus: "REGISTERED",
-    summary: "Luminaria apagada en la cuadra",
-    description: "Hace una semana que la luz de la calle no enciende, frente al número 123.",
-    createdAt: "2026-10-10T12:00:00Z",
-    statusChangedAt: "2026-10-10T12:00:00Z",
-    resolutionConfirmationDueAt: null,
-    requestType: { name: "Informar una luminaria apagada" },
-    category: { name: "Alumbrado y equipamiento urbano" },
-    subcategory: { name: "Alumbrado público" },
-    location: { addressLine: "Av. Rivadavia 6100", neighborhood: "Caballito", district: "Comuna 6" },
-    resolution: null,
-    attachments: [],
-    messages: [],
-    history: [
-      { id: "h1", actionType: "TICKET_CREATED", newStatus: "REGISTERED", message: "Reclamo creado", occurredAt: "2026-10-10T12:00:00Z" },
-    ],
-    rating: null,
-  },
-};
-
-function sampleFor(publicId) {
-  const base = SAMPLE_DETAILS[publicId];
-  if (base) return JSON.parse(JSON.stringify(base));
-  // Fallback genérico para cualquier otro id.
-  return {
-    publicId,
-    currentStatus: "IN_REVIEW",
-    summary: "Reclamo",
-    description: "Detalle no disponible en los datos de ejemplo.",
-    createdAt: new Date().toISOString(),
-    statusChangedAt: new Date().toISOString(),
-    resolutionConfirmationDueAt: null,
-    requestType: null,
-    category: null,
-    subcategory: null,
-    location: null,
-    resolution: null,
-    attachments: [],
-    messages: [],
-    history: [
-      { id: "h1", actionType: "TICKET_CREATED", newStatus: "REGISTERED", message: "Reclamo creado", occurredAt: new Date().toISOString() },
-    ],
-    rating: null,
-  };
-}
-
 function buildFallbackHistory(t) {
   if (!t.createdAt) return [];
   const items = [
@@ -183,7 +46,13 @@ export function normalizeTicketDetail(raw, publicId) {
   };
 }
 
-const isBackendMissing = (err) => [401, 403, 404].includes(err?.status);
+function messageForLoadError(err) {
+  const status = err?.status;
+  if (status === 404) return "No encontramos este reclamo.";
+  if (status === 403) return "No tenés acceso a este reclamo.";
+  if (status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return "No pudimos conectar con el servidor. Intentá de nuevo más tarde.";
+}
 
 function messageForActionError(err) {
   const status = err?.status;
@@ -205,7 +74,6 @@ export function useMyTicketDetail(publicId) {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [source, setSource] = useState("sample");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
 
@@ -225,13 +93,9 @@ export function useMyTicketDetail(publicId) {
       console.log("[useMyTicketDetail] GET /tickets/{id} response:", raw);
       const data = normalizeTicketDetail(raw, publicId);
       setTicket(data);
-      setSource("backend");
     } catch (err) {
-      setTicket(normalizeTicketDetail(sampleFor(publicId), publicId));
-      setSource("sample");
-      if (err?.status && !isBackendMissing(err)) {
-        setError(err.message ?? "No pudimos cargar el detalle del reclamo.");
-      }
+      setTicket(null);
+      setError(messageForLoadError(err));
     } finally {
       setLoading(false);
     }
@@ -356,5 +220,5 @@ export function useMyTicketDetail(publicId) {
     [confirmResolution, requestReopen, rateAttention, answerInformation]
   );
 
-  return { ticket, loading, error, source, actions, actionLoading, actionError, reload: load };
+  return { ticket, loading, error, actions, actionLoading, actionError, reload: load };
 }
