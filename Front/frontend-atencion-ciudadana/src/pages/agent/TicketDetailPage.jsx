@@ -118,12 +118,15 @@ export default function TicketDetailPage() {
   const escalated = ticket?.escalated === true;
   const slaDueAt = ticket?.resolutionNearDueAt;
   const slaCountdown = formatSlaCountdown(slaDueAt, now);
+  const firstResponseDueAt = ticket?.firstResponseDueAt;
+  const firstResponseCountdown = formatSlaCountdown(firstResponseDueAt, now);
+  const firstResponseOverdue = ticket?.firstResponseBreached === true || firstResponseCountdown?.overdue;
 
   useEffect(() => {
-    if (!slaDueAt) return undefined;
+    if (!slaDueAt && !firstResponseDueAt) return undefined;
     const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(intervalId);
-  }, [slaDueAt]);
+  }, [firstResponseDueAt, slaDueAt]);
 
   const submit = () => {
     if (!comment.trim()) return;
@@ -427,7 +430,22 @@ export default function TicketDetailPage() {
 
         <aside className="space-y-4 bg-slate-50/60 px-3 py-6">
           <DetailCard title="SLA" icon={Clock3}>
-            <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+            <div className="space-y-3">
+              <div className={`rounded-md border px-3 py-3 ${firstResponseOverdue ? "border-red-200 bg-red-50 text-red-700" : ticket?.firstResponseNearDue === true ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  {firstResponseOverdue ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                  {firstResponseOverdue ? "Primera respuesta vencida" : ticket?.firstResponseNearDue === true ? "Primera respuesta próxima a vencer" : "Primera respuesta"}
+                </div>
+                {firstResponseCountdown ? (
+                  <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${firstResponseOverdue ? "Vencido hace" : "Tiempo restante"} ${firstResponseCountdown.label} para la primera respuesta`}>
+                    {firstResponseOverdue ? "Vencido hace " : ""}{firstResponseCountdown.label}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                )}
+                {firstResponseDueAt && <p className="mt-1 text-[11px]">Vencimiento de primera respuesta: {formatDate(firstResponseDueAt)}</p>}
+              </div>
+              <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
               <div className="flex items-center gap-2 text-xs font-semibold">
                 {slaCountdown?.overdue || slaIndicator.status === "overdue" ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
                 {slaCountdown?.overdue ? "SLA vencido" : slaIndicator.label}
@@ -440,6 +458,7 @@ export default function TicketDetailPage() {
                 <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
               )}
               {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento de resolución: {formatDate(slaDueAt)}</p>}
+              </div>
             </div>
           </DetailCard>
           <DetailCard title="Detalles">
