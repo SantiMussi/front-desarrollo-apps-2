@@ -6,6 +6,7 @@ import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { fetchCategories } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
+import { getSlaIndicator } from "../../utils/ticketIndicators";
 
 const PAGE_SIZE = 20;
 const PRIORITY_LABELS = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
@@ -29,8 +30,11 @@ function mapTicket(ticket) {
     citizen: ticket.anonymous
       ? { name: "Anónimo", initials: "AN" }
       : { name: "Ciudadano registrado", initials: "—" },
-    slaIndicator: { status: "not-applicable" },
-    isEscalated: Boolean(ticket.escalated),
+    slaIndicator: getSlaIndicator(ticket),
+    resolutionNearDueAt: ticket.resolutionNearDueAt,
+    escalated: ticket.escalated,
+    escalationReasonCode: ticket.escalationReasonCode,
+    escalatedAt: ticket.escalatedAt,
   };
 }
 
@@ -148,7 +152,7 @@ export default function TicketsInboxPage() {
                 case "createdAt":
                   return t.createdAt;
                 case "sla":
-                  return "—";
+                  return t.slaIndicator.label;
                 default:
                   return "";
               }
