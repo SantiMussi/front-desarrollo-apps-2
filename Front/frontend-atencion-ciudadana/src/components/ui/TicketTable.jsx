@@ -63,8 +63,8 @@ export default function TicketTable({ tickets, columns }) {
       case 'summary': return (
         <div className="min-w-[220px]">
           <span className="text-slate-700">{ticket.summary}</span>
-          {ticket.isEscalated && (
-            <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700" title="El escalamiento se mantiene independientemente del estado">
+          {ticket.escalated && (
+            <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700" title={ticket.escalationReasonCode ? `Motivo: ${ticket.escalationReasonCode}` : "El escalamiento se mantiene independientemente del estado"}>
               <AlertOctagon className="h-3 w-3" aria-hidden="true" /> Escalado
             </span>
           )}

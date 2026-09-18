@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Plus, Send, Smile, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
@@ -17,6 +17,7 @@ import { useRequestTicketInformation } from "../../hooks/useRequestTicketInforma
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
 import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket } from "../../services/apiClient";
+import { getSlaIndicator } from "../../utils/ticketIndicators";
 
 function reviewErrorMessage(err) {
   if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
@@ -79,6 +80,21 @@ const REASON_DIALOG_CONFIG = {
   },
 };
 
+function formatSlaCountdown(dueAt, now) {
+  const dueTime = dueAt ? new Date(dueAt).getTime() : NaN;
+  if (!Number.isFinite(dueTime)) return null;
+
+  const difference = dueTime - now;
+  const totalHours = Math.floor(Math.abs(difference) / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  return {
+    overdue: difference < 0,
+    label: `${days} ${days === 1 ? "día" : "días"} y ${hours} ${hours === 1 ? "hora" : "horas"}`,
+  };
+}
+
 function Field({ label, children }) {
   return <div className="grid grid-cols-[118px_1fr] gap-3 py-2.5 text-xs"><dt className="text-slate-500">{label}</dt><dd className="min-w-0 font-medium text-slate-700">{children}</dd></div>;
 }
@@ -107,6 +123,7 @@ export default function TicketDetailPage() {
   const { resolve, resolveSimulated, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
   const { requestTypes } = useRequestTypesCatalog();
   const { requestInformation, loading: infoRequestLoading, error: infoRequestError, reset: resetInfoRequest } = useRequestTicketInformation();
+  const [now, setNow] = useState(() => Date.now());
 
   const [ticketIdForFields, setTicketIdForFields] = useState(null);
   if (ticket && ticket.id !== ticketIdForFields) {
@@ -132,6 +149,20 @@ export default function TicketDetailPage() {
       activities: ticket.createdAt ? [{ id: "created", message: "Ticket creado", occurredAt: ticket.createdAt }] : []
     };
   }, [ticket]);
+
+  const slaIndicator = getSlaIndicator(ticket);
+  const escalated = ticket?.escalated === true;
+  const slaDueAt = ticket?.resolutionNearDueAt;
+  const slaCountdown = formatSlaCountdown(slaDueAt, now);
+  const firstResponseDueAt = ticket?.firstResponseDueAt;
+  const firstResponseCountdown = formatSlaCountdown(firstResponseDueAt, now);
+  const firstResponseOverdue = ticket?.firstResponseBreached === true || firstResponseCountdown?.overdue;
+
+  useEffect(() => {
+    if (!slaDueAt && !firstResponseDueAt) return undefined;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [firstResponseDueAt, slaDueAt]);
 
   const submit = () => {
     if (!comment.trim()) return;
@@ -444,7 +475,39 @@ export default function TicketDetailPage() {
           </div>
         </main>
 
-        <aside className="bg-slate-50/60 px-3 py-6 space-y-4">
+        <aside className="space-y-4 bg-slate-50/60 px-3 py-6">
+          <DetailCard title="SLA" icon={Clock3}>
+            <div className="space-y-3">
+              <div className={`rounded-md border px-3 py-3 ${firstResponseOverdue ? "border-red-200 bg-red-50 text-red-700" : ticket?.firstResponseNearDue === true ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  {firstResponseOverdue ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                  {firstResponseOverdue ? "Primera respuesta vencida" : ticket?.firstResponseNearDue === true ? "Primera respuesta próxima a vencer" : "Primera respuesta"}
+                </div>
+                {firstResponseCountdown ? (
+                  <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${firstResponseOverdue ? "Vencido hace" : "Tiempo restante"} ${firstResponseCountdown.label} para la primera respuesta`}>
+                    {firstResponseOverdue ? "Vencido hace " : ""}{firstResponseCountdown.label}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                )}
+                {firstResponseDueAt && <p className="mt-1 text-[11px]">Vencimiento de primera respuesta: {formatDate(firstResponseDueAt)}</p>}
+              </div>
+              <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                {slaCountdown?.overdue || slaIndicator.status === "overdue" ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                {slaCountdown?.overdue ? "SLA vencido" : slaIndicator.label}
+              </div>
+              {slaCountdown ? (
+                <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${slaCountdown.overdue ? "Vencido hace" : "Tiempo restante"} ${slaCountdown.label}`}>
+                  {slaCountdown.overdue ? "Vencido hace " : ""}{slaCountdown.label}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+              )}
+              {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento de resolución: {formatDate(slaDueAt)}</p>}
+              </div>
+            </div>
+          </DetailCard>
           <DetailCard title="Detalles">
             <dl className="divide-y divide-slate-100">
               <Field label="Tipo de solicitud">
@@ -481,9 +544,17 @@ export default function TicketDetailPage() {
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>
           </DetailCard>
-          <DetailCard title="SLA" icon={Clock3}>
-            <p className="text-[11px] text-slate-400">Sin datos de SLA disponibles todavía.</p>
-          </DetailCard>
+          {escalated && (
+            <DetailCard title="Escalamiento" icon={TriangleAlert}>
+              <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800">
+                <p className="text-xs font-semibold">Ticket escalado</p>
+                <dl className="mt-1 space-y-1 text-[11px]">
+                  <div className="flex justify-between gap-3"><dt>Motivo</dt><dd className="font-medium text-right">{ticket.escalationReasonCode || "No informado"}</dd></div>
+                  {ticket.escalatedAt && <div className="flex justify-between gap-3"><dt>Escalado</dt><dd className="font-medium text-right">{formatDate(ticket.escalatedAt)}</dd></div>}
+                </dl>
+              </div>
+            </DetailCard>
+          )}
           <div className="px-1 py-2 text-[11px] text-slate-500"><div className="flex justify-between py-1"><span>Creado</span><span>{formatDate(ticket.createdAt)}</span></div><div className="flex justify-between py-1"><span>Actualizado</span><span>{formatDate(ticket.updatedAt)}</span></div></div>
         </aside>
       </div>
