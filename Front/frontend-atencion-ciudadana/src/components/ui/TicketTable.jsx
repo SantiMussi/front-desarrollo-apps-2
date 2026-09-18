@@ -1,4 +1,5 @@
 import StatusBadge from "./StatusBadge";
+import DuplicateLinkIndicator from "./DuplicateLinkIndicator";
 import { motion } from "framer-motion";
 import { AlertOctagon, CircleHelp, Clock3, Lightbulb, Plus, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -63,11 +64,14 @@ export default function TicketTable({ tickets, columns }) {
       case 'summary': return (
         <div className="min-w-[220px]">
           <span className="text-slate-700">{ticket.summary}</span>
-          {ticket.escalated && (
-            <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700" title={ticket.escalationReasonCode ? `Motivo: ${ticket.escalationReasonCode}` : "El escalamiento se mantiene independientemente del estado"}>
-              <AlertOctagon className="h-3 w-3" aria-hidden="true" /> Escalado
-            </span>
-          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {ticket.escalated && (
+              <span className="flex w-fit items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700" title={ticket.escalationReasonCode ? `Motivo: ${ticket.escalationReasonCode}` : "El escalamiento se mantiene independientemente del estado"}>
+                <AlertOctagon className="h-3 w-3" aria-hidden="true" /> Escalado
+              </span>
+            )}
+            <DuplicateLinkIndicator linkInfo={ticket.duplicateLinkInfo} />
+          </div>
         </div>
       );
       case 'citizen': return (

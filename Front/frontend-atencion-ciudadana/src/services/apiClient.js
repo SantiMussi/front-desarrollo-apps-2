@@ -106,8 +106,8 @@ export async function answerTicketInformation(ticketId, { responseMessage }) {
   });
 }
 
-export async function rateTicketAttention(publicId, stars) {
-  return request(`/tickets/mine/${encodeURIComponent(publicId)}/rating`, {
+export async function rateTicketAttention(ticketId, { stars }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/rating`, {
     method: "POST",
     body: JSON.stringify({ stars }),
   });
@@ -289,5 +289,12 @@ export async function cancelTicket(ticketId, { reasonCode, publicMessage, intern
   return request(`/tickets/${encodeURIComponent(ticketId)}/cancel`, {
     method: "POST",
     body: JSON.stringify({ reasonCode, publicMessage: publicMessage || null, internalMessage: internalMessage || null }),
+  });
+}
+
+export async function linkTicketDuplicate(ticketId, { mainTicketId }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/duplicate`, {
+    method: "POST",
+    body: JSON.stringify({ mainTicketId }),
   });
 }

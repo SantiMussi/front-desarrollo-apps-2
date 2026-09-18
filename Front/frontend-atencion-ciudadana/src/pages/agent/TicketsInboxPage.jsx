@@ -7,6 +7,7 @@ import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { fetchCategories } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
+import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 
 const PAGE_SIZE = 20;
 const PRIORITY_LABELS = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
@@ -35,6 +36,7 @@ function mapTicket(ticket) {
     escalated: ticket.escalated,
     escalationReasonCode: ticket.escalationReasonCode,
     escalatedAt: ticket.escalatedAt,
+    duplicateLinkInfo: getDuplicateLinkInfo(ticket),
   };
 }
 

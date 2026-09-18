@@ -76,6 +76,13 @@ function messageForActionError(err) {
   return err?.message || "No pudimos completar la acción. Intentá de nuevo.";
 }
 
+function messageForRatingError(err) {
+  if (err?.status === 404) {
+    return "El back todavía no tiene el endpoint para registrar la encuesta — queda preparado para cuando esté listo.";
+  }
+  return messageForActionError(err);
+}
+
 export function useMyTicketDetail(publicId) {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -211,14 +218,21 @@ export function useMyTicketDetail(publicId) {
 
   const rateAttention = useCallback(
     async (stars) => {
-      setTicket((prev) => (prev ? { ...prev, rating: stars } : prev));
+      if (!ticket?.id || ticket.currentStatus !== "CLOSED") return false;
+      setActionLoading(true);
+      setActionError(null);
       try {
-        await rateTicketAttention(publicId, stars);
+        await rateTicketAttention(ticket.id, { stars });
+        setTicket((prev) => (prev ? { ...prev, rating: stars } : prev));
+        return true;
       } catch (err) {
-        void err;
+        setActionError(messageForRatingError(err));
+        return false;
+      } finally {
+        setActionLoading(false);
       }
     },
-    [publicId]
+    [ticket]
   );
 
   const actions = useMemo(

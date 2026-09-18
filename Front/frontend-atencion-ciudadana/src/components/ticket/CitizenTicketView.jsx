@@ -116,7 +116,7 @@ function StatusHistory({ history }) {
   );
 }
 
-function AttentionRating({ value, onRate }) {
+function AttentionRating({ value, onRate, loading, error }) {
   const [hover, setHover] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
@@ -152,8 +152,9 @@ function AttentionRating({ value, onRate }) {
             type="button"
             onMouseEnter={() => setHover(n)}
             onClick={() => onRate(n)}
+            disabled={loading}
             aria-label={`${n} estrellas`}
-            className="p-0.5"
+            className="p-0.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Star
               className={`h-6 w-6 ${
@@ -163,6 +164,7 @@ function AttentionRating({ value, onRate }) {
           </button>
         ))}
       </div>
+      {error && <p className="mt-2 text-[12px] text-red-600">{error}</p>}
     </div>
   );
 }
@@ -209,6 +211,8 @@ export default function CitizenTicketView({
     const ok = await actions?.answerInformation(text);
     if (ok) setInfoResponse("");
   };
+
+  const handleRate = (stars) => actions?.rateAttention(stars);
 
   const sendMessage = () => {
     const text = draft.trim();
@@ -524,9 +528,9 @@ export default function CitizenTicketView({
             })}
           </div>
 
-          {!readOnly && (isResolved || ticket.currentStatus === "CLOSED") && (
+          {!readOnly && ticket.currentStatus === "CLOSED" && (
             <div className="mt-4">
-              <AttentionRating value={ticket.rating} onRate={actions?.rateAttention} />
+              <AttentionRating value={ticket.rating} onRate={handleRate} loading={actionLoading} error={actionError} />
             </div>
           )}
 

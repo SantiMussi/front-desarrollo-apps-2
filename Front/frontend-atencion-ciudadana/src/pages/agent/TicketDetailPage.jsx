@@ -8,6 +8,8 @@ import TicketTransitionDialog from "../../components/ui/TicketTransitionForm";
 import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
 import RequestInformationDialog from "../../components/ui/RequestInformationDialog";
 import TicketReasonDialog from "../../components/ui/TicketReasonDialog";
+import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
+import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
 import { RESOLUTION_TYPE_LABELS } from "../../constants/resolutionTypes";
@@ -16,8 +18,9 @@ import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
+import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 
 function reviewErrorMessage(err) {
   if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
@@ -43,8 +46,15 @@ function reasonConfirmErrorMessage(err) {
   return "No pudimos registrar la acción. Intentá de nuevo más tarde.";
 }
 
+function duplicateLinkErrorMessage(err) {
+  if (err?.status === 404) return "El back todavía no tiene el endpoint para vincular duplicados — queda preparado para cuando esté listo.";
+  if (err?.status === 409) return err?.message || "El ticket ya no permite vincularse como duplicado.";
+  if (err?.status === 400) return err?.message || "No pudimos vincular estos tickets; revisá la selección.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return err?.message || "No pudimos vincular el ticket. Intentá de nuevo.";
+}
+
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
-const EDITOR_CLASS = "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 const TICKET_TYPE_CONFIG = {
   COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
   REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
@@ -120,6 +130,9 @@ export default function TicketDetailPage() {
   const [reasonDialog, setReasonDialog] = useState(null);
   const [reasonLoading, setReasonLoading] = useState(false);
   const [reasonError, setReasonError] = useState(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateError, setDuplicateError] = useState(null);
   const { resolve, resolveSimulated, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
   const { requestTypes } = useRequestTypesCatalog();
   const { requestInformation, loading: infoRequestLoading, error: infoRequestError, reset: resetInfoRequest } = useRequestTicketInformation();
@@ -151,6 +164,7 @@ export default function TicketDetailPage() {
   }, [ticket]);
 
   const slaIndicator = getSlaIndicator(ticket);
+  const duplicateLinkInfo = getDuplicateLinkInfo(ticket);
   const escalated = ticket?.escalated === true;
   const slaDueAt = ticket?.resolutionNearDueAt;
   const slaCountdown = formatSlaCountdown(slaDueAt, now);
@@ -256,6 +270,11 @@ export default function TicketDetailPage() {
       setReasonDialog({ kind: "reject" });
       return false;
     }
+    if (status === "REGISTERED" && nextStatus === "DUPLICATE") {
+      setDuplicateError(null);
+      setDuplicateDialogOpen(true);
+      return false;
+    }
     if (["REGISTERED", "IN_REVIEW", "PENDING_INFORMATION"].includes(status) && nextStatus === "CANCELLED") {
       setReasonError(null);
       setReasonDialog({ kind: "cancel" });
@@ -285,6 +304,26 @@ export default function TicketDetailPage() {
       setReasonError(reasonConfirmErrorMessage(err));
     } finally {
       setReasonLoading(false);
+    }
+  };
+
+  const handleDuplicateConfirm = async ({ mainTicketId, mainTicketPublicId }) => {
+    if (duplicateLoading || status !== "REGISTERED") return;
+    setDuplicateLoading(true);
+    setDuplicateError(null);
+    try {
+      const updated = await linkTicketDuplicate(ticket.id, { mainTicketId });
+      setStatus(updated.currentStatus ?? "DUPLICATE");
+      setLocalActivities((items) => [
+        ...items,
+        { id: `duplicate-${Date.now()}`, message: `Vinculado como duplicado de ${mainTicketPublicId}.`, occurredAt: new Date().toISOString() },
+      ]);
+      reload();
+      setDuplicateDialogOpen(false);
+    } catch (err) {
+      setDuplicateError(duplicateLinkErrorMessage(err));
+    } finally {
+      setDuplicateLoading(false);
     }
   };
 
@@ -418,6 +457,7 @@ export default function TicketDetailPage() {
                 </span>
               )}
               <span>{ticket.publicId}</span>
+              <DuplicateLinkIndicator linkInfo={duplicateLinkInfo} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{ticket.summary}</h1>
           </div>
@@ -540,7 +580,10 @@ export default function TicketDetailPage() {
               <Field label="Área responsable"><Select size="xs" ariaLabel="Área responsable" disabled value={fields.responsibleAreaId} options={Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => ({ value: id, label: `${id} · ${label}` }))} /></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
-              <Field label="Afectados"><input aria-label="Cantidad de afectados" type="number" min="0" value={fields.affectedCount} onChange={(event) => setFields((current) => ({ ...current, affectedCount: Math.max(0, Number(event.target.value)) }))} className={EDITOR_CLASS} /></Field>
+              <Field label="Afectados">
+                <span>{fields.affectedCount}</span>
+                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-400">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
+              </Field>
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>
           </DetailCard>
@@ -596,6 +639,15 @@ export default function TicketDetailPage() {
           error={reasonError}
           onCancel={() => setReasonDialog(null)}
           onConfirm={handleReasonConfirm}
+        />
+      )}
+      {duplicateDialogOpen && (
+        <DuplicateLinkDialog
+          ticket={ticket}
+          loading={duplicateLoading}
+          error={duplicateError}
+          onCancel={() => setDuplicateDialogOpen(false)}
+          onConfirm={handleDuplicateConfirm}
         />
       )}
     </div>
