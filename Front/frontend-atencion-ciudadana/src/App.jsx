@@ -9,6 +9,9 @@ import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
 import TicketDetailPage from "./pages/agent/TicketDetailPage";
 import TicketCitizenViewPage from "./pages/agent/TicketCitizenViewPage";
+import CategoriesPage from "./pages/agent/catalog/CategoriesPage";
+import SubcategoriesPage from "./pages/agent/catalog/SubcategoriesPage";
+import RequestTypesPage from "./pages/agent/catalog/RequestTypesPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
@@ -62,6 +65,12 @@ export default function App() {
             <Route path="dashboard" element={<div className="p-8">Dashboard Módulo</div>} />
             <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
             <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
+
+            <Route element={<ProtectedRoute roles={["ADMIN"]} />}>
+              <Route path="catalogo" element={<CategoriesPage />} />
+              <Route path="catalogo/:categoryId" element={<SubcategoriesPage />} />
+              <Route path="catalogo/:categoryId/:subcategoryId" element={<RequestTypesPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
