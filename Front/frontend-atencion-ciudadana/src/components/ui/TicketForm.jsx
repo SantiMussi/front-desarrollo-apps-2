@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield, Search } from "lucide-react";
+import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield, Search, KeyRound, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import FormField from "./FormField";
 import LocationMap from "./LocationMap";
@@ -22,8 +22,21 @@ const normalizeText = (s) =>
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 
+const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONTACT_PHONE_RE = /^\+?[0-9()\-\s]{6,20}$/;
+
+function isValidContactChannel(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return CONTACT_EMAIL_RE.test(trimmed) || CONTACT_PHONE_RE.test(trimmed);
+}
+
 function validateForm(formData, specificFields) {
   const errors = {};
+
+  if (formData.contactChannel && !isValidContactChannel(formData.contactChannel)) {
+    errors.contactChannel = "Ingresá un email o teléfono válido";
+  }
 
   if (!formData.summary.trim()) {
     errors.summary = "El título / resumen es obligatorio";
@@ -117,10 +130,11 @@ function normalizeSpecificFields(fields) {
 
 export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
   const navigate = useNavigate();
-  const { submit, loading, error, errorCode, trackingCode, reset, setError, setErrorCode } = useCreateTicket();
+  const { submit, loading, error, errorCode, trackingCode, ticketPassword: generatedTicketPassword, reset, setError, setErrorCode } = useCreateTicket();
   const { neighborhoods } = useNeighborhoods();
   const { isAuthenticated } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   const [specificFields, setSpecificFields] = useState(
@@ -179,8 +193,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     latitude: null,
     longitude: null,
     isAnonymous: false,
+    contactChannel: "",
+    ticketPassword: "",
     specificData: {},
   });
+
+  const canBeAnonymous = Boolean(requestType?.allowsAnonymous);
+  const submittingAnonymously = canBeAnonymous && formData.isAnonymous;
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [attachments, setAttachments] = useState([]);
@@ -340,11 +359,18 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         reference: !neighborhoodId && selectedNeighborhoodName
           ? `Barrio: ${selectedNeighborhoodName}`
           : ""
-      }
+      },
+      ...(submittingAnonymously
+        ? {
+            anonymous: true,
+            contactChannel: formData.contactChannel.trim() || null,
+            ticketPassword: formData.ticketPassword.trim() || null,
+          }
+        : {}),
     };
 
-    await submit(payload, attachments);
-  }, [formData, specificFields, neighborhoods, requestType, attachments, submit]);
+    await submit(payload, attachments, { skipAuth: submittingAnonymously });
+  }, [formData, specificFields, neighborhoods, requestType, attachments, submit, submittingAnonymously]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
@@ -357,7 +383,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !submittingAnonymously) {
       setLoginPromptOpen(true);
       return;
     }
@@ -369,6 +395,15 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     navigator.clipboard.writeText(trackingCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const ownTicketPassword = formData.ticketPassword.trim();
+  const displayedTicketPassword = ownTicketPassword || generatedTicketPassword;
+
+  const handleCopyPassword = () => {
+    navigator.clipboard.writeText(displayedTicketPassword);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
   };
 
   const handleRetry = () => {
@@ -526,6 +561,42 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           </div>
         </motion.div>
 
+        {displayedTicketPassword && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-4 flex w-full max-w-md flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[#D63031]/30 bg-red-50/40 px-8 py-5"
+          >
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-widest text-[#D63031]">
+              <KeyRound className="h-4 w-4" />
+              Contraseña del ticket
+            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black tracking-widest text-[#D63031] font-mono bg-white px-4 py-2 rounded-lg shadow-sm">
+                {displayedTicketPassword}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyPassword}
+                className="p-2.5 rounded-lg bg-white shadow-sm hover:bg-red-100 hover:text-[#D63031] transition-all active:scale-95"
+                aria-label="Copiar contraseña"
+              >
+                {copiedPassword ? (
+                  <CheckCircle className="h-5 w-5 text-[#D63031]" />
+                ) : (
+                  <Copy className="h-5 w-5 text-[#D63031]" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1 max-w-xs text-[11.5px] leading-relaxed text-neutral-500">
+              {ownTicketPassword
+                ? "Es la que elegiste al crear el ticket. Guardala junto con el código: la vas a necesitar para gestionarlo."
+                : "Generada automáticamente porque no definiste una propia. Guardala junto con el código: no la vamos a poder volver a mostrar."}
+            </p>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -603,28 +674,82 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <p className="text-[12px] text-neutral-500 mt-0.5">{requestType.description}</p>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3.5">
-        <div className="flex items-center gap-2.5">
-          <EyeOff className="h-4 w-4 text-neutral-400" strokeWidth={1.5} />
-          <div>
-            <p className="text-[13px] font-medium text-neutral-700">Presentación anónima</p>
-            <p className="text-[11px] text-neutral-400">Tus datos no serán visibles en el reclamo</p>
-          </div>
+      {!isAuthenticated && !canBeAnonymous && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
+          <EyeOff className="h-4 w-4 shrink-0 text-neutral-400" strokeWidth={1.5} />
+          <p className="text-[12px] text-neutral-500">
+            Este tipo de solicitud no admite presentación anónima — necesitás iniciar sesión para enviarla.
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setFormData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
-          className={`relative h-6 w-11 rounded-full transition-colors duration-200 ${formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
-            }`}
-          role="switch"
-          aria-checked={formData.isAnonymous}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${formData.isAnonymous ? "translate-x-5" : "translate-x-0"
-              }`}
-          />
-        </button>
-      </div>
+      )}
+
+      {canBeAnonymous && (
+        <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <EyeOff className="h-4 w-4 text-neutral-400" strokeWidth={1.5} />
+              <div>
+                <p className="text-[13px] font-medium text-neutral-700">Presentación anónima</p>
+                <p className="text-[11px] text-neutral-400">
+                  {isAuthenticated
+                    ? "Este ticket no quedará ligado a tu cuenta. Vas a conservar un código y una contraseña propios para gestionarlo."
+                    : "Enviá sin crear una cuenta. Vas a conservar un código y una contraseña propios del ticket."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
+                }`}
+              role="switch"
+              aria-checked={formData.isAnonymous}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${formData.isAnonymous ? "translate-x-5" : "translate-x-0"
+                  }`}
+              />
+            </button>
+          </div>
+
+          {formData.isAnonymous && (
+            <div className="space-y-3 border-t border-neutral-100 pt-3.5">
+              <FormField
+                label="Canal de contacto"
+                name="contactChannel"
+                type="text"
+                placeholder="Email o teléfono (opcional)"
+                value={formData.contactChannel}
+                onChange={handleChange}
+                error={fieldErrors.contactChannel}
+                disabled={loading}
+              />
+              <div>
+                <label htmlFor="ticketPassword" className="text-[13px] font-medium text-neutral-700">
+                  Contraseña del ticket
+                </label>
+                <div className="relative mt-1.5">
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.5} />
+                  <input
+                    id="ticketPassword"
+                    name="ticketPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Opcional: la definís vos"
+                    value={formData.ticketPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2.5 pl-10 pr-3.5 text-[14px] text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:border-[#D63031]/40 focus:bg-white focus:ring-2 focus:ring-[#D63031]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-neutral-400">
+                  La vas a necesitar junto con el código de seguimiento para gestionar el ticket. Si la dejás vacía, te generamos una automáticamente y te la mostramos al finalizar.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-1">

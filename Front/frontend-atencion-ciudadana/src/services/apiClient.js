@@ -113,10 +113,38 @@ export async function rateTicketAttention(ticketId, { stars }) {
   });
 }
 
-export async function trackTicket(trackingCode) {
+export async function trackTicket(trackingCode, ticketPassword) {
   return request("/tracking/access", {
     method: "POST",
-    body: JSON.stringify({ trackingCode }),
+    body: JSON.stringify(ticketPassword ? { trackingCode, ticketPassword } : { trackingCode }),
+  });
+}
+
+export async function confirmAnonymousResolution(trackingCode, ticketPassword) {
+  return request(`/tracking/${encodeURIComponent(trackingCode)}/resolution/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ ticketPassword }),
+  });
+}
+
+export async function reopenAnonymousTicket(trackingCode, { ticketPassword, reason }) {
+  return request(`/tracking/${encodeURIComponent(trackingCode)}/resolution/reopen`, {
+    method: "POST",
+    body: JSON.stringify({ ticketPassword, reason }),
+  });
+}
+
+export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage }) {
+  return request(`/tracking/${encodeURIComponent(trackingCode)}/information-response`, {
+    method: "POST",
+    body: JSON.stringify({ ticketPassword, responseMessage }),
+  });
+}
+
+export async function rateAnonymousTicketAttention(trackingCode, { ticketPassword, stars }) {
+  return request(`/tracking/${encodeURIComponent(trackingCode)}/rating`, {
+    method: "POST",
+    body: JSON.stringify({ ticketPassword, stars }),
   });
 }
 
@@ -125,9 +153,9 @@ export async function fetchNeighborhoods() {
 }
 
 // POST /api/tickets
-export async function createTicket(payload, attachments = []) {
+export async function createTicket(payload, attachments = [], { skipAuth = false } = {}) {
   const url = `${BASE_URL}/tickets`;
-  const token = getStoredToken();
+  const token = skipAuth ? null : getStoredToken();
   const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };

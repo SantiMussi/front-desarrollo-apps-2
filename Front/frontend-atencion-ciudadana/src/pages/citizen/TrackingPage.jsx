@@ -1,10 +1,53 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { Search, Loader2, AlertCircle, RotateCcw, KeyRound, Unlock } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import PublicTicketStatus from "../../components/ui/PublicTicketStatus";
+import CitizenTicketView from "../../components/ticket/CitizenTicketView";
 import { trackTicket } from "../../services/apiClient";
+import { useAnonymousTicketAccess } from "../../hooks/useAnonymousTicketAccess";
+
+function AccreditationPanel({ onAccredit, accrediting, accreditError }) {
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!password.trim()) return;
+    onAccredit(password.trim());
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/60 px-5 py-4">
+      <p className="flex items-center gap-1.5 text-[13px] font-semibold text-neutral-700">
+        <KeyRound className="h-4 w-4 text-neutral-400" />
+        ¿Sos el dueño de este ticket?
+      </p>
+      <p className="mt-0.5 text-[12px] text-neutral-500">
+        Ingresá la contraseña del ticket para responder, confirmar la resolución, reabrirlo o calificarlo.
+      </p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Contraseña del ticket"
+          autoComplete="off"
+          className="flex-1 rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-[13px] outline-none transition-colors focus:border-[#D63031]/40 focus:ring-2 focus:ring-[#D63031]/10"
+        />
+        <button
+          type="submit"
+          disabled={accrediting || !password.trim()}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0F2C59] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#1a3f7a] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {accrediting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />}
+          Acreditar
+        </button>
+      </div>
+      {accreditError && <p className="mt-2 text-[12px] text-red-600">{accreditError}</p>}
+    </form>
+  );
+}
 
 export default function TrackingPage() {
   const location = useLocation();
@@ -13,7 +56,9 @@ export default function TrackingPage() {
   const [status, setStatus] = useState("idle");
   const [ticket, setTicket] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [trackedCode, setTrackedCode] = useState("");
   const autoRan = useRef(false);
+  const anon = useAnonymousTicketAccess(trackedCode);
 
   const lookup = useCallback(async (rawCode) => {
     const value = rawCode.trim();
@@ -30,6 +75,7 @@ export default function TrackingPage() {
     try {
       const data = await trackTicket(value);
       setTicket(data);
+      setTrackedCode(value);
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -51,13 +97,15 @@ export default function TrackingPage() {
     const fromState = location.state?.codigo;
     if (fromState && !autoRan.current) {
       autoRan.current = true;
+      anon.reset();
       lookup(fromState);
       navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.state, location.pathname, lookup, navigate]);
+  }, [location.state, location.pathname, lookup, navigate, anon]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    anon.reset();
     lookup(code);
   };
 
@@ -66,7 +114,32 @@ export default function TrackingPage() {
     setTicket(null);
     setStatus("idle");
     setErrorMessage("");
+    setTrackedCode("");
+    anon.reset();
   };
+
+  if (status === "success" && ticket && anon.accredited && anon.ticket) {
+    return (
+      <>
+        <div className="border-b border-neutral-100 bg-neutral-50/60 px-5 py-3 text-center">
+          <button
+            type="button"
+            onClick={resetSearch}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0F2C59] hover:underline"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Consultar otro código
+          </button>
+        </div>
+        <CitizenTicketView
+          ticket={anon.ticket}
+          actions={anon.actions}
+          actionLoading={anon.actionLoading}
+          actionError={anon.actionError}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -125,6 +198,15 @@ export default function TrackingPage() {
             className="mt-8"
           >
             <PublicTicketStatus ticket={ticket} />
+
+            {ticket.anonymous && (
+              <AccreditationPanel
+                onAccredit={anon.accredit}
+                accrediting={anon.accrediting}
+                accreditError={anon.accreditError}
+              />
+            )}
+
             <div className="mt-3 text-center">
               <button
                 type="button"
