@@ -12,6 +12,7 @@ const TRANSITIONS = {
   IN_REVIEW: [
     { status: "PENDING_INFORMATION", action: "Solicitar información extra" },
     { status: "ROUTED", action: "Derivar al área correspondiente" },
+    { status: "CANCELLED", action: "Cancelar ticket" },
   ],
   PENDING_INFORMATION: [
     { status: "CANCELLED", action: "Cancelar ticket" },

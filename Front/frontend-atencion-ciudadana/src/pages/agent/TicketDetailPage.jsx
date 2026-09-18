@@ -16,7 +16,7 @@ import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket } from "../../services/apiClient";
 
 function reviewErrorMessage(err) {
   if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
@@ -33,6 +33,15 @@ function classificationErrorMessage(err) {
   return err?.message || "No pudimos corregir la clasificación. Intentá de nuevo.";
 }
 
+function reasonConfirmErrorMessage(err) {
+  if (err?.status === 409) return err?.message || "El ticket ya no permite esta acción.";
+  if (err?.status === 400) return err?.message || "Faltan datos obligatorios.";
+  if (err?.status === 403) return "No tenés permiso para realizar esta acción.";
+  if (err?.status === 404) return "No encontramos el ticket.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return "No pudimos registrar la acción. Intentá de nuevo más tarde.";
+}
+
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
 const EDITOR_CLASS = "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 outline-none transition focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 const TICKET_TYPE_CONFIG = {
@@ -42,6 +51,33 @@ const TICKET_TYPE_CONFIG = {
   SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }
 };
 const formatDate = (value) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+
+const REASON_DIALOG_CONFIG = {
+  return: {
+    eyebrow: "Devolución",
+    title: "Devolver a revisión",
+    description: "El ticket vuelve a En revisión para que el agente lo reclasifique o derive de nuevo.",
+    confirmLabel: "Confirmar devolución",
+    reasonOptions: undefined,
+    danger: false,
+  },
+  reject: {
+    eyebrow: "Cancelación",
+    title: "Rechazar / cancelar solicitud",
+    description: "El ticket pasa a Cancelado.",
+    confirmLabel: "Confirmar cancelación",
+    reasonOptions: CANCELLATION_REASONS,
+    danger: true,
+  },
+  cancel: {
+    eyebrow: "Cancelación",
+    title: "Cancelar ticket",
+    description: "El ticket pasa a Cancelado antes de ser derivado a un área.",
+    confirmLabel: "Confirmar cancelación",
+    reasonOptions: CANCELLATION_REASONS,
+    danger: true,
+  },
+};
 
 function Field({ label, children }) {
   return <div className="grid grid-cols-[118px_1fr] gap-3 py-2.5 text-xs"><dt className="text-slate-500">{label}</dt><dd className="min-w-0 font-medium text-slate-700">{children}</dd></div>;
@@ -189,6 +225,11 @@ export default function TicketDetailPage() {
       setReasonDialog({ kind: "reject" });
       return false;
     }
+    if (["REGISTERED", "IN_REVIEW", "PENDING_INFORMATION"].includes(status) && nextStatus === "CANCELLED") {
+      setReasonError(null);
+      setReasonDialog({ kind: "cancel" });
+      return false;
+    }
     setTransitionError("Esta acción todavía no tiene un endpoint en el back — no se aplicó ningún cambio.");
     return false;
   };
@@ -198,13 +239,19 @@ export default function TicketDetailPage() {
     setReasonLoading(true);
     setReasonError(null);
     try {
-      const call = reasonDialog.kind === "return" ? returnTicketToAgent : rejectTicket;
-      const updated = await call(ticket.id, fields.responsibleAreaId, { reasonCode, publicMessage, internalMessage });
+      const updated =
+        reasonDialog.kind === "cancel"
+          ? await cancelTicket(ticket.id, { reasonCode, publicMessage, internalMessage })
+          : await (reasonDialog.kind === "return" ? returnTicketToAgent : rejectTicket)(
+              ticket.id,
+              fields.responsibleAreaId,
+              { reasonCode, publicMessage, internalMessage }
+            );
       setStatus(updated.currentStatus);
       reload();
       setReasonDialog(null);
     } catch (err) {
-      setReasonError(err?.message || "No pudimos registrar la acción.");
+      setReasonError(reasonConfirmErrorMessage(err));
     } finally {
       setReasonLoading(false);
     }
@@ -473,16 +520,7 @@ export default function TicketDetailPage() {
       {reasonDialog && (
         <TicketReasonDialog
           ticketPublicId={ticket.publicId}
-          eyebrow={reasonDialog.kind === "return" ? "Devolución" : "Cancelación"}
-          title={reasonDialog.kind === "return" ? "Devolver a revisión" : "Rechazar / cancelar solicitud"}
-          description={
-            reasonDialog.kind === "return"
-              ? "El ticket vuelve a En revisión para que el agente lo reclasifique o derive de nuevo."
-              : "El ticket pasa a Cancelado."
-          }
-          confirmLabel={reasonDialog.kind === "return" ? "Confirmar devolución" : "Confirmar cancelación"}
-          reasonOptions={reasonDialog.kind === "reject" ? CANCELLATION_REASONS : undefined}
-          danger={reasonDialog.kind === "reject"}
+          {...REASON_DIALOG_CONFIG[reasonDialog.kind]}
           loading={reasonLoading}
           error={reasonError}
           onCancel={() => setReasonDialog(null)}

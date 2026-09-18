@@ -284,3 +284,10 @@ export async function startTicketWork(ticketId, moduleId) {
 export async function routeTicket(ticketId) {
   return request(`/tickets/${encodeURIComponent(ticketId)}/route`, { method: "POST" });
 }
+
+export async function cancelTicket(ticketId, { reasonCode, publicMessage, internalMessage }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reasonCode, publicMessage: publicMessage || null, internalMessage: internalMessage || null }),
+  });
+}
