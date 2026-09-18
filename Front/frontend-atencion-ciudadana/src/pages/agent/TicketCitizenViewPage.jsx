@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTicketCitizenView } from "../../hooks/useTicketCitizenView";
 import { normalizeTicketDetail } from "../../hooks/useMyTicketDetail";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
+import { fetchTicketAttachments, downloadTicketAttachment } from "../../services/apiClient";
 
 export default function TicketCitizenViewPage() {
   const { ticketId } = useParams();
@@ -39,6 +40,10 @@ export default function TicketCitizenViewPage() {
       readOnly
       backTo={`/agente/tickets/${ticketId}`}
       backLabel="Volver al ticket"
+      attachments={{
+        fetchList: () => fetchTicketAttachments(ticketId),
+        downloadFile: (attachment) => downloadTicketAttachment(attachment.id),
+      }}
     />
   );
 }

@@ -10,6 +10,7 @@ import RequestInformationDialog from "../../components/ui/RequestInformationDial
 import TicketReasonDialog from "../../components/ui/TicketReasonDialog";
 import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
 import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
+import AttachmentGallery from "../../components/ui/AttachmentGallery";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
 import { RESOLUTION_TYPE_LABELS } from "../../constants/resolutionTypes";
@@ -18,7 +19,7 @@ import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, fetchTicketAttachments, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 
@@ -586,6 +587,15 @@ export default function TicketDetailPage() {
               </Field>
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>
+          </DetailCard>
+          <DetailCard title="Adjuntos" icon={Paperclip}>
+            <AttachmentGallery
+              title=""
+              canUpload
+              fetchList={() => fetchTicketAttachments(ticket.id)}
+              uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
+              downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
+            />
           </DetailCard>
           {escalated && (
             <DetailCard title="Escalamiento" icon={TriangleAlert}>

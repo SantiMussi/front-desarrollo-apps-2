@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMyTicketDetail } from "../../hooks/useMyTicketDetail";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
+import { fetchTicketAttachments, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 
 export default function MisReclamoDetailPage() {
   const { publicId } = useParams();
@@ -41,6 +42,12 @@ export default function MisReclamoDetailPage() {
       actions={actions}
       actionLoading={actionLoading}
       actionError={actionError}
+      attachments={{
+        canUpload: true,
+        fetchList: () => fetchTicketAttachments(ticket.id),
+        uploadFile: (file) => uploadTicketAttachment(ticket.id, file),
+        downloadFile: (attachment) => downloadTicketAttachment(attachment.id),
+      }}
     />
   );
 }

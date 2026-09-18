@@ -12,7 +12,6 @@ import {
   RotateCcw,
   MapPin,
   Tag,
-  ImageOff,
   Info,
   Send,
   Star,
@@ -25,6 +24,7 @@ import {
   statusTone,
   TERMINAL_STATUSES,
 } from "../../constants/ticketStatuses";
+import AttachmentGallery from "../ui/AttachmentGallery";
 
 const dateTime = (v) =>
   v
@@ -177,6 +177,7 @@ export default function CitizenTicketView({
   actions,
   actionLoading = false,
   actionError = null,
+  attachments: attachmentsAdapter,
 }) {
   const [reopenMode, setReopenMode] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
@@ -459,34 +460,14 @@ export default function CitizenTicketView({
             </Card>
           </div>
 
-          <Card title="Fotos adjuntas">
-            {ticket.attachments.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {ticket.attachments.map((att) => (
-                  <a
-                    key={att.id}
-                    href={att.url || undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group block overflow-hidden rounded-lg border border-neutral-200"
-                  >
-                    {att.url ? (
-                      <img
-                        src={att.url}
-                        alt={att.name}
-                        className="aspect-[4/3] w-full object-cover transition group-hover:opacity-90"
-                      />
-                    ) : (
-                      <span className="flex aspect-[4/3] w-full items-center justify-center bg-neutral-100 text-neutral-400">
-                        <ImageOff className="h-5 w-5" />
-                      </span>
-                    )}
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[13px] text-neutral-400">No se adjuntaron fotos.</p>
-            )}
+          <Card>
+            <AttachmentGallery
+              title="Adjuntos"
+              canUpload={!readOnly && Boolean(attachmentsAdapter?.canUpload)}
+              fetchList={attachmentsAdapter?.fetchList ?? (() => Promise.resolve([]))}
+              uploadFile={attachmentsAdapter?.uploadFile}
+              downloadFile={attachmentsAdapter?.downloadFile}
+            />
           </Card>
 
           <Card title="Historial de estados">

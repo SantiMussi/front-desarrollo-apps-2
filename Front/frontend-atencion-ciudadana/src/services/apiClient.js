@@ -326,3 +326,66 @@ export async function linkTicketDuplicate(ticketId, { mainTicketId }) {
     body: JSON.stringify({ mainTicketId }),
   });
 }
+
+async function postMultipart(url, formData, token) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    const message = errorBody?.message || errorBody?.error || errorBody?.detail || `Error ${response.status}: ${response.statusText}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = errorBody?.code || null;
+    throw error;
+  }
+
+  return response.json();
+}
+
+async function getBlob(url, token) {
+  const response = await fetch(url, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Error ${response.status}: ${response.statusText}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.blob();
+}
+
+export async function fetchTicketAttachments(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/attachments`);
+}
+
+export async function uploadTicketAttachment(ticketId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return postMultipart(`${BASE_URL}/tickets/${encodeURIComponent(ticketId)}/attachments`, formData, getStoredToken());
+}
+
+export async function downloadTicketAttachment(attachmentId) {
+  return getBlob(`${BASE_URL}/attachments/${encodeURIComponent(attachmentId)}/download`, getStoredToken());
+}
+
+export async function fetchAnonymousAttachments(trackingCode) {
+  return request(`/tracking/${encodeURIComponent(trackingCode)}/attachments`);
+}
+
+export async function uploadAnonymousAttachment(trackingCode, ticketPassword, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("ticketPassword", ticketPassword);
+  return postMultipart(`${BASE_URL}/tracking/${encodeURIComponent(trackingCode)}/attachments`, formData, null);
+}
+
+export async function downloadAnonymousAttachment(trackingCode, ticketPassword, attachmentId) {
+  const url = `${BASE_URL}/tracking/${encodeURIComponent(trackingCode)}/attachments/${encodeURIComponent(attachmentId)}/download?ticketPassword=${encodeURIComponent(ticketPassword)}`;
+  return getBlob(url, null);
+}

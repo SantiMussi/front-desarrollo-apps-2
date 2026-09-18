@@ -5,6 +5,9 @@ import {
   reopenAnonymousTicket,
   answerAnonymousInformation,
   rateAnonymousTicketAttention,
+  fetchAnonymousAttachments,
+  uploadAnonymousAttachment,
+  downloadAnonymousAttachment,
 } from "../services/apiClient";
 import { normalizeTicketDetail } from "./useMyTicketDetail";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
@@ -169,6 +172,13 @@ export function useAnonymousTicketAccess(trackingCode) {
 
   const actions = { confirmResolution, requestReopen, answerInformation, rateAttention };
 
+  const attachments = {
+    canUpload: true,
+    fetchList: () => fetchAnonymousAttachments(trackingCode),
+    uploadFile: (file) => uploadAnonymousAttachment(trackingCode, password, file),
+    downloadFile: (attachment) => downloadAnonymousAttachment(trackingCode, password, attachment.id),
+  };
+
   const reset = useCallback(() => {
     setTicket(null);
     setAccredited(false);
@@ -179,5 +189,5 @@ export function useAnonymousTicketAccess(trackingCode) {
     setPassword(null);
   }, []);
 
-  return { ticket, accredited, accrediting, accreditError, accredit, actions, actionLoading, actionError, reset };
+  return { ticket, accredited, accrediting, accreditError, accredit, actions, actionLoading, actionError, attachments, reset };
 }

@@ -136,6 +136,7 @@ export default function TrackingPage() {
           actions={anon.actions}
           actionLoading={anon.actionLoading}
           actionError={anon.actionError}
+          attachments={anon.attachments}
         />
       </>
     );
