@@ -18,6 +18,7 @@ import TrackingPage from "./pages/citizen/TrackingPage";
 import MisReclamosPage from "./pages/citizen/MisReclamosPage";
 import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import DashboardPage from "./pages/agent/DashboardPage";
 
 function CitizenLayout() {
   return (
@@ -62,7 +63,7 @@ export default function App() {
             <Route path="tickets" element={<TicketsInboxPage />} />
             <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
             <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
-            <Route path="dashboard" element={<div className="p-8">Dashboard Módulo</div>} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
             <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
 
