@@ -19,6 +19,7 @@ import MisReclamosPage from "./pages/citizen/MisReclamosPage";
 import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardPage from "./pages/agent/DashboardPage";
+import MetricsPage from "./pages/agent/MetricsPage";
 
 function CitizenLayout() {
   return (
@@ -65,7 +66,7 @@ export default function App() {
             <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="agentes" element={<div className="p-8">Agentes Módulo</div>} />
-            <Route path="metricas" element={<div className="p-8">Métricas Módulo</div>} />
+            <Route path="metricas" element={<MetricsPage />} />
 
             <Route element={<ProtectedRoute roles={["ADMIN"]} />}>
               <Route path="catalogo" element={<CategoriesPage />} />
