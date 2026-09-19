@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Plus, Send, Smile, TriangleAlert, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Plus, Send, Smile, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import Select from "../../components/ui/Select";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
@@ -89,6 +89,8 @@ const REASON_DIALOG_CONFIG = {
     danger: true,
   },
 };
+
+const COMPLETED_SLA_STATUSES = new Set(["RESOLVED", "CLOSED", "CANCELLED"]);
 
 function formatSlaCountdown(dueAt, now) {
   const dueTime = dueAt ? new Date(dueAt).getTime() : NaN;
@@ -205,8 +207,12 @@ export default function TicketDetailPage() {
   const slaIndicator = getSlaIndicator(ticket);
   const duplicateLinkInfo = getDuplicateLinkInfo(ticket);
   const escalated = ticket?.escalated === true;
-  const slaDueAt = ticket?.resolutionNearDueAt;
+  const slaDueAt = ticket?.resolutionDueAt;
   const slaCountdown = formatSlaCountdown(slaDueAt, now);
+  const currentTicketStatus = status ?? ticket?.currentStatus;
+  const slaCompleted = COMPLETED_SLA_STATUSES.has(currentTicketStatus);
+  const slaCompletionWasCancellation = currentTicketStatus === "CANCELLED";
+  const slaCompletionAt = ticket?.statusChangedAt ?? ticket?.updatedAt;
   const firstResponseDueAt = ticket?.firstResponseDueAt;
   const firstResponseCountdown = formatSlaCountdown(firstResponseDueAt, now);
   const firstResponseOverdue = ticket?.firstResponseBreached === true || firstResponseCountdown?.overdue;
@@ -555,20 +561,32 @@ export default function TicketDetailPage() {
                 )}
                 {firstResponseDueAt && <p className="mt-1 text-[11px]">Vencimiento de primera respuesta: {formatDate(firstResponseDueAt)}</p>}
               </div>
-              <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
-              <div className="flex items-center gap-2 text-xs font-semibold">
-                {slaCountdown?.overdue || slaIndicator.status === "overdue" ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
-                {slaCountdown?.overdue ? "SLA vencido" : slaIndicator.label}
-              </div>
-              {slaCountdown ? (
-                <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${slaCountdown.overdue ? "Vencido hace" : "Tiempo restante"} ${slaCountdown.label}`}>
-                  {slaCountdown.overdue ? "Vencido hace " : ""}{slaCountdown.label}
-                </p>
+              {slaCompleted ? (
+                <div className={`rounded-md border px-3 py-3 ${slaCompletionWasCancellation ? "border-slate-300 bg-slate-100 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {slaCompletionWasCancellation ? <TriangleAlert className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {slaCompletionWasCancellation ? "SLA finalizado por cancelación" : "SLA de resolución completado"}
+                  </div>
+                  <p className="mt-2 text-sm font-semibold">El ticket ya no tiene un SLA activo.</p>
+                  {slaCompletionAt && <p className="mt-1 text-[11px]">Finalizado: {formatDate(slaCompletionAt)}</p>}
+                  {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento original: {formatDate(slaDueAt)}</p>}
+                </div>
               ) : (
-                <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {slaCountdown?.overdue || slaIndicator.status === "overdue" ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    {slaCountdown?.overdue ? "SLA vencido" : slaIndicator.label}
+                  </div>
+                  {slaCountdown ? (
+                    <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${slaCountdown.overdue ? "Vencido hace" : "Tiempo restante"} ${slaCountdown.label}`}>
+                      {slaCountdown.overdue ? "Vencido hace " : ""}{slaCountdown.label}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                  )}
+                  {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento de resolución: {formatDate(slaDueAt)}</p>}
+                </div>
               )}
-              {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento de resolución: {formatDate(slaDueAt)}</p>}
-              </div>
             </div>
           </DetailCard>
           <DetailCard title="Detalles">
