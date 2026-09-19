@@ -3,3 +3,13 @@
 .idea/
 .vscode/
 .DS_Store
+.env
+.env.*
+!.env.example
+
+# Claves privadas y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
