@@ -36,7 +36,9 @@ function messageForUploadError(err) {
 }
 
 function messageForDownloadError(err) {
-  if (err?.status === 404) return "No encontramos ese adjunto.";
+  if (err?.status === 404) {
+    return "El back todavía no tiene el endpoint para descargar este adjunto — queda preparado para cuando esté listo.";
+  }
   if (err?.status === 403) return "No tenés permiso para descargar este archivo.";
   if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
   return err?.message || "No pudimos descargar el archivo.";

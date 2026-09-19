@@ -72,6 +72,67 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
+// Catalog Admin (rol ADMIN) — a diferencia de /catalog/*, incluyen activas e inactivas
+export async function fetchAdminCategories() {
+  return request("/admin/catalog/categories");
+}
+
+export async function createCategory(payload) {
+  return request("/admin/catalog/categories", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateCategory(categoryId, payload) {
+  return request(`/admin/catalog/categories/${categoryId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function activateCategory(categoryId) {
+  return request(`/admin/catalog/categories/${categoryId}/activate`, { method: "POST" });
+}
+
+export async function deactivateCategory(categoryId) {
+  return request(`/admin/catalog/categories/${categoryId}/deactivate`, { method: "POST" });
+}
+
+export async function fetchAdminSubcategories(categoryId) {
+  return request(`/admin/catalog/categories/${categoryId}/subcategories`);
+}
+
+export async function createSubcategory(payload) {
+  return request("/admin/catalog/subcategories", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateSubcategory(subcategoryId, payload) {
+  return request(`/admin/catalog/subcategories/${subcategoryId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function activateSubcategory(subcategoryId) {
+  return request(`/admin/catalog/subcategories/${subcategoryId}/activate`, { method: "POST" });
+}
+
+export async function deactivateSubcategory(subcategoryId) {
+  return request(`/admin/catalog/subcategories/${subcategoryId}/deactivate`, { method: "POST" });
+}
+
+export async function fetchAdminRequestTypes(subcategoryId) {
+  return request(`/admin/catalog/subcategories/${subcategoryId}/request-types`);
+}
+
+export async function createRequestType(payload) {
+  return request("/admin/catalog/request-types", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateRequestType(requestTypeId, payload) {
+  return request(`/admin/catalog/request-types/${requestTypeId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function activateRequestType(requestTypeId) {
+  return request(`/admin/catalog/request-types/${requestTypeId}/activate`, { method: "POST" });
+}
+
+export async function deactivateRequestType(requestTypeId) {
+  return request(`/admin/catalog/request-types/${requestTypeId}/deactivate`, { method: "POST" });
+}
+
 export async function fetchMyTickets(params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {

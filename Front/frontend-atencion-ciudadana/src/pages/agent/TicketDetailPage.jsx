@@ -13,13 +13,12 @@ import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
 import AttachmentGallery from "../../components/ui/AttachmentGallery";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
-import { RESOLUTION_TYPE_LABELS } from "../../constants/resolutionTypes";
 import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, fetchTicketAttachments, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 
@@ -106,6 +105,40 @@ function formatSlaCountdown(dueAt, now) {
   };
 }
 
+const ACTIVITY_TYPE_LABELS = {
+  TICKET_CREATED: "Ticket creado",
+  REVIEW_STARTED: "Análisis iniciado",
+  STATE_CHANGED: "Estado actualizado",
+  REQUEST_TYPE_CHANGED: "Clasificación corregida",
+  ROUTED: "Derivado al área",
+  RETURNED_BY_AREA: "Devuelto por el área",
+  PRIORITY_CHANGED: "Prioridad actualizada",
+  SLA_NEAR_DUE: "SLA próximo a vencer",
+  SLA_BREACHED: "SLA vencido",
+  ESCALATED: "Ticket escalado",
+  INFORMATION_REQUIRED: "Información solicitada al ciudadano",
+  INFORMATION_PROVIDED: "El ciudadano respondió",
+  PROGRESS_REPORTED: "Progreso informado por el área",
+  DUPLICATE_LINKED: "Vinculado como duplicado",
+  RESOLVED: "Ticket resuelto",
+  REOPENED: "Ticket reabierto",
+  CANCELLATION_REQUESTED: "Cancelación solicitada",
+  CANCELLATION_APPROVED: "Cancelación aprobada",
+  CANCELLATION_REJECTED: "Cancelación rechazada",
+  CANCELLED: "Ticket cancelado",
+  CLOSED: "Ticket cerrado",
+  PUBLIC_MESSAGE_SENT: "Mensaje enviado al ciudadano",
+  INTERNAL_MESSAGE_ADDED: "Nota interna agregada",
+  ATTACHMENT_ADDED: "Adjunto agregado",
+};
+
+function activityMessage(activity) {
+  const parts = [ACTIVITY_TYPE_LABELS[activity.actionType] || activity.actionType];
+  if (activity.message) parts.push(`"${activity.message}"`);
+  if (activity.reasonCode) parts.push(`(motivo: ${activity.reasonCode})`);
+  return parts.join(" — ");
+}
+
 function Field({ label, children }) {
   return <div className="grid grid-cols-[118px_1fr] gap-3 py-2.5 text-xs"><dt className="text-slate-500">{label}</dt><dd className="min-w-0 font-medium text-slate-700">{children}</dd></div>;
 }
@@ -123,7 +156,6 @@ export default function TicketDetailPage() {
   const [derivationLoading, setDerivationLoading] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
   const [infoRequestOpen, setInfoRequestOpen] = useState(false);
-  const [localActivities, setLocalActivities] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [startWorkLoading, setStartWorkLoading] = useState(false);
   const [classificationLoading, setClassificationLoading] = useState(false);
@@ -160,7 +192,13 @@ export default function TicketDetailPage() {
       assignee: ticket.assignedAgentId ? { name: `Agente #${ticket.assignedAgentId}`, initials: "AG" } : { name: "Sin asignar", initials: "—" },
       neighborhood: ticket.neighborhoodName || null,
       messages: [],
-      activities: ticket.createdAt ? [{ id: "created", message: "Ticket creado", occurredAt: ticket.createdAt }] : []
+      activities: Array.isArray(ticket.ticketActivities)
+        ? ticket.ticketActivities.map((activity) => ({
+            id: `activity-${activity.sequence}`,
+            message: activityMessage(activity),
+            occurredAt: activity.occurredAt,
+          }))
+        : [],
     };
   }, [ticket]);
 
@@ -308,17 +346,13 @@ export default function TicketDetailPage() {
     }
   };
 
-  const handleDuplicateConfirm = async ({ mainTicketId, mainTicketPublicId }) => {
+  const handleDuplicateConfirm = async ({ mainTicketId }) => {
     if (duplicateLoading || status !== "REGISTERED") return;
     setDuplicateLoading(true);
     setDuplicateError(null);
     try {
       const updated = await linkTicketDuplicate(ticket.id, { mainTicketId });
       setStatus(updated.currentStatus ?? "DUPLICATE");
-      setLocalActivities((items) => [
-        ...items,
-        { id: `duplicate-${Date.now()}`, message: `Vinculado como duplicado de ${mainTicketPublicId}.`, occurredAt: new Date().toISOString() },
-      ]);
       reload();
       setDuplicateDialogOpen(false);
     } catch (err) {
@@ -339,7 +373,7 @@ export default function TicketDetailPage() {
     ? "El ticket debe estar En gestión para registrar su resolución."
     : `El ticket lo gestiona ${RESPONSIBLE_AREAS[fields?.responsibleAreaId] || fields?.responsibleAreaId}. Su resolución se registra desde Derivado o En gestión, con la respuesta del área.`;
 
-  const handleResolveConfirm = async ({ type, publicMessage, internalMessage, source }) => {
+  const handleResolveConfirm = async ({ type, publicMessage, internalMessage }) => {
     let when = new Date().toISOString();
     if (resolveMode === "manual") {
       const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
@@ -358,14 +392,6 @@ export default function TicketDetailPage() {
       reload();
     }
     setStatus("RESOLVED");
-    setLocalActivities((items) => [
-      ...items,
-      {
-        id: `resolution-${Date.now()}`,
-        message: `Resuelto — ${RESOLUTION_TYPE_LABELS[type] || type}${source === "simulator" ? " · respuesta simulada del área" : ""}.`,
-        occurredAt: when,
-      },
-    ]);
     setLocalMessages((items) => [
       ...items,
       { id: `resolution-msg-${Date.now()}`, text: publicMessage, visibility: "PUBLIC", createdAt: when, authorType: "AGENT" },
@@ -396,10 +422,6 @@ export default function TicketDetailPage() {
     const result = await requestInformation(ticket.id, { messageForCitizen, internalMessage });
     if (!result) return;
     setStatus("PENDING_INFORMATION");
-    setLocalActivities((items) => [
-      ...items,
-      { id: `info-request-${Date.now()}`, message: `Información solicitada al ciudadano: "${messageForCitizen}"`, occurredAt: result.requestedAt },
-    ]);
     reload();
     setInfoRequestOpen(false);
   };
@@ -511,7 +533,7 @@ export default function TicketDetailPage() {
                 <div className="mt-7 space-y-6">{[...data.messages, ...localMessages].map((message) => { const author = message.authorType === "AGENT" ? data.assignee : data.citizen; return <article key={message.id} className="flex gap-3"><UserAvatar user={author} /><div><div className="flex flex-wrap items-center gap-2"><strong className="text-xs">{author?.name || "Equipo municipal"}</strong><span className="text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>{message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}</div><p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p></div></article>; })}
                   {!data.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
                 </div>
-              </> : <div className="mt-5 space-y-4">{[...data.activities, ...localActivities].map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
+              </> : <div className="mt-5 space-y-4">{data.activities.map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
             </section>
           </div>
         </main>
@@ -592,7 +614,7 @@ export default function TicketDetailPage() {
             <AttachmentGallery
               title=""
               canUpload
-              fetchList={() => fetchTicketAttachments(ticket.id)}
+              fetchList={() => Promise.resolve(ticket.attachments ?? [])}
               uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
               downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
             />

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Search, Filter, RefreshCw, Download, Columns, Bell, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import TicketTable from "../../components/ui/TicketTable";
+import UserAvatar from "../../components/ui/UserAvatar";
+import { useAuth } from "../../context/AuthContext";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { fetchCategories } from "../../services/apiClient";
@@ -41,6 +43,7 @@ function mapTicket(ticket) {
 }
 
 export default function TicketsInboxPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -201,9 +204,7 @@ export default function TicketsInboxPage() {
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-[#D63031] rounded-full border-2 border-white"></span>
           </button>
-          <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200">
-            <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="Profile" className="w-full h-full object-cover" />
-          </div>
+          <UserAvatar user={user} />
         </div>
       </div>
 
