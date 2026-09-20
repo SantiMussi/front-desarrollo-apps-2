@@ -102,7 +102,7 @@ export default function PublicTicketStatus({ ticket }) {
   if (!ticket) return null;
   const currentStatus = ticket.status ?? ticket.currentStatus;
   const openTicket = !["RESOLVED", "CLOSED", "CANCELLED", "DUPLICATE"].includes(currentStatus);
-  const resolutionDueAt = ticket.resolutionDueAt;
+  const resolutionDueAt = ticket.sla?.resolutionDueAt;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
