@@ -160,6 +160,8 @@ export default function SubcategoriesPage() {
                   busy={togglingId === s.id}
                   onEdit={() => handleEdit(s)}
                   onToggleActive={() => handleToggleActive(s)}
+                  editDisabled={Boolean(category) && !category.active}
+                  editDisabledReason="No se puede editar: la categoría está inactiva."
                 />
               ),
             },

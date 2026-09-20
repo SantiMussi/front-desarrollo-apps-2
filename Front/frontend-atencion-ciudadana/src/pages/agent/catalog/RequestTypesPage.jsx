@@ -220,6 +220,8 @@ export default function RequestTypesPage() {
                   busy={togglingId === rt.id}
                   onEdit={() => handleEdit(rt)}
                   onToggleActive={() => handleToggleActive(rt)}
+                  editDisabled={Boolean(subcategory) && !subcategory.active}
+                  editDisabledReason="No se puede editar: la subcategoría está inactiva."
                 />
               ),
             },

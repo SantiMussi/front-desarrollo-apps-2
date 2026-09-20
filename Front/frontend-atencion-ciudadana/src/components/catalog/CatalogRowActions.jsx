@@ -1,13 +1,22 @@
 import { Loader2, Pencil, Power } from "lucide-react";
 
-export default function CatalogRowActions({ active, onEdit, onToggleActive, toggleDisabled, toggleDisabledReason, busy }) {
+export default function CatalogRowActions({
+  active,
+  onEdit,
+  onToggleActive,
+  toggleDisabled,
+  toggleDisabledReason,
+  editDisabled,
+  editDisabledReason,
+  busy,
+}) {
   return (
     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={onEdit}
-        disabled={busy}
-        title="Editar"
+        disabled={editDisabled || busy}
+        title={editDisabled ? editDisabledReason : "Editar"}
         className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0F2C59] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Pencil className="h-4 w-4" />
