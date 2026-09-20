@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, Braces, FileText } from "lucide-react";
 import {
   fetchAdminSubcategories,
   fetchAdminRequestTypes,
@@ -17,6 +17,7 @@ import CatalogCreateButton from "../../../components/catalog/CatalogCreateButton
 import CatalogStatusBadge from "../../../components/catalog/CatalogStatusBadge";
 import CatalogRowActions from "../../../components/catalog/CatalogRowActions";
 import CatalogEntityFormDialog from "../../../components/catalog/CatalogEntityFormDialog";
+import RequestTypeFormSchemaDialog from "../../../components/catalog/RequestTypeFormSchemaDialog";
 
 const TICKET_TYPE_OPTIONS = [
   { value: "COMPLAINT", label: "Reclamo" },
@@ -46,6 +47,7 @@ export default function RequestTypesPage() {
   const [submitError, setSubmitError] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [toggleError, setToggleError] = useState(null);
+  const [schemaDialogTarget, setSchemaDialogTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +214,20 @@ export default function RequestTypesPage() {
             { key: "description", label: "Descripción", render: (rt) => rt.description || "—" },
             { key: "active", label: "Estado", render: (rt) => <CatalogStatusBadge active={rt.active} /> },
             {
+              key: "schema",
+              label: "",
+              render: (rt) => (
+                <button
+                  type="button"
+                  onClick={() => setSchemaDialogTarget(rt)}
+                  title="Editar schema del formulario"
+                  className="inline-flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0F2C59]"
+                >
+                  <Braces className="h-4 w-4" />
+                </button>
+              ),
+            },
+            {
               key: "actions",
               label: "",
               render: (rt) => (
@@ -239,6 +255,13 @@ export default function RequestTypesPage() {
           error={submitError}
           onCancel={() => setDialog(null)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {schemaDialogTarget && (
+        <RequestTypeFormSchemaDialog
+          requestType={schemaDialogTarget}
+          onClose={() => setSchemaDialogTarget(null)}
         />
       )}
     </div>
