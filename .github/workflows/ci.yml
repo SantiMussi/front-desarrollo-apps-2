@@ -14,10 +14,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Install and build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     defaults:
       run:
@@ -41,3 +46,6 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: /api
+
+      - name: Build Frontend container image
+        run: docker build --build-arg VITE_API_BASE_URL=/api --tag frontend-ci:${{ github.sha }} .
