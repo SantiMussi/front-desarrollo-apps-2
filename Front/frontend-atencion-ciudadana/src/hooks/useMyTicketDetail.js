@@ -8,6 +8,7 @@ import {
   reopenTicket,
 } from "../services/apiClient";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
+import { ACTIVITY_TYPE_LABELS } from "../constants/ticketActivities";
 
 function buildFallbackHistory(t) {
   if (!t.createdAt) return [];
@@ -19,6 +20,16 @@ function buildFallbackHistory(t) {
     items.push({ id: "current", actionType: "STATE_CHANGED", newStatus: current, message: null, occurredAt: t.statusChangedAt });
   }
   return items;
+}
+
+function mapTicketActivities(activities) {
+  return activities.map((activity) => ({
+    id: `activity-${activity.sequence}`,
+    actionType: activity.actionType,
+    newStatus: activity.newStatus,
+    message: activity.message || ACTIVITY_TYPE_LABELS[activity.actionType] || null,
+    occurredAt: activity.occurredAt,
+  }));
 }
 
 export function normalizeTicketDetail(raw, publicId) {
@@ -47,7 +58,13 @@ export function normalizeTicketDetail(raw, publicId) {
     resolution: t.resolution ?? null,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
     messages: Array.isArray(t.messages) ? t.messages : [],
-    history: Array.isArray(t.history) ? t.history : Array.isArray(t.activities) ? t.activities : buildFallbackHistory(t),
+    history: Array.isArray(t.ticketActivities)
+      ? mapTicketActivities(t.ticketActivities)
+      : Array.isArray(t.history)
+        ? t.history
+        : Array.isArray(t.activities)
+          ? t.activities
+          : buildFallbackHistory(t),
     rating: t.rating ?? null,
   };
 }
@@ -103,7 +120,6 @@ export function useMyTicketDetail(publicId) {
         throw notFound;
       }
       const raw = await fetchMyTicketDetail(match.id);
-      console.log("[useMyTicketDetail] GET /tickets/{id} response:", raw);
       const data = normalizeTicketDetail(raw, publicId);
       setTicket(data);
     } catch (err) {
