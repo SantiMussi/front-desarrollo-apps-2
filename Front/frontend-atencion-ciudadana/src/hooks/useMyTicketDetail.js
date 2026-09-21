@@ -192,7 +192,7 @@ export function useMyTicketDetail(publicId) {
           prev
             ? {
               ...prev,
-              currentStatus: result.resumeStatus || prev.currentStatus,
+              currentStatus: result.currentStatus || prev.currentStatus,
               statusChangedAt: now,
               messages: [
                 ...prev.messages,
@@ -200,7 +200,7 @@ export function useMyTicketDetail(publicId) {
               ],
               history: [
                 ...prev.history,
-                { id: `info-response-${Date.now()}`, actionType: "INFORMATION_PROVIDED", newStatus: result.resumeStatus, message: `Respondiste: "${responseMessage}"`, occurredAt: now },
+                { id: `info-response-${Date.now()}`, actionType: "INFORMATION_PROVIDED", newStatus: result.currentStatus, message: `Respondiste: "${responseMessage}"`, occurredAt: now },
               ],
             }
             : prev

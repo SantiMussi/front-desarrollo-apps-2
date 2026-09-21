@@ -122,7 +122,7 @@ export function useAnonymousTicketAccess(trackingCode) {
           prev
             ? {
                 ...prev,
-                currentStatus: result?.resumeStatus || prev.currentStatus,
+                currentStatus: result?.currentStatus || prev.currentStatus,
                 statusChangedAt: now,
                 messages: [
                   ...prev.messages,
@@ -132,7 +132,7 @@ export function useAnonymousTicketAccess(trackingCode) {
                   ...prev.history,
                   {
                     id: `info-response-${Date.now()}`,
-                    newStatus: result?.resumeStatus,
+                    newStatus: result?.currentStatus,
                     message: `Respondiste: "${responseMessage}"`,
                     occurredAt: now,
                   },
