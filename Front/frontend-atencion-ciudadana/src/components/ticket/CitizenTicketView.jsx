@@ -558,6 +558,15 @@ export default function CitizenTicketView({
               </p>
             )}
             {messages.map((m) => {
+              if (m.authorType === "SYSTEM") {
+                return (
+                  <div key={m.id} className="flex items-center justify-center gap-2 py-1 text-center text-[11px] italic text-neutral-400">
+                    <span>{m.text}</span>
+                    <span className="text-neutral-300">·</span>
+                    <span>{dateTime(m.createdAt)}</span>
+                  </div>
+                );
+              }
               const mine = m.authorType === "CITIZEN";
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>

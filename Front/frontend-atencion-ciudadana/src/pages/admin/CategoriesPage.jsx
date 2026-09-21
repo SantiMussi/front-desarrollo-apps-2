@@ -94,6 +94,7 @@ export default function CategoriesPage() {
   };
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-4xl px-5 py-8">
       <CatalogBreadcrumb items={[{ label: "Catálogo" }]} />
 
@@ -154,6 +155,7 @@ export default function CategoriesPage() {
           onSubmit={handleSubmit}
         />
       )}
+    </div>
     </div>
   );
 }

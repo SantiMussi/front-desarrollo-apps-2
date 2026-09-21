@@ -158,6 +158,7 @@ export default function RequestTypesPage() {
   };
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-4xl px-5 py-8">
       <CatalogBreadcrumb
         items={[
@@ -264,6 +265,7 @@ export default function RequestTypesPage() {
           onClose={() => setSchemaDialogTarget(null)}
         />
       )}
+    </div>
     </div>
   );
 }

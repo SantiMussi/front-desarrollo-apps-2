@@ -104,6 +104,7 @@ export default function SubcategoriesPage() {
   };
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-4xl px-5 py-8">
       <CatalogBreadcrumb
         items={[{ label: "Catálogo", to: "/agente/catalogo" }, { label: category?.name || "Categoría" }]}
@@ -181,6 +182,7 @@ export default function SubcategoriesPage() {
           onSubmit={handleSubmit}
         />
       )}
+    </div>
     </div>
   );
 }

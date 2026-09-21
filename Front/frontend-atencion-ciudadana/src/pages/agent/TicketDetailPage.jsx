@@ -373,10 +373,12 @@ export default function TicketDetailPage() {
       reload();
     }
     setStatus("RESOLVED");
-    setLocalMessages((items) => [
-      ...items,
-      { id: `resolution-msg-${Date.now()}`, text: publicMessage, visibility: "PUBLIC", createdAt: when, authorType: "AGENT" },
-    ]);
+    if (publicMessage) {
+      setLocalMessages((items) => [
+        ...items,
+        { id: `resolution-msg-${Date.now()}`, text: `Ticket resuelto: ${publicMessage}`, visibility: "PUBLIC", createdAt: when, authorType: "SYSTEM" },
+      ]);
+    }
     setResolveOpen(false);
   };
 
@@ -388,7 +390,7 @@ export default function TicketDetailPage() {
       const updated = await routeTicket(ticket.id);
       setStatus(updated.currentStatus);
       if (derivationComment) {
-        setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
+        setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "SYSTEM" }]);
       }
       reload();
       setDerivationOpen(false);
@@ -511,7 +513,32 @@ export default function TicketDetailPage() {
                   <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
                   <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim()} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"><Send className="h-3.5 w-3.5" />Enviar</button></div>
                 </div></div>
-                <div className="mt-7 space-y-6">{[...data.messages, ...localMessages].map((message) => { const author = message.authorType === "AGENT" ? data.assignee : data.citizen; return <article key={message.id} className="flex gap-3"><UserAvatar user={author} /><div><div className="flex flex-wrap items-center gap-2"><strong className="text-xs">{author?.name || "Equipo municipal"}</strong><span className="text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>{message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}</div><p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p></div></article>; })}
+                <div className="mt-7 space-y-6">
+                  {[...data.messages, ...localMessages].map((message) => {
+                    if (message.authorType === "SYSTEM") {
+                      return (
+                        <div key={message.id} className="flex items-center gap-3">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
+                          <div className="flex-1 rounded-md bg-slate-50 px-3 py-2 text-xs italic text-slate-500">{message.text}</div>
+                          <span className="shrink-0 text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>
+                        </div>
+                      );
+                    }
+                    const author = message.authorType === "AGENT" ? data.assignee : data.citizen;
+                    return (
+                      <article key={message.id} className="flex gap-3">
+                        <UserAvatar user={author} />
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong className="text-xs">{author?.name || "Equipo municipal"}</strong>
+                            <span className="text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>
+                            {message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}
+                          </div>
+                          <p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p>
+                        </div>
+                      </article>
+                    );
+                  })}
                   {!data.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
                 </div>
               </> : <div className="mt-5 space-y-4">{data.activities.map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
