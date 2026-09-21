@@ -19,8 +19,6 @@ async function request(endpoint, options = {}) {
     ...options,
   };
 
-  console.log(token)
-
   const response = await fetch(url, config);
 
   if (!response.ok) {

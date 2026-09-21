@@ -54,7 +54,6 @@ export default function TicketLabelsCard({ ticket }) {
   const exactMatch = matchingLabels.find((label) => normalizeLabel(label.name) === normalizeLabel(labelQuery));
 
   const assignLabel = async (label) => {
-    console.log("pog")
     if (!label || savingId) return;
     setSavingId(label.id);
     setError(null);
@@ -70,7 +69,6 @@ export default function TicketLabelsCard({ ticket }) {
   };
 
   const createAndAssignLabel = async () => {
-    console.log("not pog")
     const name = labelQuery.trim();
     if (!name || exactMatch || savingId) return;
     setSavingId("new");
@@ -84,7 +82,6 @@ export default function TicketLabelsCard({ ticket }) {
       setAssigned((current) => [...current, label]);
       setLabelQuery("");
     } catch (saveError) {
-      console.log(saveError)
       setError(labelErrorMessage(saveError, "create"));
     } finally {
       setSavingId(null);

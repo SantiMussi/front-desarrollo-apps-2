@@ -13,7 +13,6 @@ const USER_KEY = "ciudad-uade.auth-user";
 
 function readStoredUser() {
   try {
-    // console.log(JSON.parse(localStorage.getItem(USER_KEY)))
     return JSON.parse(localStorage.getItem(USER_KEY));
   } catch {
     return null;
