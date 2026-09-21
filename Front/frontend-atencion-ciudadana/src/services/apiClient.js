@@ -468,10 +468,14 @@ export async function cancelTicket(ticketId, { reasonCode, publicMessage, intern
 }
 
 export async function linkTicketDuplicate(ticketId, { mainTicketId }) {
-  return request(`/tickets/${encodeURIComponent(ticketId)}/duplicate`, {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}/duplicate`, {
     method: "POST",
     body: JSON.stringify({ mainTicketId }),
   });
+}
+
+export async function fetchDuplicateCandidates(ticketId) {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}/duplicate-candidates`);
 }
 
 async function postMultipart(url, formData, token) {

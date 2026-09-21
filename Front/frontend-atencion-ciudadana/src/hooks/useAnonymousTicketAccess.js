@@ -42,6 +42,7 @@ export function useAnonymousTicketAccess(trackingCode) {
       setAccreditError(null);
       try {
         const response = await trackTicket(trackingCode, ticketPassword);
+        console.log("[QA] Respuesta cruda de POST /tracking/access (fijate que no trae 'attachments'):", response);
         setTicket(normalizeTicketDetail(response, response.publicId));
         setAccredited(true);
         setPassword(ticketPassword);

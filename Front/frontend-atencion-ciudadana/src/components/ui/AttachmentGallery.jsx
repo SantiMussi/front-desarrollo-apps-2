@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { AlertCircle, Download, File, FileText, Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
 
-const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx";
+// Debe reflejar exactamente attachment.allowed-content-types del back
+// (application.properties) — hoy no incluye .doc/.docx, el back los rechaza con 415.
+const DEFAULT_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf";
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes)) return "";

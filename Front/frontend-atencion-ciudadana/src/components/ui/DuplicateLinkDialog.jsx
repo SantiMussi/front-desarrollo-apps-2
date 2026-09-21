@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Link2, Loader2, Search, X } from "lucide-react";
-import { fetchAgentTickets } from "../../services/apiClient";
+import { AlertTriangle, CheckCircle2, Link2, Loader2, MapPin, Search, X } from "lucide-react";
+import { fetchDuplicateCandidates } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
-import { rankDuplicateCandidates } from "../../utils/duplicateLink";
-
-const CANDIDATE_POOL_SIZE = 100;
-const SUGGESTED_LIMIT = 5;
 
 const formatDate = (value) =>
   new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+
+function formatDistance(meters) {
+  if (!Number.isFinite(meters)) return null;
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function formatTimeDifference(minutes) {
+  if (!Number.isFinite(minutes)) return null;
+  if (minutes < 60) return `${Math.round(minutes)} min de diferencia`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${hours.toFixed(1)} h de diferencia`;
+  return `${(hours / 24).toFixed(1)} días de diferencia`;
+}
 
 function matchesQuery(candidate, query) {
   if (!query) return true;
@@ -16,7 +26,9 @@ function matchesQuery(candidate, query) {
   return haystack.includes(query.toLowerCase());
 }
 
-function CandidateRow({ candidate, matchReasons, selected, onSelect }) {
+function CandidateRow({ candidate, selected, onSelect }) {
+  const distance = formatDistance(candidate.distanceMeters);
+  const timeDiff = formatTimeDifference(candidate.timeDifferenceMinutes);
   return (
     <button
       type="button"
@@ -36,18 +48,25 @@ function CandidateRow({ candidate, matchReasons, selected, onSelect }) {
         {candidate.neighborhoodName && <span>· {candidate.neighborhoodName}</span>}
         <span>· {formatDate(candidate.createdAt)}</span>
       </div>
-      {matchReasons?.length > 0 && (
+      {(distance || timeDiff) && (
         <div className="flex flex-wrap gap-1">
-          {matchReasons.map((reason) => (
-            <span key={reason} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              {reason}
+          {distance && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <MapPin className="h-2.5 w-2.5" />
+              {distance}
             </span>
-          ))}
+          )}
+          {timeDiff && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{timeDiff}</span>
+          )}
         </div>
       )}
     </button>
   );
 }
+
+const SUGGESTED_LIMIT = 5;
+const hasLocation = (ticket) => Boolean(ticket?.neighborhoodName);
 
 export default function DuplicateLinkDialog({ ticket, loading = false, error, onCancel, onConfirm }) {
   const [candidates, setCandidates] = useState([]);
@@ -62,8 +81,8 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
       setCandidatesLoading(true);
       setCandidatesError(null);
       try {
-        const res = await fetchAgentTickets({ size: CANDIDATE_POOL_SIZE, sort: "createdAt,desc" });
-        if (!cancelled) setCandidates(res?.content ?? []);
+        const res = await fetchDuplicateCandidates(ticket.id);
+        if (!cancelled) setCandidates(Array.isArray(res) ? res : []);
       } catch {
         if (!cancelled) setCandidatesError("No pudimos cargar los tickets para sugerir duplicados.");
       } finally {
@@ -81,17 +100,19 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
     return () => document.removeEventListener("keydown", onEsc);
   }, [loading, onCancel]);
 
-  const ranked = useMemo(() => rankDuplicateCandidates(ticket, candidates), [ticket, candidates]);
-
-  const suggested = useMemo(
-    () => ranked.filter((entry) => entry.matchReasons.length > 0).slice(0, SUGGESTED_LIMIT),
-    [ranked]
+  // El back ya devuelve los candidatos ordenados por cercanía/proximidad
+  // temporal (GET .../duplicate-candidates), no hace falta re-rankear acá.
+  const candidateTickets = useMemo(
+    () => candidates.map((c) => ({ ...c, id: c.ticketId })),
+    [candidates]
   );
 
+  const suggested = useMemo(() => candidateTickets.slice(0, SUGGESTED_LIMIT), [candidateTickets]);
+
   const searchResults = useMemo(() => {
-    const suggestedIds = new Set(suggested.map((entry) => entry.ticket.id));
-    return ranked.filter((entry) => !suggestedIds.has(entry.ticket.id)).filter((entry) => matchesQuery(entry.ticket, query));
-  }, [ranked, suggested, query]);
+    const suggestedIds = new Set(suggested.map((candidate) => candidate.id));
+    return candidateTickets.filter((candidate) => !suggestedIds.has(candidate.id)).filter((candidate) => matchesQuery(candidate, query));
+  }, [candidateTickets, suggested, query]);
 
   const canConfirm = !loading && Boolean(selected);
 
@@ -120,6 +141,12 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
             </div>
           ) : candidatesError ? (
             <p className="py-4 text-center text-xs text-red-600">{candidatesError}</p>
+          ) : candidateTickets.length === 0 ? (
+            <p className="py-8 text-center text-xs text-slate-400">
+              {hasLocation(ticket)
+                ? "No encontramos tickets similares cerca de este, dentro de la ventana de tiempo configurada."
+                : "Este ticket no tiene una ubicación cargada, así que no podemos sugerir duplicados cercanos."}
+            </p>
           ) : (
             <>
               {suggested.length > 0 && (
@@ -128,11 +155,10 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
                     <Link2 className="h-3.5 w-3.5" /> Sugeridos
                   </p>
                   <div className="space-y-2">
-                    {suggested.map(({ ticket: candidate, matchReasons }) => (
+                    {suggested.map((candidate) => (
                       <CandidateRow
                         key={candidate.id}
                         candidate={candidate}
-                        matchReasons={matchReasons}
                         selected={selected?.id === candidate.id}
                         onSelect={setSelected}
                       />
@@ -156,11 +182,10 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
                   {searchResults.length === 0 ? (
                     <p className="py-4 text-center text-xs text-slate-400">{query ? "Sin resultados para esa búsqueda." : "No hay más tickets disponibles."}</p>
                   ) : (
-                    searchResults.map(({ ticket: candidate, matchReasons }) => (
+                    searchResults.map((candidate) => (
                       <CandidateRow
                         key={candidate.id}
                         candidate={candidate}
-                        matchReasons={matchReasons}
                         selected={selected?.id === candidate.id}
                         onSelect={setSelected}
                       />

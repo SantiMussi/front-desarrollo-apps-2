@@ -19,7 +19,7 @@ import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
@@ -49,9 +49,9 @@ function reasonConfirmErrorMessage(err) {
 }
 
 function duplicateLinkErrorMessage(err) {
-  if (err?.status === 404) return "El back todavía no tiene el endpoint para vincular duplicados — queda preparado para cuando esté listo.";
   if (err?.status === 409) return err?.message || "El ticket ya no permite vincularse como duplicado.";
   if (err?.status === 400) return err?.message || "No pudimos vincular estos tickets; revisá la selección.";
+  if (err?.status === 404) return "No encontramos alguno de los tickets a vincular.";
   if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
   return err?.message || "No pudimos vincular el ticket. Intentá de nuevo.";
 }
@@ -179,8 +179,32 @@ export default function TicketDetailPage() {
     };
   }, [ticket]);
 
+  const [mainTicketPublicId, setMainTicketPublicId] = useState(null);
+  const [mainTicketIdForPublicId, setMainTicketIdForPublicId] = useState(undefined);
+  if (ticket && ticket.mainTicketId !== mainTicketIdForPublicId) {
+    setMainTicketIdForPublicId(ticket.mainTicketId ?? null);
+    setMainTicketPublicId(null);
+  }
+
+  useEffect(() => {
+    const mainTicketId = ticket?.mainTicketId;
+    if (!mainTicketId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const main = await fetchStaffTicketDetail(mainTicketId);
+        if (!cancelled) setMainTicketPublicId(main?.publicId ?? null);
+      } catch {
+        if (!cancelled) setMainTicketPublicId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket?.mainTicketId]);
+
   const slaIndicator = getSlaIndicator(ticket);
-  const duplicateLinkInfo = getDuplicateLinkInfo(ticket);
+  const duplicateLinkInfo = { ...getDuplicateLinkInfo(ticket), mainTicketPublicId };
   const escalated = ticket?.escalated === true;
   const slaDueAt = ticket?.resolutionDueAt;
   const slaCountdown = formatSlaCountdown(slaDueAt, now);
