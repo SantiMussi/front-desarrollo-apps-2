@@ -367,6 +367,13 @@ export default function HelpPortalPage() {
             </div>
           </div>
 
+          {selectedSubcategory.requestTypes.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-2xl border border-neutral-100">
+              <FileText className="h-10 w-10 text-neutral-200 mx-auto mb-3" />
+              <p className="text-[15px] font-medium text-neutral-900">Todavía no hay trámites disponibles acá</p>
+              <p className="text-[13px] text-neutral-500 mt-1">Probá con otra subcategoría o volvé más adelante.</p>
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {selectedSubcategory.requestTypes.map((rt) => (
               <button
@@ -399,6 +406,7 @@ export default function HelpPortalPage() {
               </button>
             ))}
           </div>
+          )}
         </div>
       );
     }
@@ -420,6 +428,13 @@ export default function HelpPortalPage() {
             </div>
           </div>
 
+          {selectedCategory.subcategories.length === 0 ? (
+            <div className="py-12 text-center bg-white rounded-2xl border border-neutral-100">
+              <FileText className="h-10 w-10 text-neutral-200 mx-auto mb-3" />
+              <p className="text-[15px] font-medium text-neutral-900">Todavía no hay trámites disponibles en esta área</p>
+              <p className="text-[13px] text-neutral-500 mt-1">Probá con otra categoría o volvé más adelante.</p>
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {selectedCategory.subcategories.map((sub) => {
               const IconComponent = icons[sub.iconName];
@@ -456,6 +471,7 @@ export default function HelpPortalPage() {
               );
             })}
           </div>
+          )}
         </div>
       );
     }
