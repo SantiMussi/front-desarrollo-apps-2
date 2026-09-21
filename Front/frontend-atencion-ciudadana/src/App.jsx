@@ -20,6 +20,7 @@ import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardPage from "./pages/agent/DashboardPage";
 import MetricsPage from "./pages/agent/MetricsPage";
+import LabelsPage from "./pages/admin/LabelsPage";
 
 function CitizenLayout() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="catalogo" element={<CategoriesPage />} />
               <Route path="catalogo/:categoryId" element={<SubcategoriesPage />} />
               <Route path="catalogo/:categoryId/:subcategoryId" element={<RequestTypesPage />} />
+              <Route path="etiquetas" element={<LabelsPage />} />
             </Route>
           </Route>
         </Route>

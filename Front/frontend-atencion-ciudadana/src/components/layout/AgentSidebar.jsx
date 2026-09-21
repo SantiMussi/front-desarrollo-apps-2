@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X, LifeBuoy, Layers } from "lucide-react";
+import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X, LifeBuoy, Layers, Tags } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import UserAvatar from "../ui/UserAvatar";
@@ -28,7 +28,12 @@ export default function AgentSidebar() {
     { name: "Tickets", path: "/agente/tickets", icon: Ticket },
     { name: "Agentes", path: "/agente/agentes", icon: Users },
     { name: "Métricas", path: "/agente/metricas", icon: BarChart },
-    ...(user?.role === "ADMIN" ? [{ name: "Catálogo", path: "/agente/catalogo", icon: Layers }] : []),
+    ...(user?.role === "ADMIN"
+      ? [
+          { name: "Catálogo", path: "/agente/catalogo", icon: Layers },
+          { name: "Etiquetas", path: "/agente/etiquetas", icon: Tags },
+        ]
+      : []),
   ];
 
   return (
