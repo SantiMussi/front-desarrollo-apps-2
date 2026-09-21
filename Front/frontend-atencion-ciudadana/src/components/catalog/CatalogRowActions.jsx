@@ -17,6 +17,7 @@ export default function CatalogRowActions({
         onClick={onEdit}
         disabled={editDisabled || busy}
         title={editDisabled ? editDisabledReason : "Editar"}
+        aria-label={editDisabled ? editDisabledReason : "Editar"}
         className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0F2C59] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Pencil className="h-4 w-4" />
@@ -26,6 +27,7 @@ export default function CatalogRowActions({
         onClick={onToggleActive}
         disabled={toggleDisabled || busy}
         title={toggleDisabled ? toggleDisabledReason : active ? "Desactivar" : "Activar"}
+        aria-label={toggleDisabled ? toggleDisabledReason : active ? "Desactivar" : "Activar"}
         className={`rounded p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
           active ? "text-emerald-600 hover:bg-emerald-50" : "text-slate-400 hover:bg-slate-100 hover:text-[#0F2C59]"
         }`}
