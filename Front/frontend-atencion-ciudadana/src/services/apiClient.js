@@ -1,6 +1,28 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "ciudad-uade.auth-token";
 
+// crypto.randomUUID() sólo existe en contextos seguros (HTTPS o localhost) —
+// explota con "crypto.randomUUID is not a function" al abrir la app por HTTP
+// desde una IP/dominio (ej.: el deploy de Lightsail). crypto.getRandomValues()
+// sí está disponible en cualquier contexto, así que se arma el UUID v4 a mano.
+function generateUUID() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0"));
+    return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 export const storeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const removeStoredToken = () => localStorage.removeItem(TOKEN_KEY);
@@ -404,7 +426,7 @@ export async function simulateStatusUpdate(ticketId, { moduleId, updateType, pub
     method: "POST",
     body: JSON.stringify({
       specVersion: "1.0",
-      eventId: crypto.randomUUID(),
+      eventId: generateUUID(),
       eventType: "updateTicketStatus",
       occurredAt: now,
       producer: { moduleId, service: `${moduleId}-simulator` },
