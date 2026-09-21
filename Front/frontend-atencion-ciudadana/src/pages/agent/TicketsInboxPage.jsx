@@ -6,7 +6,7 @@ import UserAvatar from "../../components/ui/UserAvatar";
 import { useAuth } from "../../context/useAuth";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
-import { fetchCategories } from "../../services/apiClient";
+import { fetchCategories, fetchStaffLabels } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
@@ -55,9 +55,11 @@ export default function TicketsInboxPage() {
     priority: "",
     neighborhoodId: "",
     status: "",
+    labelId: "",
   });
 
   const [categories, setCategories] = useState([]);
+  const [labels, setLabels] = useState([]);
   const { neighborhoods } = useNeighborhoods();
 
   useEffect(() => {
@@ -74,6 +76,20 @@ export default function TicketsInboxPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchStaffLabels()
+      .then((res) => {
+        if (!cancelled) setLabels(Array.isArray(res) ? res.filter((label) => label.active !== false) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setLabels([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const effectiveStatus = activeTab === "Resueltos" ? "RESOLVED" : filters.status;
 
   const { tickets: rawTickets, totalElements, totalPages, loading, error, refetch } = useAgentTickets({
@@ -81,6 +97,7 @@ export default function TicketsInboxPage() {
     priority: filters.priority || undefined,
     neighborhoodId: filters.neighborhoodId || undefined,
     status: effectiveStatus || undefined,
+    labelId: filters.labelId || undefined,
     page,
     size: PAGE_SIZE,
     sort: "createdAt,desc",
@@ -233,7 +250,7 @@ export default function TicketsInboxPage() {
             <button
               onClick={() => {
                 setPage(0);
-                setFilters({ categoryId: "", priority: "", neighborhoodId: "", status: "" });
+                setFilters({ categoryId: "", priority: "", neighborhoodId: "", status: "", labelId: "" });
               }}
               className="text-xs text-slate-500 hover:text-slate-700 underline"
             >
@@ -314,7 +331,7 @@ export default function TicketsInboxPage() {
       </div>
 
       {showFilters && (
-        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
             <select
@@ -372,6 +389,21 @@ export default function TicketsInboxPage() {
               {Object.entries(TICKET_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Etiqueta</label>
+            <select
+              value={filters.labelId}
+              onChange={(e) => handleFilterChange("labelId", e.target.value)}
+              className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
+            >
+              <option value="">Todas</option>
+              {labels.map((label) => (
+                <option key={label.id} value={label.id}>
+                  {label.name}
                 </option>
               ))}
             </select>

@@ -304,6 +304,17 @@ export async function fetchAgentTickets(params = {}) {
   return request(`/tickets${qs ? `?${qs}` : ""}`);
 }
 
+export async function fetchTicketsByLabel(labelId, params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    query.set(key, value);
+  });
+  const qs = query.toString();
+  return request(`/staff/labels/${encodeURIComponent(labelId)}/tickets${qs ? `?${qs}` : ""}`);
+}
+
+
 export async function fetchStaffTicketDetail(ticketId) {
   return request(`/staff/tickets/${encodeURIComponent(ticketId)}`);
 }
