@@ -464,7 +464,7 @@ export default function CitizenTicketView({
             <AttachmentGallery
               title="Adjuntos"
               canUpload={!readOnly && Boolean(attachmentsAdapter?.canUpload)}
-              fetchList={attachmentsAdapter?.fetchList ?? (() => Promise.resolve([]))}
+              items={ticket.attachments}
               uploadFile={attachmentsAdapter?.uploadFile}
               downloadFile={attachmentsAdapter?.downloadFile}
             />

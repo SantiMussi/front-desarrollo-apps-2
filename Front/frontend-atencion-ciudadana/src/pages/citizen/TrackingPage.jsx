@@ -200,13 +200,11 @@ export default function TrackingPage() {
           >
             <PublicTicketStatus ticket={ticket} />
 
-            {ticket.anonymous && (
-              <AccreditationPanel
-                onAccredit={anon.accredit}
-                accrediting={anon.accrediting}
-                accreditError={anon.accreditError}
-              />
-            )}
+            <AccreditationPanel
+              onAccredit={anon.accredit}
+              accrediting={anon.accrediting}
+              accreditError={anon.accreditError}
+            />
 
             <div className="mt-3 text-center">
               <button

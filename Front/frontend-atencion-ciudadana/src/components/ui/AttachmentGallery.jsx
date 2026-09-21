@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, Download, File, FileText, Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
 
 const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx";
@@ -16,29 +16,17 @@ function iconForContentType(contentType) {
   return File;
 }
 
-function messageForListError(err) {
-  if (err?.status === 404) {
-    return "El back todavía no tiene el endpoint de adjuntos para este ticket — queda preparado para cuando esté listo.";
-  }
-  if (err?.status === 403) return "No tenés permiso para ver los adjuntos de este ticket.";
-  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
-  return err?.message || "No pudimos cargar los adjuntos.";
-}
-
 function messageForUploadError(err) {
-  if (err?.status === 404) {
-    return "El back todavía no tiene el endpoint para subir adjuntos — queda preparado para cuando esté listo.";
-  }
   if (err?.status === 413) return "El archivo supera el tamaño máximo permitido.";
   if (err?.status === 415) return "Ese tipo de archivo no está permitido.";
   if (err?.status === 403) return "No tenés permiso para adjuntar archivos a este ticket.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  if (err?.status === 503) return "El almacenamiento de adjuntos no está disponible en este momento. Intentá de nuevo más tarde.";
   return err?.message || "No pudimos subir el archivo. Intentá de nuevo.";
 }
 
 function messageForDownloadError(err) {
-  if (err?.status === 404) {
-    return "El back todavía no tiene el endpoint para descargar este adjunto — queda preparado para cuando esté listo.";
-  }
+  if (err?.status === 404) return "No encontramos ese adjunto.";
   if (err?.status === 403) return "No tenés permiso para descargar este archivo.";
   if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
   return err?.message || "No pudimos descargar el archivo.";
@@ -48,41 +36,22 @@ export default function AttachmentGallery({
   title = "Adjuntos",
   canUpload = false,
   accept = DEFAULT_ACCEPT,
-  fetchList,
+  items,
   uploadFile,
   downloadFile,
 }) {
-  const [attachments, setAttachments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [listError, setListError] = useState(null);
+  const [prevItems, setPrevItems] = useState(items);
+  const [attachments, setAttachments] = useState(() => (Array.isArray(items) ? items : []));
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState(null);
   const fileInputRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const list = await fetchList();
-      setAttachments(Array.isArray(list) ? list : []);
-    } catch (err) {
-      setListError(messageForListError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchList]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!cancelled) await load();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+  if (items !== prevItems) {
+    setPrevItems(items);
+    setAttachments(Array.isArray(items) ? items : []);
+  }
 
   const handleFileSelected = async (event) => {
     const file = event.target.files?.[0];
@@ -93,8 +62,7 @@ export default function AttachmentGallery({
     setUploadError(null);
     try {
       const created = await uploadFile(file);
-      if (created) setAttachments((prev) => [...prev, created]);
-      else await load();
+      setAttachments((prev) => [...prev, ...(Array.isArray(created) ? created : [created])]);
     } catch (err) {
       setUploadError(messageForUploadError(err));
     } finally {
@@ -136,16 +104,7 @@ export default function AttachmentGallery({
       )}
 
       <div className="mt-2.5">
-        {loading ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
-          </div>
-        ) : listError ? (
-          <p className="flex items-start gap-1.5 text-[12px] text-red-600">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {listError}
-          </p>
-        ) : attachments.length === 0 ? (
+        {attachments.length === 0 ? (
           <p className="text-[12.5px] text-neutral-400">No hay adjuntos en este ticket.</p>
         ) : (
           <ul className="space-y-1.5">

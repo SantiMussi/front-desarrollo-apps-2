@@ -5,7 +5,6 @@ import {
   reopenAnonymousTicket,
   answerAnonymousInformation,
   rateAnonymousTicketAttention,
-  fetchAnonymousAttachments,
   uploadAnonymousAttachment,
   downloadAnonymousAttachment,
 } from "../services/apiClient";
@@ -43,16 +42,10 @@ export function useAnonymousTicketAccess(trackingCode) {
       setAccreditError(null);
       try {
         const response = await trackTicket(trackingCode, ticketPassword);
-        if (response?.accredited) {
-          setTicket(normalizeTicketDetail(response, response.publicId));
-          setAccredited(true);
-          setPassword(ticketPassword);
-          return true;
-        }
-        setAccreditError(
-          "La contraseña no acreditó el ticket. Puede ser incorrecta, o que el back todavía no soporte esta acreditación."
-        );
-        return false;
+        setTicket(normalizeTicketDetail(response, response.publicId));
+        setAccredited(true);
+        setPassword(ticketPassword);
+        return true;
       } catch (err) {
         setAccreditError(messageForAccreditationError(err));
         return false;
@@ -174,7 +167,6 @@ export function useAnonymousTicketAccess(trackingCode) {
 
   const attachments = {
     canUpload: true,
-    fetchList: () => fetchAnonymousAttachments(trackingCode),
     uploadFile: (file) => uploadAnonymousAttachment(trackingCode, password, file),
     downloadFile: (attachment) => downloadAnonymousAttachment(trackingCode, password, attachment.id),
   };

@@ -421,32 +421,57 @@ async function getBlob(url, token) {
   return response.blob();
 }
 
-export async function fetchTicketAttachments(ticketId) {
-  return request(`/tickets/${encodeURIComponent(ticketId)}/attachments`);
+async function postForBlob(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Error ${response.status}: ${response.statusText}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.blob();
 }
 
+// El listado de adjuntos viene embebido en el detalle del ticket (campo
+// `attachments`), no existe un endpoint dedicado para listarlos.
 export async function uploadTicketAttachment(ticketId, file) {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("data", new Blob([JSON.stringify({ visibility: "PUBLIC" })], { type: "application/json" }));
+  formData.append("attachments", file);
   return postMultipart(`${BASE_URL}/tickets/${encodeURIComponent(ticketId)}/attachments`, formData, getStoredToken());
 }
 
 export async function downloadTicketAttachment(attachmentId) {
-  return getBlob(`${BASE_URL}/attachments/${encodeURIComponent(attachmentId)}/download`, getStoredToken());
-}
-
-export async function fetchAnonymousAttachments(trackingCode) {
-  return request(`/tracking/${encodeURIComponent(trackingCode)}/attachments`);
+  return getBlob(`${BASE_URL}/attachments/${encodeURIComponent(attachmentId)}/content`, getStoredToken());
 }
 
 export async function uploadAnonymousAttachment(trackingCode, ticketPassword, file) {
   const formData = new FormData();
-  formData.append("file", file);
-  formData.append("ticketPassword", ticketPassword);
-  return postMultipart(`${BASE_URL}/tracking/${encodeURIComponent(trackingCode)}/attachments`, formData, null);
+  formData.append(
+    "data",
+    new Blob(
+      [
+        JSON.stringify({
+          trackingCode,
+          anonymousAccessPassword: ticketPassword,
+          payload: { visibility: "PUBLIC" },
+        }),
+      ],
+      { type: "application/json" }
+    )
+  );
+  formData.append("attachments", file);
+  return postMultipart(`${BASE_URL}/tracking/actions/attachments`, formData, null);
 }
 
 export async function downloadAnonymousAttachment(trackingCode, ticketPassword, attachmentId) {
-  const url = `${BASE_URL}/tracking/${encodeURIComponent(trackingCode)}/attachments/${encodeURIComponent(attachmentId)}/download?ticketPassword=${encodeURIComponent(ticketPassword)}`;
-  return getBlob(url, null);
+  return postForBlob(`${BASE_URL}/tracking/actions/attachments/${encodeURIComponent(attachmentId)}/content`, {
+    trackingCode,
+    anonymousAccessPassword: ticketPassword,
+  });
 }

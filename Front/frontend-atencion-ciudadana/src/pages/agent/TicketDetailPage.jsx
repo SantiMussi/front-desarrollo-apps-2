@@ -606,7 +606,7 @@ export default function TicketDetailPage() {
             <AttachmentGallery
               title=""
               canUpload
-              fetchList={() => Promise.resolve(ticket.attachments ?? [])}
+              items={ticket.attachments}
               uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
               downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
             />
