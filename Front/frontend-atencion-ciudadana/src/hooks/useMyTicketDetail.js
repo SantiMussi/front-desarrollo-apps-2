@@ -4,7 +4,7 @@ import {
   confirmTicketResolution,
   fetchMyTicketDetail,
   fetchMyTickets,
-  rateTicketAttention,
+  submitSatisfactionSurvey,
   reopenTicket,
 } from "../services/apiClient";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
@@ -57,6 +57,17 @@ export function normalizeTicketDetail(raw, publicId) {
     location: t.location ?? null,
     resolution: t.resolution ?? null,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
+    pendingInformationRequest: t.pendingInformationRequest
+      ? {
+          status: t.pendingInformationRequest.status,
+          messageForCitizen: t.pendingInformationRequest.messageForCitizen,
+          requestedAt: t.pendingInformationRequest.requestedAt,
+          dueAt: t.pendingInformationRequest.dueAt,
+          attachments: Array.isArray(t.pendingInformationRequest.attachments)
+            ? t.pendingInformationRequest.attachments
+            : [],
+        }
+      : null,
     messages: Array.isArray(t.messages) ? t.messages : [],
     history: Array.isArray(t.ticketActivities)
       ? mapTicketActivities(t.ticketActivities)
@@ -94,9 +105,7 @@ function messageForActionError(err) {
 }
 
 function messageForRatingError(err) {
-  if (err?.status === 404) {
-    return "El back todavía no tiene el endpoint para registrar la encuesta — queda preparado para cuando esté listo.";
-  }
+  if (err?.status === 409) return err?.message || "Ya enviaste una encuesta de satisfacción para este ticket.";
   return messageForActionError(err);
 }
 
@@ -197,12 +206,12 @@ export function useMyTicketDetail(publicId) {
   );
 
   const answerInformation = useCallback(
-    async (responseMessage) => {
+    async (responseMessage, files = []) => {
       if (!ticket?.id) return false;
       setActionLoading(true);
       setActionError(null);
       try {
-        const result = await answerTicketInformation(ticket.id, { responseMessage });
+        const result = await answerTicketInformation(ticket.id, { responseMessage, attachments: files });
         const now = result.answeredAt || new Date().toISOString();
         setTicket((prev) =>
           prev
@@ -210,6 +219,7 @@ export function useMyTicketDetail(publicId) {
               ...prev,
               currentStatus: result.currentStatus || prev.currentStatus,
               statusChangedAt: now,
+              pendingInformationRequest: null,
               messages: [
                 ...prev.messages,
                 { id: `info-response-${Date.now()}`, authorType: "CITIZEN", text: responseMessage, createdAt: now },
@@ -233,13 +243,13 @@ export function useMyTicketDetail(publicId) {
   );
 
   const rateAttention = useCallback(
-    async (stars) => {
+    async (score, comment) => {
       if (!ticket?.id || ticket.currentStatus !== "CLOSED") return false;
       setActionLoading(true);
       setActionError(null);
       try {
-        await rateTicketAttention(ticket.id, { stars });
-        setTicket((prev) => (prev ? { ...prev, rating: stars } : prev));
+        await submitSatisfactionSurvey(ticket.id, { score, comment });
+        setTicket((prev) => (prev ? { ...prev, rating: score, ratingComment: comment || null } : prev));
         return true;
       } catch (err) {
         setActionError(messageForRatingError(err));

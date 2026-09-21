@@ -9,7 +9,6 @@ export function useCreateTicket() {
   const [ticketPassword, setTicketPassword] = useState(null);
 
   const submit = useCallback(async (payload, attachments = [], options = {}) => {
-    console.log("[useCreateTicket] Payload:", payload, "Attachments:", attachments);
     setLoading(true);
     setError(null);
     setErrorCode(null);
@@ -18,12 +17,10 @@ export function useCreateTicket() {
 
     try {
       const response = await createTicket(payload, attachments, options);
-      console.log("[useCreateTicket] Respuesta del backend:", response);
       setTrackingCode(response.trackingCode);
-      setTicketPassword(response.ticketPassword ?? null);
+      setTicketPassword(response.generatedAnonymousAccessPassword ?? null);
       return response.trackingCode;
     } catch (err) {
-      console.error("[useCreateTicket] Error del backend:", err);
       setError(err.message || "Ocurrió un error inesperado. Intentá de nuevo.");
       setErrorCode(err.code || err.status || null);
       return null;

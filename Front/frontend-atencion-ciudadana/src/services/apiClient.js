@@ -160,48 +160,82 @@ export async function reopenTicket(ticketId, { reason }) {
   });
 }
 
-export async function answerTicketInformation(ticketId, { responseMessage }) {
+export async function answerTicketInformation(ticketId, { responseMessage, attachments = [] }) {
+  if (attachments.length > 0) {
+    const formData = new FormData();
+    formData.append(
+      "data",
+      new Blob([JSON.stringify({ responseMessage: responseMessage || null })], { type: "application/json" })
+    );
+    attachments.forEach((file) => formData.append("attachments", file));
+    return postMultipart(
+      `${BASE_URL}/tickets/${encodeURIComponent(ticketId)}/information-response`,
+      formData,
+      getStoredToken()
+    );
+  }
   return request(`/tickets/${encodeURIComponent(ticketId)}/information-response`, {
     method: "POST",
     body: JSON.stringify({ responseMessage }),
   });
 }
 
-export async function rateTicketAttention(ticketId, { stars }) {
-  return request(`/tickets/${encodeURIComponent(ticketId)}/rating`, {
+export async function submitSatisfactionSurvey(ticketId, { score, comment }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/satisfaction-survey`, {
     method: "POST",
-    body: JSON.stringify({ stars }),
+    body: JSON.stringify({ score, comment: comment || null }),
   });
 }
 
 export async function trackTicket(trackingCode, ticketPassword) {
   return request("/tracking/access", {
     method: "POST",
-    body: JSON.stringify(ticketPassword ? { trackingCode, ticketPassword } : { trackingCode }),
+    body: JSON.stringify(
+      ticketPassword ? { trackingCode, anonymousAccessPassword: ticketPassword } : { trackingCode }
+    ),
   });
 }
 
 export async function confirmAnonymousResolution(trackingCode, ticketPassword) {
-  return request(`/tracking/${encodeURIComponent(trackingCode)}/resolution/confirm`, {
+  return request("/tracking/actions/confirm-resolution", {
     method: "POST",
-    body: JSON.stringify({ ticketPassword }),
+    body: JSON.stringify({ trackingCode, anonymousAccessPassword: ticketPassword }),
   });
 }
 
 export async function reopenAnonymousTicket(trackingCode, { ticketPassword, reason }) {
-  return request(`/tracking/${encodeURIComponent(trackingCode)}/resolution/reopen`, {
+  return request("/tracking/actions/reopen", {
     method: "POST",
-    body: JSON.stringify({ ticketPassword, reason }),
+    body: JSON.stringify({ trackingCode, anonymousAccessPassword: ticketPassword, payload: { reason } }),
   });
 }
 
-export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage }) {
-  return request(`/tracking/${encodeURIComponent(trackingCode)}/information-response`, {
+export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage, attachments = [] }) {
+  if (attachments.length > 0) {
+    const formData = new FormData();
+    formData.append(
+      "data",
+      new Blob(
+        [
+          JSON.stringify({
+            trackingCode,
+            anonymousAccessPassword: ticketPassword,
+            payload: { responseMessage: responseMessage || null },
+          }),
+        ],
+        { type: "application/json" }
+      )
+    );
+    attachments.forEach((file) => formData.append("attachments", file));
+    return postMultipart(`${BASE_URL}/tracking/actions/information-response`, formData, null);
+  }
+  return request("/tracking/actions/information-response", {
     method: "POST",
-    body: JSON.stringify({ ticketPassword, responseMessage }),
+    body: JSON.stringify({ trackingCode, anonymousAccessPassword: ticketPassword, payload: { responseMessage } }),
   });
 }
 
+// No existe un endpoint de encuesta de satisfacción para tickets anónimos.
 export async function rateAnonymousTicketAttention(trackingCode, { ticketPassword, stars }) {
   return request(`/tracking/${encodeURIComponent(trackingCode)}/rating`, {
     method: "POST",

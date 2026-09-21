@@ -104,12 +104,16 @@ export function useAnonymousTicketAccess(trackingCode) {
   );
 
   const answerInformation = useCallback(
-    async (responseMessage) => {
+    async (responseMessage, files = []) => {
       if (!password || !ticket) return false;
       setActionLoading(true);
       setActionError(null);
       try {
-        const result = await answerAnonymousInformation(trackingCode, { ticketPassword: password, responseMessage });
+        const result = await answerAnonymousInformation(trackingCode, {
+          ticketPassword: password,
+          responseMessage,
+          attachments: files,
+        });
         const now = result?.answeredAt || new Date().toISOString();
         setTicket((prev) =>
           prev
@@ -117,6 +121,7 @@ export function useAnonymousTicketAccess(trackingCode) {
                 ...prev,
                 currentStatus: result?.currentStatus || prev.currentStatus,
                 statusChangedAt: now,
+                pendingInformationRequest: null,
                 messages: [
                   ...prev.messages,
                   { id: `info-response-${Date.now()}`, authorType: "CITIZEN", text: responseMessage, createdAt: now },

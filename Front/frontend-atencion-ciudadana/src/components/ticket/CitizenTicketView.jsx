@@ -118,6 +118,8 @@ function StatusHistory({ history }) {
 
 function AttentionRating({ value, onRate, loading, error }) {
   const [hover, setHover] = useState(0);
+  const [selected, setSelected] = useState(0);
+  const [comment, setComment] = useState("");
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
 
@@ -128,6 +130,11 @@ function AttentionRating({ value, onRate, loading, error }) {
       </div>
     );
   }
+
+  const handleSubmit = () => {
+    if (!selected) return;
+    onRate(selected, comment.trim());
+  };
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-3">
@@ -151,19 +158,39 @@ function AttentionRating({ value, onRate, loading, error }) {
             key={n}
             type="button"
             onMouseEnter={() => setHover(n)}
-            onClick={() => onRate(n)}
+            onClick={() => setSelected(n)}
             disabled={loading}
             aria-label={`${n} estrellas`}
             className="p-0.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Star
               className={`h-6 w-6 ${
-                n <= hover ? "fill-amber-400 text-amber-400" : "text-neutral-300"
+                n <= (hover || selected) ? "fill-amber-400 text-amber-400" : "text-neutral-300"
               }`}
             />
           </button>
         ))}
       </div>
+      {selected > 0 && (
+        <>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            placeholder="Contanos más sobre tu experiencia (opcional)…"
+            disabled={loading}
+            className="mt-2.5 w-full rounded-md border border-neutral-200 bg-white px-2.5 py-2 text-[12.5px] text-neutral-800 outline-none focus:ring-2 focus:ring-amber-200"
+          />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#1a3f7a] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Enviando…" : "Enviar calificación"}
+          </button>
+        </>
+      )}
       {error && <p className="mt-2 text-[12px] text-red-600">{error}</p>}
     </div>
   );
@@ -184,6 +211,7 @@ export default function CitizenTicketView({
   const [draft, setDraft] = useState("");
   const [localMessages, setLocalMessages] = useState([]);
   const [infoResponse, setInfoResponse] = useState("");
+  const [infoResponseFiles, setInfoResponseFiles] = useState([]);
 
   const isResolved = ticket.currentStatus === "RESOLVED";
   const isPendingInformation = ticket.currentStatus === "PENDING_INFORMATION";
@@ -208,12 +236,25 @@ export default function CitizenTicketView({
 
   const handleAnswerInformation = async () => {
     const text = infoResponse.trim();
-    if (!text) return;
-    const ok = await actions?.answerInformation(text);
-    if (ok) setInfoResponse("");
+    if (!text && infoResponseFiles.length === 0) return;
+    const ok = await actions?.answerInformation(text || null, infoResponseFiles);
+    if (ok) {
+      setInfoResponse("");
+      setInfoResponseFiles([]);
+    }
   };
 
-  const handleRate = (stars) => actions?.rateAttention(stars);
+  const handleInfoResponseFilesSelected = (event) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length) setInfoResponseFiles((prev) => [...prev, ...files]);
+  };
+
+  const removeInfoResponseFile = (index) => {
+    setInfoResponseFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRate = (score, comment) => actions?.rateAttention(score, comment);
 
   const sendMessage = () => {
     const text = draft.trim();
@@ -380,10 +421,16 @@ export default function CitizenTicketView({
                 El municipio te pidió información adicional.
               </p>
               <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-800">
-                {readOnly
-                  ? "El ciudadano necesita responder para que el trámite continúe."
-                  : "Respondé para que podamos continuar con el trámite."}
+                {ticket.pendingInformationRequest?.messageForCitizen ||
+                  (readOnly
+                    ? "El ciudadano necesita responder para que el trámite continúe."
+                    : "Respondé para que podamos continuar con el trámite.")}
               </p>
+              {ticket.pendingInformationRequest?.dueAt && (
+                <p className="mt-1 text-[11.5px] font-medium text-amber-700">
+                  Plazo para responder: {dateTime(ticket.pendingInformationRequest.dueAt)}
+                </p>
+              )}
             </div>
           </div>
           {!readOnly && (
@@ -398,10 +445,37 @@ export default function CitizenTicketView({
                   className="mt-1.5 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-[13px] text-neutral-800 outline-none focus:ring-2 focus:ring-amber-200"
                 />
               </label>
+
+              <label className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#0F2C59] hover:underline">
+                <Plus className="h-3.5 w-3.5" />
+                Adjuntar archivo
+                <input type="file" onChange={handleInfoResponseFilesSelected} className="hidden" />
+              </label>
+              {infoResponseFiles.length > 0 && (
+                <ul className="mt-1.5 space-y-1">
+                  {infoResponseFiles.map((file, index) => (
+                    <li
+                      key={`${file.name}-${index}`}
+                      className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-700"
+                    >
+                      <span className="truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeInfoResponseFile(index)}
+                        className="shrink-0 text-neutral-400 hover:text-red-600"
+                        aria-label={`Quitar ${file.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <button
                 type="button"
                 onClick={handleAnswerInformation}
-                disabled={actionLoading || !infoResponse.trim()}
+                disabled={actionLoading || (!infoResponse.trim() && infoResponseFiles.length === 0)}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#1a3f7a] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {actionLoading ? <Info className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
