@@ -21,6 +21,7 @@ import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
 import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
+import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
 
 function reviewErrorMessage(err) {
   if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
@@ -106,33 +107,6 @@ function formatSlaCountdown(dueAt, now) {
     label: `${days} ${days === 1 ? "día" : "días"} y ${hours} ${hours === 1 ? "hora" : "horas"}`,
   };
 }
-
-const ACTIVITY_TYPE_LABELS = {
-  TICKET_CREATED: "Ticket creado",
-  REVIEW_STARTED: "Análisis iniciado",
-  STATE_CHANGED: "Estado actualizado",
-  REQUEST_TYPE_CHANGED: "Clasificación corregida",
-  ROUTED: "Derivado al área",
-  RETURNED_BY_AREA: "Devuelto por el área",
-  PRIORITY_CHANGED: "Prioridad actualizada",
-  SLA_NEAR_DUE: "SLA próximo a vencer",
-  SLA_BREACHED: "SLA vencido",
-  ESCALATED: "Ticket escalado",
-  INFORMATION_REQUIRED: "Información solicitada al ciudadano",
-  INFORMATION_PROVIDED: "El ciudadano respondió",
-  PROGRESS_REPORTED: "Progreso informado por el área",
-  DUPLICATE_LINKED: "Vinculado como duplicado",
-  RESOLVED: "Ticket resuelto",
-  REOPENED: "Ticket reabierto",
-  CANCELLATION_REQUESTED: "Cancelación solicitada",
-  CANCELLATION_APPROVED: "Cancelación aprobada",
-  CANCELLATION_REJECTED: "Cancelación rechazada",
-  CANCELLED: "Ticket cancelado",
-  CLOSED: "Ticket cerrado",
-  PUBLIC_MESSAGE_SENT: "Mensaje enviado al ciudadano",
-  INTERNAL_MESSAGE_ADDED: "Nota interna agregada",
-  ATTACHMENT_ADDED: "Adjunto agregado",
-};
 
 function activityMessage(activity) {
   const parts = [ACTIVITY_TYPE_LABELS[activity.actionType] || activity.actionType];
