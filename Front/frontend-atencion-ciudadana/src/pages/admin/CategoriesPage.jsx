@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Layers } from "lucide-react";
 import {
   fetchAdminCategories,
+  fetchAdminSubcategories,
   createCategory,
   updateCategory,
   activateCategory,
@@ -15,6 +16,7 @@ import CatalogCreateButton from "../../components/catalog/CatalogCreateButton";
 import CatalogStatusBadge from "../../components/catalog/CatalogStatusBadge";
 import CatalogRowActions from "../../components/catalog/CatalogRowActions";
 import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
+import CatalogDependencyNotice from "../../components/catalog/CatalogDependencyNotice";
 
 const FORM_FIELDS = [
   { name: "name", label: "Nombre", type: "text", required: true, maxLength: 150 },
@@ -31,13 +33,28 @@ export default function CategoriesPage() {
   const [submitError, setSubmitError] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [toggleError, setToggleError] = useState(null);
+  const [activeSubcategoryCounts, setActiveSubcategoryCounts] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchAdminCategories();
-      setCategories(Array.isArray(data) ? data : []);
+      const nextCategories = Array.isArray(data) ? data : [];
+      setCategories(nextCategories);
+      const children = await Promise.allSettled(
+        nextCategories.map((category) => fetchAdminSubcategories(category.id)),
+      );
+      setActiveSubcategoryCounts(
+        Object.fromEntries(
+          nextCategories.map((category, index) => [
+            category.id,
+            children[index].status === "fulfilled"
+              ? (Array.isArray(children[index].value) ? children[index].value : []).filter((item) => item.active).length
+              : null,
+          ]),
+        ),
+      );
     } catch (err) {
       setError(messageForCatalogError(err));
     } finally {
@@ -81,6 +98,13 @@ export default function CategoriesPage() {
   };
 
   const handleToggleActive = async (category) => {
+    const activeChildren = activeSubcategoryCounts[category.id];
+    if (category.active && activeChildren > 0) {
+      setToggleError(
+        `No se puede desactivar “${category.name}”: tiene ${activeChildren} ${activeChildren === 1 ? "subcategoría activa" : "subcategorías activas"}. Desactivalas primero.`,
+      );
+      return;
+    }
     setToggleError(null);
     setTogglingId(category.id);
     try {
@@ -117,6 +141,11 @@ export default function CategoriesPage() {
       )}
 
       <div className="mt-5">
+        <div className="mb-3">
+          <CatalogDependencyNotice>
+            Para desactivar una categoría, primero deben estar inactivas todas sus subcategorías.
+          </CatalogDependencyNotice>
+        </div>
         <CatalogEntityTable
           items={categories}
           loading={loading}
@@ -136,6 +165,8 @@ export default function CategoriesPage() {
                   busy={togglingId === c.id}
                   onEdit={() => handleEdit(c)}
                   onToggleActive={() => handleToggleActive(c)}
+                  toggleDisabled={c.active && activeSubcategoryCounts[c.id] > 0}
+                  toggleDisabledReason={`Desactivá primero ${activeSubcategoryCounts[c.id]} ${activeSubcategoryCounts[c.id] === 1 ? "subcategoría activa" : "subcategorías activas"}.`}
                 />
               ),
             },

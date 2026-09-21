@@ -18,6 +18,7 @@ import CatalogStatusBadge from "../../components/catalog/CatalogStatusBadge";
 import CatalogRowActions from "../../components/catalog/CatalogRowActions";
 import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
 import RequestTypeFormSchemaDialog from "../../components/catalog/RequestTypeFormSchemaDialog";
+import CatalogDependencyNotice from "../../components/catalog/CatalogDependencyNotice";
 
 const TICKET_TYPE_OPTIONS = [
   { value: "COMPLAINT", label: "Reclamo" },
@@ -143,6 +144,10 @@ export default function RequestTypesPage() {
   };
 
   const handleToggleActive = async (requestType) => {
+    if (!requestType.active && subcategory && !subcategory.active) {
+      setToggleError(`No se puede activar “${requestType.name}” mientras la subcategoría “${subcategory.name}” esté inactiva.`);
+      return;
+    }
     setToggleError(null);
     setTogglingId(requestType.id);
     try {
@@ -200,6 +205,13 @@ export default function RequestTypesPage() {
       )}
 
       <div className="mt-5">
+        {subcategory && !subcategory.active && (
+          <div className="mb-3">
+            <CatalogDependencyNotice tone="warning">
+              La subcategoría “{subcategory.name}” está inactiva. No podés crear, editar ni activar tipos de solicitud hasta reactivarla.
+            </CatalogDependencyNotice>
+          </div>
+        )}
         <CatalogEntityTable
           items={requestTypes}
           loading={loading}
@@ -239,6 +251,8 @@ export default function RequestTypesPage() {
                   onToggleActive={() => handleToggleActive(rt)}
                   editDisabled={Boolean(subcategory) && !subcategory.active}
                   editDisabledReason="No se puede editar: la subcategoría está inactiva."
+                  toggleDisabled={!rt.active && Boolean(subcategory) && !subcategory.active}
+                  toggleDisabledReason="Activá primero la subcategoría."
                 />
               ),
             },
