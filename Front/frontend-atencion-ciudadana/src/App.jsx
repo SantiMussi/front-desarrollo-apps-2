@@ -67,10 +67,10 @@ export default function App() {
             <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
             <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="agentes" element={<AgentsPage />} />
             <Route path="metricas" element={<MetricsPage />} />
 
             <Route element={<ProtectedRoute roles={["ADMIN"]} />}>
+              <Route path="agentes" element={<AgentsPage />} />
               <Route path="catalogo" element={<CategoriesPage />} />
               <Route path="catalogo/:categoryId" element={<SubcategoriesPage />} />
               <Route path="catalogo/:categoryId/:subcategoryId" element={<RequestTypesPage />} />
