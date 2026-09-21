@@ -19,6 +19,8 @@ async function request(endpoint, options = {}) {
     ...options,
   };
 
+  console.log(token)
+
   const response = await fetch(url, config);
 
   if (!response.ok) {
@@ -310,6 +312,47 @@ export async function fetchStaffTicketDetail(ticketId) {
 
 export async function fetchTicketCitizenView(ticketId) {
   return request(`/staff/tickets/${encodeURIComponent(ticketId)}/citizen-view`);
+}
+
+// Staff labels
+export async function fetchStaffLabels() {
+  return request("/staff/labels");
+}
+
+export async function createStaffLabel({ code, name, description }) {
+  return request("/staff/labels", {
+    method: "POST",
+    body: JSON.stringify({ code, name, description }),
+  });
+}
+
+export async function fetchStaffLabel(labelId) {
+  return request(`/staff/labels/${encodeURIComponent(labelId)}`);
+}
+
+export async function updateStaffLabel(labelId, { name, description, active }) {
+  return request(`/staff/labels/${encodeURIComponent(labelId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, description, active }),
+  });
+}
+
+export async function deleteStaffLabel(labelId) {
+  return request(`/staff/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" });
+}
+
+export async function assignTicketLabels(ticketId, labelIds) {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}/labels`, {
+    method: "POST",
+    body: JSON.stringify({ labelIds }),
+  });
+}
+
+export async function removeTicketLabel(ticketId, labelId) {
+  return request(
+    `/staff/tickets/${encodeURIComponent(ticketId)}/labels/${encodeURIComponent(labelId)}`,
+    { method: "DELETE" }
+  );
 }
 
 export async function updateTicketClassification(ticketId, requestTypeId) {

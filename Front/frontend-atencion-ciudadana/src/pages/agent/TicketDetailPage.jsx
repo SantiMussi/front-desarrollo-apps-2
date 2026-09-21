@@ -12,6 +12,7 @@ import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
 import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
 import AttachmentGallery from "../../components/ui/AttachmentGallery";
 import UserAvatar from "../../components/ui/UserAvatar";
+import TicketLabelsCard from "../../components/ticket/TicketLabelsCard";
 import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
 import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { useResolveTicket } from "../../hooks/useResolveTicket";
@@ -611,6 +612,7 @@ export default function TicketDetailPage() {
               downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
             />
           </DetailCard>
+          <TicketLabelsCard ticket={ticket} />
           {escalated && (
             <DetailCard title="Escalamiento" icon={TriangleAlert}>
               <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800">
