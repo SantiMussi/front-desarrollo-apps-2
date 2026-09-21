@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchCurrentUser,
   getStoredToken,
@@ -7,8 +7,8 @@ import {
   removeStoredToken,
   storeToken,
 } from "../services/apiClient";
+import { AuthContext } from "./authContext";
 
-const AuthContext = createContext(null);
 const USER_KEY = "ciudad-uade.auth-user";
 
 function readStoredUser() {
@@ -58,7 +58,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!getStoredToken()) return;
-    refreshUser().catch(() => { }).finally(() => setIsLoading(false));
+    let cancelled = false;
+    (async () => {
+      try {
+        await refreshUser();
+      } catch {
+        // el error ya se maneja dentro de refreshUser (logout en 401/403)
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [refreshUser]);
 
   const authenticate = useCallback(async (credentials) => {
@@ -83,10 +95,4 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({ user, isLoading, isAuthenticated: Boolean(user && getStoredToken()), login: authenticate, register, logout, refreshUser }), [user, isLoading, authenticate, register, logout, refreshUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth debe utilizarse dentro de AuthProvider");
-  return context;
 }

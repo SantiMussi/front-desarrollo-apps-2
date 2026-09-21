@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Ticket, User, Menu, X, Headset, LogOut, ChevronDown, UserCircle, KeyRound } from "lucide-react";
 import logo from "../../assets/logo.png";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import UserAvatar from "../ui/UserAvatar";
 
 const MENU_ITEM =

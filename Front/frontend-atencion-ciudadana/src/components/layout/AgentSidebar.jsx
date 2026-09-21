@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Ticket, Users, BarChart, LogOut, Menu, X, LifeBuoy, Layers, Tags } from "lucide-react";
 import logo from "../../assets/logo.png";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import UserAvatar from "../ui/UserAvatar";
 
 const ROLE_LABELS = {

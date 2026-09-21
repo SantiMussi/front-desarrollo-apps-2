@@ -9,7 +9,7 @@ import Alert from "../ui/Alert";
 import LoginPromptModal from "../ui/LoginPromptModal";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { fetchRequestTypeForm } from "../../services/apiClient";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,6 +36,10 @@ function validateForm(formData, specificFields) {
 
   if (formData.contactChannel && !isValidContactChannel(formData.contactChannel)) {
     errors.contactChannel = "Ingresá un email o teléfono válido";
+  }
+
+  if (formData.isAnonymous && formData.ticketPassword.trim() && formData.ticketPassword.trim().length < 8) {
+    errors.ticketPassword = "La contraseña debe tener al menos 8 caracteres";
   }
 
   if (!formData.summary.trim()) {
@@ -362,9 +366,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       },
       ...(submittingAnonymously
         ? {
-            anonymous: true,
-            contactChannel: formData.contactChannel.trim() || null,
-            ticketPassword: formData.ticketPassword.trim() || null,
+            anonymousContact: formData.contactChannel.trim()
+              ? {
+                  channel: CONTACT_EMAIL_RE.test(formData.contactChannel.trim()) ? "EMAIL" : "PHONE",
+                  value: formData.contactChannel.trim(),
+                }
+              : null,
+            anonymousAccessPassword: formData.ticketPassword.trim() || null,
           }
         : {}),
     };
@@ -742,8 +750,11 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                     className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2.5 pl-10 pr-3.5 text-[14px] text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:border-[#D63031]/40 focus:bg-white focus:ring-2 focus:ring-[#D63031]/10 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
+                {fieldErrors.ticketPassword && (
+                  <p className="mt-1.5 text-[12px] text-red-500">{fieldErrors.ticketPassword}</p>
+                )}
                 <p className="mt-1.5 text-[11px] text-neutral-400">
-                  La vas a necesitar junto con el código de seguimiento para gestionar el ticket. Si la dejás vacía, te generamos una automáticamente y te la mostramos al finalizar.
+                  Si la definís, tiene que tener al menos 8 caracteres. La vas a necesitar junto con el código de seguimiento para gestionar el ticket. Si la dejás vacía, te generamos una automáticamente y te la mostramos al finalizar.
                 </p>
               </div>
             </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, LockKeyhole, Mail, LogIn, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 /**
  * Modal de login rápido. Se usa cuando un vecino intenta enviar un reclamo

@@ -15,7 +15,7 @@ import {
   TicketCheck,
   UserRoundX,
 } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";

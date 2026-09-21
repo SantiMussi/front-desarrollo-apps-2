@@ -3,7 +3,7 @@ import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Search, Filter, RefreshCw, Download, Columns, Bell, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import TicketTable from "../../components/ticket/TicketTable";
 import UserAvatar from "../../components/ui/UserAvatar";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { fetchCategories } from "../../services/apiClient";
