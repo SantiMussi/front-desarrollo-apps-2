@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Plus, Send, Smile, TriangleAlert, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Pencil, Plus, Send, Smile, Trash2, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import Select from "../../components/ui/Select";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
@@ -18,7 +18,9 @@ import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
+import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
+import { useAuth } from "../../context/useAuth";
 import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
@@ -54,6 +56,25 @@ function duplicateLinkErrorMessage(err) {
   if (err?.status === 404) return "No encontramos alguno de los tickets a vincular.";
   if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
   return err?.message || "No pudimos vincular el ticket. Intentá de nuevo.";
+}
+
+const MESSAGE_AUTHOR_LABELS = {
+  AGENT: "Agente",
+  ADMIN: "Administrador",
+  AREA_RESPONSIBLE: "Responsable de área",
+};
+
+function wasMessageEdited(message) {
+  if (!message.updatedAt) return false;
+  return new Date(message.updatedAt).getTime() - new Date(message.createdAt).getTime() > 1000;
+}
+
+function messageAuthor(message, data, currentUser) {
+  if (currentUser?.citizenId && message.authorId === currentUser.citizenId) {
+    return { name: currentUser.displayName || "Vos", initials: "YO" };
+  }
+  if (message.authorType === "CITIZEN") return data.citizen;
+  return { name: MESSAGE_AUTHOR_LABELS[message.authorType] || "Equipo municipal", initials: "—" };
 }
 
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
@@ -122,11 +143,18 @@ function Field({ label, children }) {
 
 export default function TicketDetailPage() {
   const { ticketId } = useParams();
+  const { user } = useAuth();
   const { ticket, loading, error, reload } = useStaffTicketDetail(ticketId);
+  const chatMessages = useTicketMessages(ticketId);
   const [status, setStatus] = useState(null);
   const [tab, setTab] = useState("activity");
   const [visibility, setVisibility] = useState("PUBLIC");
   const [comment, setComment] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
+  const [commentError, setCommentError] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+  const [confirmDeleteMessageId, setConfirmDeleteMessageId] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
   const [fields, setFields] = useState(null);
   const [derivationOpen, setDerivationOpen] = useState(false);
@@ -168,7 +196,6 @@ export default function TicketDetailPage() {
       citizen: ticket.anonymous ? { name: "Anónimo", initials: "AN" } : { name: "Ciudadano registrado", initials: "—" },
       assignee: ticket.assignedAgentId ? { name: `Agente #${ticket.assignedAgentId}`, initials: "AG" } : { name: "Sin asignar", initials: "—" },
       neighborhood: ticket.neighborhoodName || null,
-      messages: [],
       activities: Array.isArray(ticket.ticketActivities)
         ? ticket.ticketActivities.map((activity) => ({
             id: `activity-${activity.sequence}`,
@@ -222,10 +249,45 @@ export default function TicketDetailPage() {
     return () => window.clearInterval(intervalId);
   }, [firstResponseDueAt, slaDueAt]);
 
-  const submit = () => {
-    if (!comment.trim()) return;
-    setLocalMessages((items) => [...items, { id: `local-${Date.now()}`, text: comment, visibility, createdAt: new Date().toISOString(), authorType: "AGENT" }]);
-    setComment("");
+  const submit = async () => {
+    if (!comment.trim() || commentSending) return;
+    setCommentSending(true);
+    setCommentError(null);
+    try {
+      await chatMessages.send(visibility, comment.trim());
+      setComment("");
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    } finally {
+      setCommentSending(false);
+    }
+  };
+
+  const startEditMessage = (message) => {
+    setEditingMessageId(message.id);
+    setEditingMessageText(message.text);
+    setCommentError(null);
+  };
+
+  const saveEditMessage = async (messageId) => {
+    const text = editingMessageText.trim();
+    if (!text) return;
+    try {
+      await chatMessages.edit(messageId, text);
+      setEditingMessageId(null);
+      setEditingMessageText("");
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    }
+  };
+
+  const deleteMessage = async (messageId) => {
+    try {
+      await chatMessages.remove(messageId);
+      setConfirmDeleteMessageId(null);
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    }
   };
 
   const startReview = async () => {
@@ -528,17 +590,23 @@ export default function TicketDetailPage() {
             <section className="pt-6">
               <div className="flex items-end justify-between border-b border-slate-200">
                 <div className="flex gap-5">{[["activity", "Actividad"], ["history", "Historial"]].map(([id, label]) => <button key={id} onClick={() => setTab(id)} className={`pb-2 text-sm font-medium ${tab === id ? "border-b-2 border-[#0F2C59] text-[#0F2C59]" : "text-slate-500"}`}>{label}</button>)}</div>
-                <span className="pb-2 text-xs text-slate-500">{data.messages.length + localMessages.length} comentarios</span>
+                <span className="pb-2 text-xs text-slate-500">{chatMessages.messages.length + localMessages.length} comentarios</span>
               </div>
 
               {tab === "activity" ? <>
                 <div className="mt-4 flex gap-3"><UserAvatar user={{ initials: "CG" }} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
                   <div className="flex bg-slate-50 text-xs"><button onClick={() => setVisibility("PUBLIC")} className={`px-4 py-2 font-medium ${visibility === "PUBLIC" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Responder al ciudadano</button><button onClick={() => setVisibility("INTERNAL")} className={`px-4 py-2 font-medium ${visibility === "INTERNAL" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Nota interna</button></div>
-                  <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
-                  <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim()} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"><Send className="h-3.5 w-3.5" />Enviar</button></div>
+                  <textarea value={comment} onChange={(e) => setComment(e.target.value)} disabled={commentSending} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
+                  <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim() || commentSending} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{commentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Enviar</button></div>
                 </div></div>
+                {commentError && <p className="mt-2 text-xs text-red-600">{commentError}</p>}
                 <div className="mt-7 space-y-6">
-                  {[...data.messages, ...localMessages].map((message) => {
+                  {chatMessages.loading ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-[#0F2C59]" /></div>
+                  ) : chatMessages.error ? (
+                    <p className="py-6 text-center text-sm text-red-600">{chatMessages.error}</p>
+                  ) : (
+                    [...chatMessages.messages, ...localMessages].map((message) => {
                     if (message.authorType === "SYSTEM") {
                       return (
                         <div key={message.id} className="flex items-center gap-3">
@@ -548,22 +616,52 @@ export default function TicketDetailPage() {
                         </div>
                       );
                     }
-                    const author = message.authorType === "AGENT" ? data.assignee : data.citizen;
+                    const author = messageAuthor(message, data, user);
+                    const isMine = user?.citizenId && message.authorId === user.citizenId;
+                    const isEditing = editingMessageId === message.id;
+                    const isConfirmingDelete = confirmDeleteMessageId === message.id;
                     return (
                       <article key={message.id} className="flex gap-3">
                         <UserAvatar user={author} />
-                        <div>
+                        <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <strong className="text-xs">{author?.name || "Equipo municipal"}</strong>
-                            <span className="text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>
+                            <span className="text-[11px] text-slate-400">
+                              {formatDate(message.createdAt)}
+                              {wasMessageEdited(message) ? " (editado)" : ""}
+                            </span>
                             {message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}
+                            {isMine && !isEditing && !isConfirmingDelete && (
+                              <span className="ml-auto flex items-center gap-2">
+                                <button onClick={() => startEditMessage(message)} className="text-slate-400 hover:text-[#0F2C59]" aria-label="Editar comentario"><Pencil className="h-3.5 w-3.5" /></button>
+                                <button onClick={() => setConfirmDeleteMessageId(message.id)} className="text-slate-400 hover:text-red-600" aria-label="Borrar comentario"><Trash2 className="h-3.5 w-3.5" /></button>
+                              </span>
+                            )}
                           </div>
-                          <p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p>
+                          {isEditing ? (
+                            <div className="mt-1.5">
+                              <textarea value={editingMessageText} onChange={(e) => setEditingMessageText(e.target.value)} rows={2} autoFocus className="w-full resize-none rounded-md border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#0F2C59]/20" />
+                              <div className="mt-1.5 flex justify-end gap-3 text-xs font-semibold">
+                                <button onClick={() => setEditingMessageId(null)} className="text-slate-500 hover:underline">Cancelar</button>
+                                <button onClick={() => saveEditMessage(message.id)} disabled={!editingMessageText.trim()} className="text-[#0F2C59] hover:underline disabled:opacity-50">Guardar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p>
+                          )}
+                          {isConfirmingDelete && (
+                            <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold">
+                              <span className="text-slate-500">¿Borrar este comentario?</span>
+                              <button onClick={() => setConfirmDeleteMessageId(null)} className="text-slate-500 hover:underline">No</button>
+                              <button onClick={() => deleteMessage(message.id)} className="text-red-600 hover:underline">Sí, borrar</button>
+                            </div>
+                          )}
                         </div>
                       </article>
                     );
-                  })}
-                  {!data.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
+                    })
+                  )}
+                  {!chatMessages.loading && !chatMessages.error && !chatMessages.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
                 </div>
               </> : <div className="mt-5 space-y-4">{data.activities.map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
             </section>

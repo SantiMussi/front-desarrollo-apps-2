@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -8,6 +8,8 @@ import {
   CircleHelp,
   Eye,
   Lightbulb,
+  Loader2,
+  Pencil,
   Plus,
   RotateCcw,
   MapPin,
@@ -15,6 +17,7 @@ import {
   Info,
   Send,
   Star,
+  Trash2,
   TriangleAlert,
   X,
   ShieldCheck,
@@ -45,6 +48,18 @@ const dateOnly = (v) =>
     : "—";
 
 const shortId = (publicId) => `#${String(publicId).replace(/\D/g, "").replace(/^0+/, "") || publicId}`;
+
+function wasMessageEdited(message) {
+  if (!message.updatedAt) return false;
+  return new Date(message.updatedAt).getTime() - new Date(message.createdAt).getTime() > 1000;
+}
+
+const AUTHOR_TYPE_LABELS = {
+  AGENT: "Atención Vecinal",
+  ADMIN: "Administración municipal",
+  AREA_RESPONSIBLE: "Área responsable",
+  CITIZEN: "Vecino",
+};
 
 const TICKET_TYPE_CONFIG = {
   COMPLAINT: { label: "Reclamo", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
@@ -205,24 +220,27 @@ export default function CitizenTicketView({
   actionLoading = false,
   actionError = null,
   attachments: attachmentsAdapter,
+  chat,
 }) {
   const [reopenMode, setReopenMode] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [draft, setDraft] = useState("");
-  const [localMessages, setLocalMessages] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [infoResponse, setInfoResponse] = useState("");
   const [infoResponseFiles, setInfoResponseFiles] = useState([]);
 
   const isResolved = ticket.currentStatus === "RESOLVED";
   const isPendingInformation = ticket.currentStatus === "PENDING_INFORMATION";
-  const chatDisabled = useMemo(
-    () => readOnly || TERMINAL_STATUSES.has(ticket.currentStatus) || ticket.currentStatus === "RESOLVED",
-    [readOnly, ticket.currentStatus]
-  );
-  const messages = useMemo(
-    () => [...(ticket.messages ?? []), ...localMessages],
-    [ticket, localMessages]
-  );
+  const messages = chat?.items ?? [];
+  const chatAvailable = Boolean(chat);
+  const chatDisabledByStatus = TERMINAL_STATUSES.has(ticket.currentStatus) || ticket.currentStatus === "RESOLVED";
+  const canType = !readOnly && chatAvailable && chat?.canSend && !chatDisabledByStatus;
 
   const handleConfirm = () => actions?.confirmResolution();
 
@@ -256,14 +274,57 @@ export default function CitizenTicketView({
 
   const handleRate = (score, comment) => actions?.rateAttention(score, comment);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const text = draft.trim();
-    if (!text || chatDisabled) return;
-    setLocalMessages((m) => [
-      ...m,
-      { id: `local-${Date.now()}`, authorType: "CITIZEN", text, createdAt: new Date().toISOString() },
-    ]);
-    setDraft("");
+    if (!text || !canType || sending) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      await chat.onSend(text);
+      setDraft("");
+    } catch (err) {
+      setSendError(chat?.messageForError ? chat.messageForError(err) : err?.message || "No pudimos enviar el mensaje.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startEdit = (message) => {
+    setEditingId(message.id);
+    setEditText(message.text);
+    setSendError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const saveEdit = async (messageId) => {
+    const text = editText.trim();
+    if (!text || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      await chat.onEdit(messageId, text);
+      setEditingId(null);
+      setEditText("");
+    } catch (err) {
+      setSendError(chat?.messageForError ? chat.messageForError(err) : err?.message || "No pudimos editar el mensaje.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const confirmDelete = async (messageId) => {
+    setDeletingId(messageId);
+    try {
+      await chat.onDelete(messageId);
+      setConfirmDeleteId(null);
+    } catch (err) {
+      setSendError(chat?.messageForError ? chat.messageForError(err) : err?.message || "No pudimos borrar el mensaje.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
@@ -552,44 +613,120 @@ export default function CitizenTicketView({
         {/* Mensajes */}
         <Card title="Mensajes" className="flex h-fit flex-col">
           <div className="space-y-3">
-            {messages.length === 0 && (
+            {chat?.loading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
+              </div>
+            ) : chat?.error ? (
+              <p className="py-4 text-center text-[12.5px] text-red-600">{chat.error}</p>
+            ) : messages.length === 0 ? (
               <p className="py-6 text-center text-[13px] text-neutral-400">
                 Todavía no hay mensajes en este reclamo.
               </p>
-            )}
-            {messages.map((m) => {
-              if (m.authorType === "SYSTEM") {
+            ) : (
+              messages.map((m) => {
+                if (m.authorType === "SYSTEM") {
+                  return (
+                    <div key={m.id} className="flex items-center justify-center gap-2 py-1 text-center text-[11px] italic text-neutral-400">
+                      <span>{m.text}</span>
+                      <span className="text-neutral-300">·</span>
+                      <span>{dateTime(m.createdAt)}</span>
+                    </div>
+                  );
+                }
+                const mine = chat?.currentAuthorId
+                  ? m.authorId === chat.currentAuthorId
+                  : m.authorType === "CITIZEN";
+                const canModify = !readOnly && mine && chat?.onEdit && chat?.onDelete;
+                const isEditing = editingId === m.id;
+                const isConfirmingDelete = confirmDeleteId === m.id;
                 return (
-                  <div key={m.id} className="flex items-center justify-center gap-2 py-1 text-center text-[11px] italic text-neutral-400">
-                    <span>{m.text}</span>
-                    <span className="text-neutral-300">·</span>
-                    <span>{dateTime(m.createdAt)}</span>
+                  <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
+                        mine
+                          ? "rounded-br-sm bg-neutral-100 text-neutral-700"
+                          : "rounded-bl-sm bg-[#0F2C59] text-white"
+                      }`}
+                    >
+                      {!mine && (
+                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-200">
+                          {AUTHOR_TYPE_LABELS[m.authorType] || "Atención Vecinal"}
+                        </p>
+                      )}
+                      {isEditing ? (
+                        <div className="min-w-[200px]">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            rows={2}
+                            autoFocus
+                            className="w-full resize-none rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-[12.5px] text-neutral-800 outline-none focus:ring-2 focus:ring-[#0F2C59]/20"
+                          />
+                          <div className="mt-1.5 flex justify-end gap-2 text-[11px] font-semibold">
+                            <button type="button" onClick={cancelEdit} className="text-neutral-500 hover:underline">
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => saveEdit(m.id)}
+                              disabled={!editText.trim() || savingEdit}
+                              className="text-[#0F2C59] hover:underline disabled:opacity-50"
+                            >
+                              {savingEdit ? "Guardando…" : "Guardar"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p>{m.text}</p>
+                      )}
+                      <div className="mt-1 flex items-center gap-2">
+                        <p className={`text-[10px] ${mine ? "text-neutral-400" : "text-blue-200/80"}`}>
+                          {dateTime(m.createdAt)}
+                          {wasMessageEdited(m) ? " (editado)" : ""}
+                        </p>
+                        {canModify && !isEditing && !isConfirmingDelete && (
+                          <span className="ml-auto flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(m)}
+                              className="text-neutral-400 hover:text-[#0F2C59]"
+                              aria-label="Editar mensaje"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(m.id)}
+                              className="text-neutral-400 hover:text-red-600"
+                              aria-label="Borrar mensaje"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                      {isConfirmingDelete && (
+                        <div className="mt-1.5 flex items-center justify-end gap-2 text-[11px] font-semibold">
+                          <span className="text-neutral-500">¿Borrar este mensaje?</span>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-neutral-500 hover:underline">
+                            No
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmDelete(m.id)}
+                            disabled={deletingId === m.id}
+                            className="text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            {deletingId === m.id ? "Borrando…" : "Sí, borrar"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
-              }
-              const mine = m.authorType === "CITIZEN";
-              return (
-                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
-                      mine
-                        ? "rounded-br-sm bg-neutral-100 text-neutral-700"
-                        : "rounded-bl-sm bg-[#0F2C59] text-white"
-                    }`}
-                  >
-                    {!mine && (
-                      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-200">
-                        {m.authorName || "Atención Vecinal"}
-                      </p>
-                    )}
-                    <p>{m.text}</p>
-                    <p className={`mt-1 text-[10px] ${mine ? "text-neutral-400" : "text-blue-200/80"}`}>
-                      {dateTime(m.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+              })
+            )}
           </div>
 
           {!readOnly && ticket.currentStatus === "CLOSED" && (
@@ -603,35 +740,43 @@ export default function CitizenTicketView({
               <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
                 No podés enviar mensajes desde la vista de solo lectura.
               </p>
-            ) : chatDisabled ? (
+            ) : !chatAvailable ? (
+              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
+                El chat todavía no está disponible para el seguimiento anónimo.
+              </p>
+            ) : chatDisabledByStatus ? (
               <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
                 El chat está deshabilitado porque el reclamo está{" "}
                 {(TICKET_STATUS_LABELS[ticket.currentStatus] ?? ticket.currentStatus).toLowerCase()}.
               </p>
             ) : (
-              <div className="flex items-end gap-2">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Escribí un mensaje…"
-                  className="flex-1 resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-[#D63031]/40 focus:ring-2 focus:ring-[#D63031]/10"
-                />
-                <button
-                  type="button"
-                  onClick={sendMessage}
-                  disabled={!draft.trim()}
-                  className="rounded-lg bg-[#0F2C59] p-2 text-white transition hover:bg-[#1a3f7a] disabled:opacity-40"
-                  aria-label="Enviar mensaje"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
+              <div>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    rows={1}
+                    disabled={sending}
+                    placeholder="Escribí un mensaje…"
+                    className="flex-1 resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-[#D63031]/40 focus:ring-2 focus:ring-[#D63031]/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    disabled={!draft.trim() || sending}
+                    className="rounded-lg bg-[#0F2C59] p-2 text-white transition hover:bg-[#1a3f7a] disabled:opacity-40"
+                    aria-label="Enviar mensaje"
+                  >
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </button>
+                </div>
+                {sendError && <p className="mt-2 text-[12px] text-red-600">{sendError}</p>}
               </div>
             )}
           </div>

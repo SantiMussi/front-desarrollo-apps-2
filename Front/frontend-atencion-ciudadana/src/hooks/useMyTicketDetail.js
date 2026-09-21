@@ -68,7 +68,6 @@ export function normalizeTicketDetail(raw, publicId) {
             : [],
         }
       : null,
-    messages: Array.isArray(t.messages) ? t.messages : [],
     history: Array.isArray(t.ticketActivities)
       ? mapTicketActivities(t.ticketActivities)
       : Array.isArray(t.history)
@@ -220,10 +219,6 @@ export function useMyTicketDetail(publicId) {
               currentStatus: result.currentStatus || prev.currentStatus,
               statusChangedAt: now,
               pendingInformationRequest: null,
-              messages: [
-                ...prev.messages,
-                { id: `info-response-${Date.now()}`, authorType: "CITIZEN", text: responseMessage, createdAt: now },
-              ],
               history: [
                 ...prev.history,
                 { id: `info-response-${Date.now()}`, actionType: "INFORMATION_PROVIDED", newStatus: result.currentStatus, message: `Respondiste: "${responseMessage}"`, occurredAt: now },

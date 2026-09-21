@@ -1,13 +1,17 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMyTicketDetail } from "../../hooks/useMyTicketDetail";
+import { useTicketMessages } from "../../hooks/useTicketMessages";
+import { useAuth } from "../../context/useAuth";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
 import { uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 
 export default function MisReclamoDetailPage() {
   const { publicId } = useParams();
+  const { user } = useAuth();
   const { ticket, loading, error, actions, actionLoading, actionError } =
     useMyTicketDetail(publicId);
+  const chatMessages = useTicketMessages(ticket?.id);
 
   if (loading) {
     return (
@@ -46,6 +50,17 @@ export default function MisReclamoDetailPage() {
         canUpload: true,
         uploadFile: (file) => uploadTicketAttachment(ticket.id, file),
         downloadFile: (attachment) => downloadTicketAttachment(attachment.id),
+      }}
+      chat={{
+        items: chatMessages.messages,
+        loading: chatMessages.loading,
+        error: chatMessages.error,
+        canSend: true,
+        currentAuthorId: user?.citizenId,
+        onSend: (text) => chatMessages.send("PUBLIC", text),
+        onEdit: chatMessages.edit,
+        onDelete: chatMessages.remove,
+        messageForError: chatMessages.messageForError,
       }}
     />
   );

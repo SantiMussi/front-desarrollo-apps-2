@@ -478,6 +478,30 @@ export async function fetchDuplicateCandidates(ticketId) {
   return request(`/staff/tickets/${encodeURIComponent(ticketId)}/duplicate-candidates`);
 }
 
+export async function fetchTicketMessages(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/messages`);
+}
+
+export async function createTicketMessage(ticketId, { visibility, text }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ visibility, text }),
+  });
+}
+
+export async function updateTicketMessage(ticketId, messageId, { text }) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/messages/${encodeURIComponent(messageId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function deleteTicketMessage(ticketId, messageId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/messages/${encodeURIComponent(messageId)}`, {
+    method: "DELETE",
+  });
+}
+
 async function postMultipart(url, formData, token) {
   const response = await fetch(url, {
     method: "POST",

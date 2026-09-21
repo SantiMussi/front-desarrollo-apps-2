@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTicketCitizenView } from "../../hooks/useTicketCitizenView";
+import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { normalizeTicketDetail } from "../../hooks/useMyTicketDetail";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
 import { downloadTicketAttachment } from "../../services/apiClient";
@@ -8,6 +9,7 @@ import { downloadTicketAttachment } from "../../services/apiClient";
 export default function TicketCitizenViewPage() {
   const { ticketId } = useParams();
   const { view, loading, error } = useTicketCitizenView(ticketId);
+  const chatMessages = useTicketMessages(ticketId);
 
   if (loading) {
     return (
@@ -42,6 +44,15 @@ export default function TicketCitizenViewPage() {
       backLabel="Volver al ticket"
       attachments={{
         downloadFile: (attachment) => downloadTicketAttachment(attachment.id),
+      }}
+      chat={{
+        // El citizen-view es "exactamente lo que ve el informante": el GET real
+        // le devuelve PUBLIC+INTERNAL a un staff autorizado, así que acá se
+        // filtra a PUBLIC para no filtrar notas internas a esta simulación.
+        items: chatMessages.messages.filter((m) => m.visibility === "PUBLIC"),
+        loading: chatMessages.loading,
+        error: chatMessages.error,
+        canSend: false,
       }}
     />
   );
