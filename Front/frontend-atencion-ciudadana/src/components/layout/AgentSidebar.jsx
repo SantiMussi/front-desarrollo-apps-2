@@ -26,10 +26,10 @@ export default function AgentSidebar() {
   const navItems = [
     { name: "Dashboard", path: "/agente/dashboard", icon: LayoutDashboard },
     { name: "Tickets", path: "/agente/tickets", icon: Ticket },
-    { name: "Agentes", path: "/agente/agentes", icon: Users },
     { name: "Métricas", path: "/agente/metricas", icon: BarChart },
     ...(user?.role === "ADMIN"
       ? [
+          { name: "Agentes", path: "/agente/agentes", icon: Users },
           { name: "Catálogo", path: "/agente/catalogo", icon: Layers },
           { name: "Etiquetas", path: "/agente/etiquetas", icon: Tags },
         ]
