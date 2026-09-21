@@ -4,10 +4,10 @@ import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQues
 import DetailCard from "../../components/ui/DetailCard";
 import Select from "../../components/ui/Select";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
-import TicketTransitionDialog from "../../components/ui/TicketTransitionForm";
+import TicketTransitionDialog from "../../components/ticket/TicketTransitionForm";
 import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
 import RequestInformationDialog from "../../components/ui/RequestInformationDialog";
-import TicketReasonDialog from "../../components/ui/TicketReasonDialog";
+import TicketReasonDialog from "../../components/ticket/TicketReasonDialog";
 import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
 import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
 import AttachmentGallery from "../../components/ui/AttachmentGallery";

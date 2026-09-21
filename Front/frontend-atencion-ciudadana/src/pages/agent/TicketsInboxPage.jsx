@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Search, Filter, RefreshCw, Download, Columns, Bell, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
-import TicketTable from "../../components/ui/TicketTable";
+import TicketTable from "../../components/ticket/TicketTable";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { useAuth } from "../../context/AuthContext";
 import { useAgentTickets } from "../../hooks/useAgentTickets";

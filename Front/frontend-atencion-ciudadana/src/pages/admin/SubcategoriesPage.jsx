@@ -8,14 +8,14 @@ import {
   updateSubcategory,
   activateSubcategory,
   deactivateSubcategory,
-} from "../../../services/apiClient";
-import { messageForCatalogError } from "../../../utils/catalogErrors";
-import CatalogBreadcrumb from "../../../components/catalog/CatalogBreadcrumb";
-import CatalogEntityTable from "../../../components/catalog/CatalogEntityTable";
-import CatalogCreateButton from "../../../components/catalog/CatalogCreateButton";
-import CatalogStatusBadge from "../../../components/catalog/CatalogStatusBadge";
-import CatalogRowActions from "../../../components/catalog/CatalogRowActions";
-import CatalogEntityFormDialog from "../../../components/catalog/CatalogEntityFormDialog";
+} from "../../services/apiClient";
+import { messageForCatalogError } from "../../utils/catalogErrors";
+import CatalogBreadcrumb from "../../components/catalog/CatalogBreadcrumb";
+import CatalogEntityTable from "../../components/catalog/CatalogEntityTable";
+import CatalogCreateButton from "../../components/catalog/CatalogCreateButton";
+import CatalogStatusBadge from "../../components/catalog/CatalogStatusBadge";
+import CatalogRowActions from "../../components/catalog/CatalogRowActions";
+import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
 
 export default function SubcategoriesPage() {
   const { categoryId } = useParams();

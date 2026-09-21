@@ -9,9 +9,10 @@ import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
 import TicketDetailPage from "./pages/agent/TicketDetailPage";
 import TicketCitizenViewPage from "./pages/agent/TicketCitizenViewPage";
-import CategoriesPage from "./pages/agent/catalog/CategoriesPage";
-import SubcategoriesPage from "./pages/agent/catalog/SubcategoriesPage";
-import RequestTypesPage from "./pages/agent/catalog/RequestTypesPage";
+import CategoriesPage from "./pages/admin/CategoriesPage";
+import SubcategoriesPage from "./pages/admin/SubcategoriesPage";
+import RequestTypesPage from "./pages/admin/RequestTypesPage";
+import LabelsPage from "./pages/admin/LabelsPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
@@ -20,7 +21,6 @@ import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardPage from "./pages/agent/DashboardPage";
 import MetricsPage from "./pages/agent/MetricsPage";
-import LabelsPage from "./pages/admin/LabelsPage";
 
 function CitizenLayout() {
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, MessageSquare, Tag, X } from "lucide-react";
-import Select from "./Select";
+import Select from "../ui/Select";
 
 const CONTROL =
   "mt-1.5 w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100";

@@ -1,5 +1,5 @@
-import StatusBadge from "./StatusBadge";
-import DuplicateLinkIndicator from "./DuplicateLinkIndicator";
+import StatusBadge from "../ui/StatusBadge";
+import DuplicateLinkIndicator from "../ui/DuplicateLinkIndicator";
 import { motion } from "framer-motion";
 import { AlertOctagon, CircleHelp, Clock3, Lightbulb, Plus, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";

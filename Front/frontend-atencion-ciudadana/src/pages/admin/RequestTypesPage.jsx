@@ -8,16 +8,16 @@ import {
   updateRequestType,
   activateRequestType,
   deactivateRequestType,
-} from "../../../services/apiClient";
-import { messageForCatalogError } from "../../../utils/catalogErrors";
-import { RESPONSIBLE_AREAS } from "../../../constants/responsibleAreas";
-import CatalogBreadcrumb from "../../../components/catalog/CatalogBreadcrumb";
-import CatalogEntityTable from "../../../components/catalog/CatalogEntityTable";
-import CatalogCreateButton from "../../../components/catalog/CatalogCreateButton";
-import CatalogStatusBadge from "../../../components/catalog/CatalogStatusBadge";
-import CatalogRowActions from "../../../components/catalog/CatalogRowActions";
-import CatalogEntityFormDialog from "../../../components/catalog/CatalogEntityFormDialog";
-import RequestTypeFormSchemaDialog from "../../../components/catalog/RequestTypeFormSchemaDialog";
+} from "../../services/apiClient";
+import { messageForCatalogError } from "../../utils/catalogErrors";
+import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
+import CatalogBreadcrumb from "../../components/catalog/CatalogBreadcrumb";
+import CatalogEntityTable from "../../components/catalog/CatalogEntityTable";
+import CatalogCreateButton from "../../components/catalog/CatalogCreateButton";
+import CatalogStatusBadge from "../../components/catalog/CatalogStatusBadge";
+import CatalogRowActions from "../../components/catalog/CatalogRowActions";
+import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
+import RequestTypeFormSchemaDialog from "../../components/catalog/RequestTypeFormSchemaDialog";
 
 const TICKET_TYPE_OPTIONS = [
   { value: "COMPLAINT", label: "Reclamo" },

@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { ArrowRight, LockKeyhole, MessageSquare, X } from "lucide-react";
-import Select from "./Select";
+import Select from "../ui/Select";
 
 export default function TicketTransitionDialog({
   open,

@@ -7,7 +7,7 @@ import Breadcrumb from "../../components/ui/Breadcrumb";
 import StepIndicator from "../../components/ui/StepIndicator";
 import Spinner from "../../components/ui/Spinner";
 import Alert from "../../components/ui/Alert";
-import TicketForm from "../../components/ui/TicketForm";
+import TicketForm from "../../components/ticket/TicketForm";
 import ConfirmExitModal from "../../components/ui/ConfirmExitModal";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";

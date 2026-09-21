@@ -7,14 +7,14 @@ import {
   updateCategory,
   activateCategory,
   deactivateCategory,
-} from "../../../services/apiClient";
-import { messageForCatalogError } from "../../../utils/catalogErrors";
-import CatalogBreadcrumb from "../../../components/catalog/CatalogBreadcrumb";
-import CatalogEntityTable from "../../../components/catalog/CatalogEntityTable";
-import CatalogCreateButton from "../../../components/catalog/CatalogCreateButton";
-import CatalogStatusBadge from "../../../components/catalog/CatalogStatusBadge";
-import CatalogRowActions from "../../../components/catalog/CatalogRowActions";
-import CatalogEntityFormDialog from "../../../components/catalog/CatalogEntityFormDialog";
+} from "../../services/apiClient";
+import { messageForCatalogError } from "../../utils/catalogErrors";
+import CatalogBreadcrumb from "../../components/catalog/CatalogBreadcrumb";
+import CatalogEntityTable from "../../components/catalog/CatalogEntityTable";
+import CatalogCreateButton from "../../components/catalog/CatalogCreateButton";
+import CatalogStatusBadge from "../../components/catalog/CatalogStatusBadge";
+import CatalogRowActions from "../../components/catalog/CatalogRowActions";
+import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
 
 const FORM_FIELDS = [
   { name: "name", label: "Nombre", type: "text", required: true, maxLength: 150 },
