@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Layers } from "lucide-react";
 import {
   fetchAdminCategories,
-  fetchAdminSubcategories,
   createCategory,
   updateCategory,
   activateCategory,
@@ -33,29 +32,14 @@ export default function CategoriesPage() {
   const [submitError, setSubmitError] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [toggleError, setToggleError] = useState(null);
-  const [activeSubcategoryCounts, setActiveSubcategoryCounts] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchAdminCategories();
-      const nextCategories = Array.isArray(data) ? data : [];
-      setCategories(nextCategories);
-      const children = await Promise.allSettled(
-        nextCategories.map((category) => fetchAdminSubcategories(category.id)),
-      );
-      setActiveSubcategoryCounts(
-        Object.fromEntries(
-          nextCategories.map((category, index) => [
-            category.id,
-            children[index].status === "fulfilled"
-              ? (Array.isArray(children[index].value) ? children[index].value : []).filter((item) => item.active).length
-              : null,
-          ]),
-        ),
-      );
-    } catch (err) {
+      setCategories(Array.isArray(data) ? data : []);
+    } catch(err) {
       setError(messageForCatalogError(err));
     } finally {
       setLoading(false);
@@ -98,13 +82,6 @@ export default function CategoriesPage() {
   };
 
   const handleToggleActive = async (category) => {
-    const activeChildren = activeSubcategoryCounts[category.id];
-    if (category.active && activeChildren > 0) {
-      setToggleError(
-        `No se puede desactivar “${category.name}”: tiene ${activeChildren} ${activeChildren === 1 ? "subcategoría activa" : "subcategorías activas"}. Desactivalas primero.`,
-      );
-      return;
-    }
     setToggleError(null);
     setTogglingId(category.id);
     try {
@@ -143,7 +120,7 @@ export default function CategoriesPage() {
       <div className="mt-5">
         <div className="mb-3">
           <CatalogDependencyNotice>
-            Para desactivar una categoría, primero deben estar inactivas todas sus subcategorías.
+            Al desactivar una categoría, también se desactivan automáticamente sus subcategorías y tipos de solicitud activos.
           </CatalogDependencyNotice>
         </div>
         <CatalogEntityTable
@@ -165,8 +142,6 @@ export default function CategoriesPage() {
                   busy={togglingId === c.id}
                   onEdit={() => handleEdit(c)}
                   onToggleActive={() => handleToggleActive(c)}
-                  toggleDisabled={c.active && activeSubcategoryCounts[c.id] > 0}
-                  toggleDisabledReason={`Desactivá primero ${activeSubcategoryCounts[c.id]} ${activeSubcategoryCounts[c.id] === 1 ? "subcategoría activa" : "subcategorías activas"}.`}
                 />
               ),
             },

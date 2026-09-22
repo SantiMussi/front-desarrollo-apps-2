@@ -4,7 +4,6 @@ import { AlertCircle, ArrowLeft, FolderOpen } from "lucide-react";
 import {
   fetchAdminCategories,
   fetchAdminSubcategories,
-  fetchAdminRequestTypes,
   createSubcategory,
   updateSubcategory,
   activateSubcategory,
@@ -31,7 +30,6 @@ export default function SubcategoriesPage() {
   const [submitError, setSubmitError] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [toggleError, setToggleError] = useState(null);
-  const [activeRequestTypeCounts, setActiveRequestTypeCounts] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,22 +37,8 @@ export default function SubcategoriesPage() {
     try {
       const [categories, subs] = await Promise.all([fetchAdminCategories(), fetchAdminSubcategories(categoryId)]);
       setCategory(categories.find((c) => String(c.id) === String(categoryId)) || null);
-      const nextSubcategories = Array.isArray(subs) ? subs : [];
-      setSubcategories(nextSubcategories);
-      const children = await Promise.allSettled(
-        nextSubcategories.map((subcategory) => fetchAdminRequestTypes(subcategory.id)),
-      );
-      setActiveRequestTypeCounts(
-        Object.fromEntries(
-          nextSubcategories.map((subcategory, index) => [
-            subcategory.id,
-            children[index].status === "fulfilled"
-              ? (Array.isArray(children[index].value) ? children[index].value : []).filter((item) => item.active).length
-              : null,
-          ]),
-        ),
-      );
-    } catch (err) {
+      setSubcategories(Array.isArray(subs) ? subs : []);
+    } catch(err) {
       setError(messageForCatalogError(err));
     } finally {
       setLoading(false);
@@ -110,13 +94,7 @@ export default function SubcategoriesPage() {
       setToggleError(`No se puede activar “${subcategory.name}” mientras la categoría “${category.name}” esté inactiva.`);
       return;
     }
-    const activeChildren = activeRequestTypeCounts[subcategory.id];
-    if (subcategory.active && activeChildren > 0) {
-      setToggleError(
-        `No se puede desactivar “${subcategory.name}”: tiene ${activeChildren} ${activeChildren === 1 ? "tipo de solicitud activo" : "tipos de solicitud activos"}. Desactivalos primero.`,
-      );
-      return;
-    }
+    
     setToggleError(null);
     setTogglingId(subcategory.id);
     try {
@@ -174,7 +152,7 @@ export default function SubcategoriesPage() {
           <CatalogDependencyNotice tone={category && !category.active ? "warning" : "info"}>
             {category && !category.active
               ? `La categoría “${category.name}” está inactiva. No podés crear, editar ni activar subcategorías hasta reactivarla.`
-              : "Para desactivar una subcategoría, primero deben estar inactivos todos sus tipos de solicitud."}
+              : "Al desactivar una subcategoría, también se desactivan automáticamente sus tipos de solicitud activos."}
           </CatalogDependencyNotice>
         </div>
         <CatalogEntityTable
@@ -198,15 +176,8 @@ export default function SubcategoriesPage() {
                   onToggleActive={() => handleToggleActive(s)}
                   editDisabled={Boolean(category) && !category.active}
                   editDisabledReason="No se puede editar: la categoría está inactiva."
-                  toggleDisabled={
-                    (!s.active && Boolean(category) && !category.active) ||
-                    (s.active && activeRequestTypeCounts[s.id] > 0)
-                  }
-                  toggleDisabledReason={
-                    !s.active && category && !category.active
-                      ? "Activá primero la categoría."
-                      : `Desactivá primero ${activeRequestTypeCounts[s.id]} ${activeRequestTypeCounts[s.id] === 1 ? "tipo de solicitud activo" : "tipos de solicitud activos"}.`
-                  }
+                  toggleDisabled={!s.active && Boolean(category) && !category.active}
+                  toggleDisabledReason="Activá primero la categoría."
                 />
               ),
             },
