@@ -27,14 +27,17 @@ export function useAgentTickets({
       setError(null);
       try {
         const pagination = { page, size, sort };
+        const filters = {
+          categoryId,
+          priority,
+          neighborhoodId,
+          responsibleAreaId,
+          status,
+        };
         const res = labelId
-          ? await fetchTicketsByLabel(labelId, pagination)
+          ? await fetchTicketsByLabel(labelId, { ...filters, ...pagination })
           : await fetchAgentTickets({
-              categoryId,
-              priority,
-              neighborhoodId,
-              responsibleAreaId,
-              status,
+              ...filters,
               ...pagination,
             });
         if (!cancelled) setData(res ?? EMPTY_PAGE);
