@@ -232,6 +232,28 @@ export async function reopenAnonymousTicket(trackingCode, { ticketPassword, reas
   });
 }
 
+export async function cancelAnonymousTicket(trackingCode, { ticketPassword, reasonCode, publicMessage }) {
+  return request("/tracking/actions/cancel", {
+    method: "POST",
+    body: JSON.stringify({
+      trackingCode,
+      anonymousAccessPassword: ticketPassword,
+      payload: { reasonCode, publicMessage: publicMessage || null, internalMessage: null },
+    }),
+  });
+}
+
+export async function sendAnonymousMessage(trackingCode, { ticketPassword, text }) {
+  return request("/tracking/actions/messages", {
+    method: "POST",
+    body: JSON.stringify({
+      trackingCode,
+      anonymousAccessPassword: ticketPassword,
+      payload: { visibility: "PUBLIC", text },
+    }),
+  });
+}
+
 export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage, attachments = [] }) {
   if (attachments.length > 0) {
     const formData = new FormData();

@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
 import {
   trackTicket,
+  cancelAnonymousTicket,
   confirmAnonymousResolution,
   reopenAnonymousTicket,
   answerAnonymousInformation,
   rateAnonymousTicketAttention,
+  sendAnonymousMessage,
   uploadAnonymousAttachment,
   downloadAnonymousAttachment,
 } from "../services/apiClient";
@@ -18,9 +20,7 @@ function messageForAccreditationError(err) {
 }
 
 function messageForAnonymousActionError(err) {
-  if (err?.status === 404) {
-    return "El back todavía no tiene este endpoint para tickets anónimos — queda preparado para cuando esté listo.";
-  }
+  if (err?.status === 404) return "No encontramos ese ticket.";
   if (err?.status === 401) return "La contraseña ya no acredita este ticket. Volvé a ingresarla.";
   if (err?.status === 409) return err?.message || "El estado actual del ticket no permite esta acción.";
   if (err?.status === 400) return err?.message || "Faltan datos obligatorios.";
@@ -104,6 +104,20 @@ export function useAnonymousTicketAccess(trackingCode) {
     [password, trackingCode, runAction]
   );
 
+  const requestCancel = useCallback(
+    (comment) => {
+      if (!password) return Promise.resolve(false);
+      return runAction(
+        () => cancelAnonymousTicket(trackingCode, { ticketPassword: password, reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: comment || null }),
+        {
+          newStatus: "CANCELLED",
+          message: comment ? `Cancelaste el reclamo: "${comment}"` : "Cancelaste el reclamo.",
+        }
+      );
+    },
+    [password, trackingCode, runAction]
+  );
+
   const answerInformation = useCallback(
     async (responseMessage, files = []) => {
       if (!password || !ticket) return false;
@@ -123,10 +137,6 @@ export function useAnonymousTicketAccess(trackingCode) {
                 currentStatus: result?.currentStatus || prev.currentStatus,
                 statusChangedAt: now,
                 pendingInformationRequest: null,
-                messages: [
-                  ...prev.messages,
-                  { id: `info-response-${Date.now()}`, authorType: "CITIZEN", text: responseMessage, createdAt: now },
-                ],
                 history: [
                   ...prev.history,
                   {
@@ -169,13 +179,28 @@ export function useAnonymousTicketAccess(trackingCode) {
     [password, trackingCode, ticket]
   );
 
-  const actions = { confirmResolution, requestReopen, answerInformation, rateAttention };
+  const actions = { confirmResolution, requestReopen, requestCancel, answerInformation, rateAttention };
 
   const attachments = {
     canUpload: true,
     uploadFile: (file) => uploadAnonymousAttachment(trackingCode, password, file),
     downloadFile: (attachment) => downloadAnonymousAttachment(trackingCode, password, attachment.id),
   };
+
+  // El chat anónimo sólo permite enviar (siempre PUBLIC, sin editar/borrar):
+  // el back no expone PATCH/DELETE para /tracking/actions/messages, ni un
+  // GET propio — el listado viaja embebido en TrackingTicketResponse.messages
+  // (se refresca acá con lo que devuelve el POST, sin volver a pedir todo el
+  // ticket).
+  const sendMessage = useCallback(
+    async (text) => {
+      if (!password) throw new Error("No se pudo enviar: falta acreditar el ticket.");
+      const created = await sendAnonymousMessage(trackingCode, { ticketPassword: password, text });
+      setTicket((prev) => (prev ? { ...prev, messages: [...(prev.messages ?? []), created] } : prev));
+      return created;
+    },
+    [password, trackingCode]
+  );
 
   const reset = useCallback(() => {
     setTicket(null);
@@ -187,5 +212,18 @@ export function useAnonymousTicketAccess(trackingCode) {
     setPassword(null);
   }, []);
 
-  return { ticket, accredited, accrediting, accreditError, accredit, actions, actionLoading, actionError, attachments, reset };
+  return {
+    ticket,
+    accredited,
+    accrediting,
+    accreditError,
+    accredit,
+    actions,
+    actionLoading,
+    actionError,
+    attachments,
+    sendMessage,
+    messageForError: messageForAnonymousActionError,
+    reset,
+  };
 }

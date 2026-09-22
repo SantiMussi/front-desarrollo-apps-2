@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   answerTicketInformation,
+  cancelTicket,
   confirmTicketResolution,
   fetchMyTicketDetail,
   fetchMyTickets,
@@ -57,6 +58,10 @@ export function normalizeTicketDetail(raw, publicId) {
     location: t.location ?? null,
     resolution: t.resolution ?? null,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
+    // Sólo viene poblado en la respuesta de tracking (ticket anónimo, PUBLIC
+    // únicamente) — el detalle de ticket identificado no trae este campo,
+    // ese caso usa el chat real vía useTicketMessages en su lugar.
+    messages: Array.isArray(t.messages) ? t.messages : [],
     pendingInformationRequest: t.pendingInformationRequest
       ? {
           status: t.pendingInformationRequest.status,
@@ -204,6 +209,21 @@ export function useMyTicketDetail(publicId) {
     [ticket, runAction]
   );
 
+  const requestCancel = useCallback(
+    (comment) => {
+      if (!ticket?.id) return Promise.resolve(false);
+      return runAction(
+        () => cancelTicket(ticket.id, { reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: comment || null }),
+        {
+          newStatus: "CANCELLED",
+          actionType: "CANCELLED",
+          message: comment ? `El vecino canceló el reclamo: "${comment}"` : "El vecino canceló el reclamo.",
+        }
+      );
+    },
+    [ticket, runAction]
+  );
+
   const answerInformation = useCallback(
     async (responseMessage, files = []) => {
       if (!ticket?.id) return false;
@@ -257,8 +277,8 @@ export function useMyTicketDetail(publicId) {
   );
 
   const actions = useMemo(
-    () => ({ confirmResolution, requestReopen, rateAttention, answerInformation }),
-    [confirmResolution, requestReopen, rateAttention, answerInformation]
+    () => ({ confirmResolution, requestReopen, requestCancel, rateAttention, answerInformation }),
+    [confirmResolution, requestReopen, requestCancel, rateAttention, answerInformation]
   );
 
   return { ticket, loading, error, actions, actionLoading, actionError, reload: load };

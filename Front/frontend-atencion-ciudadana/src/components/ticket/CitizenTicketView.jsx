@@ -224,6 +224,8 @@ export default function CitizenTicketView({
 }) {
   const [reopenMode, setReopenMode] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
+  const [cancelMode, setCancelMode] = useState(false);
+  const [cancelComment, setCancelComment] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
@@ -249,6 +251,16 @@ export default function CitizenTicketView({
     if (ok) {
       setReopenMode(false);
       setReopenReason("");
+    }
+  };
+
+  const canCancelTicket = !readOnly && ticket.currentStatus === "REGISTERED";
+
+  const handleCancelTicket = async () => {
+    const ok = await actions?.requestCancel(cancelComment.trim() || null);
+    if (ok) {
+      setCancelMode(false);
+      setCancelComment("");
     }
   };
 
@@ -368,6 +380,59 @@ export default function CitizenTicketView({
         </div>
         <StatusPill status={ticket.currentStatus} />
       </div>
+
+      {canCancelTicket && (
+        <div className="mt-3">
+          {!cancelMode ? (
+            <button
+              type="button"
+              onClick={() => setCancelMode(true)}
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-neutral-500 hover:text-red-600"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancelar reclamo
+            </button>
+          ) : (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
+              <p className="text-[13px] font-semibold text-red-800">¿Seguro que querés cancelar este reclamo?</p>
+              <p className="mt-0.5 text-[12px] text-red-700">Esta acción no se puede deshacer.</p>
+              <label className="mt-2.5 block text-[12px] font-medium text-red-800">
+                Contanos por qué (opcional)
+                <textarea
+                  value={cancelComment}
+                  onChange={(e) => setCancelComment(e.target.value)}
+                  rows={2}
+                  placeholder="Ej.: ya no es necesario, lo solucioné por mi cuenta…"
+                  className="mt-1 w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-[13px] text-neutral-800 outline-none focus:ring-2 focus:ring-red-200"
+                />
+              </label>
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelTicket}
+                  disabled={actionLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {actionLoading ? <Info className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                  Confirmar cancelación
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelMode(false);
+                    setCancelComment("");
+                  }}
+                  disabled={actionLoading}
+                  className="rounded-lg border border-red-200 px-4 py-2 text-[13px] font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                >
+                  Volver
+                </button>
+              </div>
+              {actionError && <p className="mt-2 text-[12.5px] text-red-700">{actionError}</p>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Banner de confirmación / reapertura (solo en RESOLVED) */}
       {isResolved && (

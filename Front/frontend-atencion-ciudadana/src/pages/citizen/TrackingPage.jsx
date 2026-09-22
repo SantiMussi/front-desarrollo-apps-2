@@ -137,6 +137,14 @@ export default function TrackingPage() {
           actionLoading={anon.actionLoading}
           actionError={anon.actionError}
           attachments={anon.attachments}
+          chat={{
+            items: anon.ticket.messages,
+            loading: false,
+            error: null,
+            canSend: true,
+            onSend: anon.sendMessage,
+            messageForError: anon.messageForError,
+          }}
         />
       </>
     );
