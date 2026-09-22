@@ -22,7 +22,7 @@ function initialLabels(ticket) {
     .filter((entry) => entry && typeof entry === "object" && entry.id);
 }
 
-export default function TicketLabelsCard({ ticket }) {
+export default function TicketLabelsCard({ ticket, readOnly = false }) {
   const [catalog, setCatalog] = useState([]);
   const [assigned, setAssigned] = useState(() => initialLabels(ticket));
   const [labelQuery, setLabelQuery] = useState("");
@@ -118,20 +118,23 @@ export default function TicketLabelsCard({ ticket }) {
                 className="inline-flex max-w-full items-center gap-1 rounded-full border border-blue-200 bg-blue-50 py-1 pl-2.5 pr-1 text-[11px] font-semibold text-[#0F2C59]"
               >
                 <span className="truncate">{label.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeLabel(label)}
-                  disabled={Boolean(savingId)}
-                  aria-label={`Quitar etiqueta ${label.name}`}
-                  className="rounded-full p-0.5 hover:bg-blue-100 disabled:opacity-40"
-                >
-                  {savingId === label.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => removeLabel(label)}
+                    disabled={Boolean(savingId)}
+                    aria-label={`Quitar etiqueta ${label.name}`}
+                    className="rounded-full p-0.5 hover:bg-blue-100 disabled:opacity-40"
+                  >
+                    {savingId === label.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                  </button>
+                )}
               </span>
             ))}
             {!assigned.length && <p className="text-xs text-slate-400">Este ticket no tiene etiquetas.</p>}
           </div>
 
+          {!readOnly && (
           <div className="relative mt-3">
             <div className="flex gap-2">
               <input
@@ -179,6 +182,7 @@ export default function TicketLabelsCard({ ticket }) {
               <p className="mt-1 text-[10px] text-slate-500">No existe una coincidencia exacta. Podés crear “{labelQuery.trim()}”.</p>
             )}
           </div>
+          )}
         </>
       )}
       {error && <p role="alert" className="mt-2 text-[11px] leading-4 text-red-600">{error}</p>}

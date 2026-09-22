@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, MapPin, Paperclip, Pencil, Plus, Send, Smile, Trash2, TriangleAlert, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, Lock, MapPin, Paperclip, Pencil, Plus, Send, Smile, Trash2, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
 import Select from "../../components/ui/Select";
 import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
@@ -21,9 +21,10 @@ import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
 import { useAuth } from "../../context/useAuth";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTickets } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
+import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
 
 function reviewErrorMessage(err) {
@@ -229,6 +230,37 @@ export default function TicketDetailPage() {
       cancelled = true;
     };
   }, [ticket?.mainTicketId]);
+
+  // No hay ningún campo citizenId expuesto en StaffTicketDetailResponse, así
+  // que no se puede comparar directo contra el usuario logueado. /me/tickets
+  // sí lista exactamente los tickets del citizenId del usuario actual
+  // (cualquiera sea su rol) — si este ticket aparece ahí, el agente/admin
+  // que lo está mirando es su propio dueño, y el panel de staff tiene que
+  // quedar en solo lectura (mismo criterio que "ver como ciudadano").
+  const [isOwnTicket, setIsOwnTicket] = useState(false);
+  const [ticketIdForOwnCheck, setTicketIdForOwnCheck] = useState(undefined);
+  if (ticket && ticket.id !== ticketIdForOwnCheck) {
+    setTicketIdForOwnCheck(ticket.id);
+    setIsOwnTicket(false);
+  }
+
+  useEffect(() => {
+    const currentTicketId = ticket?.id;
+    if (!currentTicketId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await fetchMyTickets({ size: 200 });
+        const list = Array.isArray(page?.content) ? page.content : [];
+        if (!cancelled) setIsOwnTicket(list.some((t) => t.id === currentTicketId));
+      } catch {
+        if (!cancelled) setIsOwnTicket(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket?.id]);
 
   const slaIndicator = getSlaIndicator(ticket);
   const duplicateLinkInfo = { ...getDuplicateLinkInfo(ticket), mainTicketPublicId };
@@ -562,9 +594,21 @@ export default function TicketDetailPage() {
         			<Eye className="h-3.5 w-3.5" />
         			Ver como ciudadano
         		</Link>
-        		<StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} />
+        		{isOwnTicket ? (
+        			<span className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-semibold text-slate-700">
+        				{TICKET_STATUS_LABELS[status] || status}
+        			</span>
+        		) : (
+        			<StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} />
+        		)}
         	</div>
         </div>
+        {isOwnTicket && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            Este ticket es tuyo: el panel de gestión queda en solo lectura. Usá "Ver como ciudadano" o entrá a Mis Reclamos para actuar sobre él.
+          </div>
+        )}
         {transitionError && (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -594,11 +638,17 @@ export default function TicketDetailPage() {
               </div>
 
               {tab === "activity" ? <>
-                <div className="mt-4 flex gap-3"><UserAvatar user={{ initials: "CG" }} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
-                  <div className="flex bg-slate-50 text-xs"><button onClick={() => setVisibility("PUBLIC")} className={`px-4 py-2 font-medium ${visibility === "PUBLIC" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Responder al ciudadano</button><button onClick={() => setVisibility("INTERNAL")} className={`px-4 py-2 font-medium ${visibility === "INTERNAL" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Nota interna</button></div>
-                  <textarea value={comment} onChange={(e) => setComment(e.target.value)} disabled={commentSending} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
-                  <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim() || commentSending} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{commentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Enviar</button></div>
-                </div></div>
+                {isOwnTicket ? (
+                  <p className="mt-4 rounded-md bg-slate-50 px-3 py-2.5 text-center text-xs text-slate-400">
+                    No podés comentar acá porque este ticket es tuyo. Respondé desde Mis Reclamos.
+                  </p>
+                ) : (
+                  <div className="mt-4 flex gap-3"><UserAvatar user={{ initials: "CG" }} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
+                    <div className="flex bg-slate-50 text-xs"><button onClick={() => setVisibility("PUBLIC")} className={`px-4 py-2 font-medium ${visibility === "PUBLIC" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Responder al ciudadano</button><button onClick={() => setVisibility("INTERNAL")} className={`px-4 py-2 font-medium ${visibility === "INTERNAL" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Nota interna</button></div>
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} disabled={commentSending} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
+                    <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim() || commentSending} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{commentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Enviar</button></div>
+                  </div></div>
+                )}
                 {commentError && <p className="mt-2 text-xs text-red-600">{commentError}</p>}
                 <div className="mt-7 space-y-6">
                   {chatMessages.loading ? (
@@ -617,7 +667,7 @@ export default function TicketDetailPage() {
                       );
                     }
                     const author = messageAuthor(message, data, user);
-                    const isMine = user?.citizenId && message.authorId === user.citizenId;
+                    const isMine = !isOwnTicket && user?.citizenId && message.authorId === user.citizenId;
                     const isEditing = editingMessageId === message.id;
                     const isConfirmingDelete = confirmDeleteMessageId === message.id;
                     return (
@@ -719,7 +769,7 @@ export default function TicketDetailPage() {
                 <Select
                   size="xs"
                   ariaLabel="Tipo de solicitud"
-                  disabled={classificationLocked || classificationLoading}
+                  disabled={isOwnTicket || classificationLocked || classificationLoading}
                   value={requestTypes.find((rt) => rt.code === ticket.requestTypeCode)?.id ?? ""}
                   onChange={(nextValue) => updateClassification(nextValue)}
                   options={[
@@ -741,7 +791,7 @@ export default function TicketDetailPage() {
               </Field>
               <Field label="Responsable">{data.assignee.name}</Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen} size="sm" />{data.citizen.name}</span></Field>
-              <Field label="Prioridad"><Select size="xs" ariaLabel="Prioridad" value={fields.priority} onChange={(nextValue) => setFields((current) => ({ ...current, priority: nextValue }))} options={Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label }))} /></Field>
+              <Field label="Prioridad"><Select size="xs" ariaLabel="Prioridad" disabled={isOwnTicket} value={fields.priority} onChange={(nextValue) => setFields((current) => ({ ...current, priority: nextValue }))} options={Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label }))} /></Field>
               <Field label="Área responsable"><Select size="xs" ariaLabel="Área responsable" disabled value={fields.responsibleAreaId} options={Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => ({ value: id, label: `${id} · ${label}` }))} /></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
@@ -755,13 +805,13 @@ export default function TicketDetailPage() {
           <DetailCard title="Adjuntos" icon={Paperclip}>
             <AttachmentGallery
               title=""
-              canUpload
+              canUpload={!isOwnTicket}
               items={ticket.attachments}
               uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
               downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
             />
           </DetailCard>
-          <TicketLabelsCard ticket={ticket} />
+          <TicketLabelsCard ticket={ticket} readOnly={isOwnTicket} />
           {escalated && (
             <DetailCard title="Escalamiento" icon={TriangleAlert}>
               <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800">
