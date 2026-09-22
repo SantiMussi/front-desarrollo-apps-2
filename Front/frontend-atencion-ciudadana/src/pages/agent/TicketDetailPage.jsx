@@ -21,7 +21,7 @@ import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
 import { useAuth } from "../../context/useAuth";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTickets } from "../../services/apiClient";
+import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTicketDetail } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
@@ -232,16 +232,25 @@ export default function TicketDetailPage() {
   }, [ticket?.mainTicketId]);
 
   // No hay ningún campo citizenId expuesto en StaffTicketDetailResponse, así
-  // que no se puede comparar directo contra el usuario logueado. /me/tickets
-  // sí lista exactamente los tickets del citizenId del usuario actual
-  // (cualquiera sea su rol) — si este ticket aparece ahí, el agente/admin
-  // que lo está mirando es su propio dueño, y el panel de staff tiene que
-  // quedar en solo lectura (mismo criterio que "ver como ciudadano").
-  const [isOwnTicket, setIsOwnTicket] = useState(false);
+  // que no se puede comparar directo contra el usuario logueado. En vez de
+  // listar /me/tickets (falla con paginación: un dueño con más de "size"
+  // tickets podía quedar afuera de la página y el ticket se trataba como
+  // ajeno), se usa GET /tickets/{id} — el endpoint ciudadano puntual, que
+  // sólo devuelve 200 cuando identity.citizenId === ticket.citizenId
+  // (TicketService.requireOwner) y 403 en cualquier otro caso. Es una
+  // consulta por ticket, no una búsqueda en una lista paginada.
+  //
+  // Fail-closed a propósito (QA DDA2-56): mientras no tengamos una
+  // confirmación explícita de que el ticket es AJENO ("not-own"), la vista
+  // se comporta como si fuera propio. Un error de red, un timeout o
+  // cualquier estado intermedio deja la pantalla en solo lectura en vez de
+  // habilitar acciones mutables por default.
+  const [ownershipStatus, setOwnershipStatus] = useState("checking"); // "checking" | "own" | "not-own" | "error"
+  const [ownershipRetryToken, setOwnershipRetryToken] = useState(0);
   const [ticketIdForOwnCheck, setTicketIdForOwnCheck] = useState(undefined);
   if (ticket && ticket.id !== ticketIdForOwnCheck) {
     setTicketIdForOwnCheck(ticket.id);
-    setIsOwnTicket(false);
+    setOwnershipStatus("checking");
   }
 
   useEffect(() => {
@@ -250,17 +259,25 @@ export default function TicketDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const page = await fetchMyTickets({ size: 200 });
-        const list = Array.isArray(page?.content) ? page.content : [];
-        if (!cancelled) setIsOwnTicket(list.some((t) => t.id === currentTicketId));
-      } catch {
-        if (!cancelled) setIsOwnTicket(false);
+        await fetchMyTicketDetail(currentTicketId);
+        if (!cancelled) setOwnershipStatus("own");
+      } catch (err) {
+        if (!cancelled) setOwnershipStatus(err?.status === 403 ? "not-own" : "error");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [ticket?.id]);
+  }, [ticket?.id, ownershipRetryToken]);
+
+  // isOwnTicket controla todo el bloqueo de la UI: fail-closed, así que
+  // "checking"/"error"/"own" se tratan igual (solo lectura) y únicamente
+  // "not-own" habilita las acciones mutables.
+  const isOwnTicket = ownershipStatus !== "not-own";
+  const retryOwnershipCheck = () => {
+    setOwnershipStatus("checking");
+    setOwnershipRetryToken((n) => n + 1);
+  };
 
   const slaIndicator = getSlaIndicator(ticket);
   const duplicateLinkInfo = { ...getDuplicateLinkInfo(ticket), mainTicketPublicId };
@@ -603,10 +620,27 @@ export default function TicketDetailPage() {
         		)}
         	</div>
         </div>
-        {isOwnTicket && (
+        {ownershipStatus === "checking" && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+            Verificando si este ticket es tuyo antes de habilitar acciones…
+          </div>
+        )}
+        {ownershipStatus === "own" && (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
             <Lock className="h-3.5 w-3.5 shrink-0" />
             Este ticket es tuyo: el panel de gestión queda en solo lectura. Usá "Ver como ciudadano" o entrá a Mis Reclamos para actuar sobre él.
+          </div>
+        )}
+        {ownershipStatus === "error" && (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              No pudimos confirmar si este ticket es tuyo, así que el panel queda en solo lectura por las dudas.
+            </span>
+            <button type="button" onClick={retryOwnershipCheck} className="shrink-0 font-semibold underline hover:no-underline">
+              Reintentar
+            </button>
           </div>
         )}
         {transitionError && (
