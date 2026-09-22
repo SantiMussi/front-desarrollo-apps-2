@@ -105,6 +105,16 @@ export default function TicketsInboxPage() {
 
   const inboxTickets = useMemo(() => rawTickets.map(mapTicket), [rawTickets]);
 
+  const filteredByFields = useMemo(() => {
+    return inboxTickets.filter((ticket) => {
+      if (filters.categoryId && String(ticket.categoryId) !== String(filters.categoryId)) return false;
+      if (filters.priority && ![ticket.priority, ticket.currentPriorityFactor].includes(filters.priority)) return false;
+      if (filters.neighborhoodId && String(ticket.neighborhoodId) !== String(filters.neighborhoodId)) return false;
+      if (effectiveStatus && ticket.currentStatus !== effectiveStatus) return false;
+      return true;
+    });
+  }, [inboxTickets, filters.categoryId, filters.priority, filters.neighborhoodId, effectiveStatus]);
+
   const handleFilterChange = (key, value) => {
     setPage(0);
     setFilters((prev) => ({
@@ -119,15 +129,15 @@ export default function TicketsInboxPage() {
   };
 
   const filteredTickets = useMemo(() => {
-    if (!searchQuery) return inboxTickets;
+    if (!searchQuery) return filteredByFields;
     const query = searchQuery.toLowerCase();
-    return inboxTickets.filter(
+    return filteredByFields.filter(
       (ticket) =>
         ticket.publicId?.toLowerCase().includes(query) ||
         ticket.id?.toLowerCase().includes(query) ||
         ticket.summary?.toLowerCase().includes(query)
     );
-  }, [inboxTickets, searchQuery]);
+  }, [filteredByFields, searchQuery]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
