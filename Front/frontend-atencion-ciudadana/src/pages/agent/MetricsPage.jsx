@@ -103,7 +103,7 @@ export default function MetricsPage() {
     const previousStart = new Date(start); previousStart.setDate(previousStart.getDate() - days);
     const scoped = tickets.filter((ticket) => {
       if (area && !sameId(ticket.responsibleAreaId, area)) return false;
-      if (category && !sameId(ticket.categoryId, category) && ticket.categoryName !== catalog.categories[category]) return false;
+      if (category && ticket.categoryName !== category) return false;
       if (neighborhood && !sameId(ticket.neighborhoodId, neighborhood)) return false;
       if (priority && (ticket.currentPriority || ticket.currentPriorityFactor) !== priority) return false;
       if (sla === "breached" && ticket.slaBreached !== true) return false;
