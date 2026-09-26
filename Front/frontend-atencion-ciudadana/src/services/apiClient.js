@@ -155,6 +155,14 @@ export async function deactivateRequestType(requestTypeId) {
   return request(`/admin/catalog/request-types/${requestTypeId}/deactivate`, { method: "POST" });
 }
 
+export async function fetchAdminRequestTypeForm(requestTypeId) {
+  return request(`/admin/catalog/request-types/${requestTypeId}/form`);
+}
+
+export async function saveAdminRequestTypeForm(requestTypeId, payload) {
+  return request(`/admin/catalog/request-types/${requestTypeId}/form`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
 export async function fetchMyTickets(params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
