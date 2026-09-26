@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { AlertCircle, Braces, CheckCircle2, Code2, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardList, Code2, Loader2, Plus, X } from "lucide-react";
 import { fetchAdminRequestTypeForm, saveAdminRequestTypeForm } from "../../services/apiClient";
 import { messageForCatalogError } from "../../utils/catalogErrors";
 import FieldCard from "./formSchema/FieldCard";
@@ -192,8 +192,8 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
           <div className="min-w-0">
             <h2 id={titleId} className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-              <Braces className="h-[18px] w-[18px] text-[#0F2C59]" />
-              Formulario dinámico
+              <ClipboardList className="h-[18px] w-[18px] text-[#0F2C59]" />
+              Formulario del trámite
               {version != null && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                   Versión {version}

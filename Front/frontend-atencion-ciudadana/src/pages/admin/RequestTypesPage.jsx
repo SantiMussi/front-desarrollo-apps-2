@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Braces, FileText } from "lucide-react";
+import { AlertCircle, ArrowLeft, ClipboardList, FileText } from "lucide-react";
 import {
   fetchAdminSubcategories,
   fetchAdminRequestTypes,
@@ -233,10 +233,11 @@ export default function RequestTypesPage() {
                 <button
                   type="button"
                   onClick={() => setSchemaDialogTarget(rt)}
-                  title="Editar schema del formulario"
+                  title="Editar formulario"
+                  aria-label={`Editar formulario de ${rt.name}`}
                   className="inline-flex items-center gap-1.5 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0F2C59]"
                 >
-                  <Braces className="h-4 w-4" />
+                  <ClipboardList className="h-4 w-4" />
                 </button>
               ),
             },
