@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgentTickets } from "../services/apiClient";
+import { hasTicketLocation } from "../utils/ticketLocation";
 
 const PAGE_SIZE = 200;
 
@@ -7,6 +8,7 @@ export function useAllAgentTickets({
   categoryId,
   priority,
   neighborhoodId,
+  withoutLocation = false,
   responsibleAreaId,
   status,
   labelIds,
@@ -42,7 +44,9 @@ export function useAllAgentTickets({
             fetchAgentTickets({ ...filters, page: index + 1, size: PAGE_SIZE, sort })
           )
         );
-        const allTickets = [firstPage, ...remainingPages].flatMap((page) => page?.content ?? []);
+        const allTickets = [firstPage, ...remainingPages]
+          .flatMap((page) => page?.content ?? [])
+          .filter((ticket) => !withoutLocation || !hasTicketLocation(ticket));
 
         if (!cancelled) setTickets(allTickets);
       } catch (err) {
@@ -58,7 +62,7 @@ export function useAllAgentTickets({
     return () => {
       cancelled = true;
     };
-  }, [categoryId, priority, neighborhoodId, responsibleAreaId, status, labelIds, search, sort, reloadKey]);
+  }, [categoryId, priority, neighborhoodId, withoutLocation, responsibleAreaId, status, labelIds, search, sort, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((key) => key + 1), []);
 

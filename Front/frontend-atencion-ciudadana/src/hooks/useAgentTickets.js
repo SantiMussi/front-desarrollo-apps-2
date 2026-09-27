@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgentTickets } from "../services/apiClient";
+import { hasTicketLocation } from "../utils/ticketLocation";
 
 const EMPTY_PAGE = { content: [], totalElements: 0, totalPages: 0, number: 0 };
+const LOCATION_FILTER_PAGE_SIZE = 200;
 
 export function useAgentTickets({
   categoryId,
   priority,
   neighborhoodId,
+  withoutLocation = false,
   responsibleAreaId,
   status,
   labelIds,
@@ -27,7 +30,7 @@ export function useAgentTickets({
       setLoading(true);
       setError(null);
       try {
-        const res = await fetchAgentTickets({
+        const requestParams = {
           categoryId,
           priority,
           neighborhoodId,
@@ -35,10 +38,28 @@ export function useAgentTickets({
           status,
           labelIds,
           search,
-          page,
-          size,
           sort,
-        });
+        };
+        let res;
+        if (withoutLocation) {
+          const firstPage = await fetchAgentTickets({ ...requestParams, page: 0, size: LOCATION_FILTER_PAGE_SIZE });
+          const remainingPages = await Promise.all(
+            Array.from({ length: Math.max(0, (Number(firstPage?.totalPages) || 1) - 1) }, (_, index) =>
+              fetchAgentTickets({ ...requestParams, page: index + 1, size: LOCATION_FILTER_PAGE_SIZE })
+            )
+          );
+          const matchingTickets = [firstPage, ...remainingPages]
+            .flatMap((responsePage) => responsePage?.content ?? [])
+            .filter((ticket) => !hasTicketLocation(ticket));
+          res = {
+            content: matchingTickets.slice(page * size, (page + 1) * size),
+            totalElements: matchingTickets.length,
+            totalPages: Math.ceil(matchingTickets.length / size),
+            number: page,
+          };
+        } else {
+          res = await fetchAgentTickets({ ...requestParams, page, size });
+        }
         if (!cancelled) setData(res ?? EMPTY_PAGE);
       } catch (err) {
         if (!cancelled) {
@@ -53,7 +74,7 @@ export function useAgentTickets({
     return () => {
       cancelled = true;
     };
-  }, [categoryId, priority, neighborhoodId, responsibleAreaId, status, labelIds, search, page, size, sort, reloadKey]);
+  }, [categoryId, priority, neighborhoodId, withoutLocation, responsibleAreaId, status, labelIds, search, page, size, sort, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
 

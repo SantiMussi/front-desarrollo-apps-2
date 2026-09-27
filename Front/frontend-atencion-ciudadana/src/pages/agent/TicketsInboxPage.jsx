@@ -11,6 +11,7 @@ import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
+import { NO_LOCATION_FILTER } from "../../utils/ticketLocation";
 
 const PAGE_SIZE = 20;
 const PRIORITY_LABELS = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
@@ -107,7 +108,8 @@ export default function TicketsInboxPage() {
   const { tickets: rawTickets, totalElements, totalPages, loading, error, refetch } = useAgentTickets({
     categoryId: filters.categoryId || undefined,
     priority: filters.priority || undefined,
-    neighborhoodId: filters.neighborhoodId || undefined,
+    neighborhoodId: filters.neighborhoodId && filters.neighborhoodId !== NO_LOCATION_FILTER ? filters.neighborhoodId : undefined,
+    withoutLocation: filters.neighborhoodId === NO_LOCATION_FILTER,
     responsibleAreaId: filters.responsibleAreaId || undefined,
     status: effectiveStatus || undefined,
     labelIds: filters.labelId || undefined,
@@ -395,6 +397,7 @@ export default function TicketsInboxPage() {
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
             >
               <option value="">Todos</option>
+              <option value={NO_LOCATION_FILTER}>Sin ubicación</option>
               {neighborhoods.map((barrio) => (
                 <option key={barrio.id} value={barrio.id}>
                   {barrio.name}

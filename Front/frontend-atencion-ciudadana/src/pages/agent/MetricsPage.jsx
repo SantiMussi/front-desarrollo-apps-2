@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useAllAgentTickets } from "../../hooks/useAllAgentTickets";
 import { fetchCategories, fetchNeighborhoods } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
+import { NO_LOCATION_FILTER } from "../../utils/ticketLocation";
 
 const PERIODS = [
   { value: 7, label: "Últimos 7 días" },
@@ -82,7 +83,8 @@ export default function MetricsPage() {
   const { tickets, loading, error, refetch } = useAllAgentTickets({
     categoryId: category || undefined,
     priority: priority || undefined,
-    neighborhoodId: neighborhood || undefined,
+    neighborhoodId: neighborhood && neighborhood !== NO_LOCATION_FILTER ? neighborhood : undefined,
+    withoutLocation: neighborhood === NO_LOCATION_FILTER,
     responsibleAreaId: area || undefined,
     sort: "createdAt,desc",
   });
@@ -185,7 +187,7 @@ export default function MetricsPage() {
                   </label>
                   <label className="text-xs font-semibold text-slate-600">Barrio
                     <select value={neighborhood} onChange={(e)=>setNeighborhood(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
-                      <option value="">Todos los barrios</option>{Object.entries(catalog.neighborhoods).map(([id, name])=><option key={id} value={id}>{name}</option>)}
+                      <option value="">Todos los barrios</option><option value={NO_LOCATION_FILTER}>Sin ubicación</option>{Object.entries(catalog.neighborhoods).map(([id, name])=><option key={id} value={id}>{name}</option>)}
                     </select>
                   </label>
                   <label className="text-xs font-semibold text-slate-600">Prioridad
