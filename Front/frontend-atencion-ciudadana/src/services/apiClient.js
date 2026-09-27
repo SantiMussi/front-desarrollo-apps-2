@@ -350,6 +350,10 @@ export async function fetchAgentTickets(params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((item) => query.append(key, item));
+      return;
+    }
     query.set(key, value);
   });
   const qs = query.toString();

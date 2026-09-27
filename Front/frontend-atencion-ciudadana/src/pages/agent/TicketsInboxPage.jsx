@@ -10,6 +10,7 @@ import { fetchCategories, fetchStaffLabels } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
+import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
 
 const PAGE_SIZE = 20;
 const PRIORITY_LABELS = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
@@ -46,6 +47,7 @@ export default function TicketsInboxPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [downloadState, setDownloadState] = useState("idle");
   const [page, setPage] = useState(0);
@@ -54,6 +56,7 @@ export default function TicketsInboxPage() {
     categoryId: "",
     priority: "",
     neighborhoodId: "",
+    responsibleAreaId: "",
     status: "",
     labelId: "",
   });
@@ -61,6 +64,15 @@ export default function TicketsInboxPage() {
   const [categories, setCategories] = useState([]);
   const [labels, setLabels] = useState([]);
   const { neighborhoods } = useNeighborhoods();
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(0);
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,24 +108,16 @@ export default function TicketsInboxPage() {
     categoryId: filters.categoryId || undefined,
     priority: filters.priority || undefined,
     neighborhoodId: filters.neighborhoodId || undefined,
+    responsibleAreaId: filters.responsibleAreaId || undefined,
     status: effectiveStatus || undefined,
-    labelId: filters.labelId || undefined,
+    labelIds: filters.labelId || undefined,
+    search: debouncedSearch || undefined,
     page,
     size: PAGE_SIZE,
     sort: "createdAt,desc",
   });
 
   const inboxTickets = useMemo(() => rawTickets.map(mapTicket), [rawTickets]);
-
-  const filteredByFields = useMemo(() => {
-    return inboxTickets.filter((ticket) => {
-      if (filters.categoryId && String(ticket.categoryId) !== String(filters.categoryId)) return false;
-      if (filters.priority && ![ticket.priority, ticket.currentPriorityFactor].includes(filters.priority)) return false;
-      if (filters.neighborhoodId && String(ticket.neighborhoodId) !== String(filters.neighborhoodId)) return false;
-      if (effectiveStatus && ticket.currentStatus !== effectiveStatus) return false;
-      return true;
-    });
-  }, [inboxTickets, filters.categoryId, filters.priority, filters.neighborhoodId, effectiveStatus]);
 
   const handleFilterChange = (key, value) => {
     setPage(0);
@@ -127,17 +131,6 @@ export default function TicketsInboxPage() {
     setPage(0);
     setActiveTab(tab);
   };
-
-  const filteredTickets = useMemo(() => {
-    if (!searchQuery) return filteredByFields;
-    const query = searchQuery.toLowerCase();
-    return filteredByFields.filter(
-      (ticket) =>
-        ticket.publicId?.toLowerCase().includes(query) ||
-        ticket.id?.toLowerCase().includes(query) ||
-        ticket.summary?.toLowerCase().includes(query)
-    );
-  }, [filteredByFields, searchQuery]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -164,9 +157,9 @@ export default function TicketsInboxPage() {
     setDownloadState("downloading");
 
     setTimeout(() => {
-      if (filteredTickets.length > 0) {
+      if (inboxTickets.length > 0) {
         const headers = columns.filter((c) => c.visible).map((c) => c.label);
-        const rows = filteredTickets.map((t) => {
+        const rows = inboxTickets.map((t) => {
           return columns
             .filter((c) => c.visible)
             .map((c) => {
@@ -260,7 +253,14 @@ export default function TicketsInboxPage() {
             <button
               onClick={() => {
                 setPage(0);
-                setFilters({ categoryId: "", priority: "", neighborhoodId: "", status: "", labelId: "" });
+                setFilters({
+                  categoryId: "",
+                  priority: "",
+                  neighborhoodId: "",
+                  responsibleAreaId: "",
+                  status: "",
+                  labelId: "",
+                });
               }}
               className="text-xs text-slate-500 hover:text-slate-700 underline"
             >
@@ -341,7 +341,22 @@ export default function TicketsInboxPage() {
       </div>
 
       {showFilters && (
-        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Área responsable</label>
+            <select
+              value={filters.responsibleAreaId}
+              onChange={(e) => handleFilterChange("responsibleAreaId", e.target.value)}
+              className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
+            >
+              <option value="">Todas</option>
+              {Object.entries(RESPONSIBLE_AREAS).map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
             <select
@@ -433,7 +448,7 @@ export default function TicketsInboxPage() {
             <Loader2 className="h-6 w-6 animate-spin text-[#0F2C59]" />
           </div>
         ) : (
-          <TicketTable tickets={filteredTickets} columns={columns} />
+          <TicketTable tickets={inboxTickets} columns={columns} />
         )}
       </div>
 

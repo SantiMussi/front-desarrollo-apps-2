@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchAgentTickets, fetchTicketsByLabel } from "../services/apiClient";
+import { fetchAgentTickets } from "../services/apiClient";
 
 const EMPTY_PAGE = { content: [], totalElements: 0, totalPages: 0, number: 0 };
 
@@ -9,7 +9,8 @@ export function useAgentTickets({
   neighborhoodId,
   responsibleAreaId,
   status,
-  labelId,
+  labelIds,
+  search,
   page = 0,
   size = 20,
   sort = "createdAt,desc",
@@ -26,20 +27,18 @@ export function useAgentTickets({
       setLoading(true);
       setError(null);
       try {
-        const pagination = { page, size, sort };
-        const filters = {
+        const res = await fetchAgentTickets({
           categoryId,
           priority,
           neighborhoodId,
           responsibleAreaId,
           status,
-        };
-        const res = labelId
-          ? await fetchTicketsByLabel(labelId, { ...filters, ...pagination })
-          : await fetchAgentTickets({
-              ...filters,
-              ...pagination,
-            });
+          labelIds,
+          search,
+          page,
+          size,
+          sort,
+        });
         if (!cancelled) setData(res ?? EMPTY_PAGE);
       } catch (err) {
         if (!cancelled) {
@@ -54,7 +53,7 @@ export function useAgentTickets({
     return () => {
       cancelled = true;
     };
-  }, [categoryId, priority, neighborhoodId, responsibleAreaId, status, labelId, page, size, sort, reloadKey]);
+  }, [categoryId, priority, neighborhoodId, responsibleAreaId, status, labelIds, search, page, size, sort, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
 
