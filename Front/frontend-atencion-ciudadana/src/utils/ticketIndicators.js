@@ -2,6 +2,16 @@ const TERMINAL_STATUSES = new Set(["RESOLVED", "CLOSED", "DUPLICATE", "CANCELLED
 
 export const SLA_ALERT_THRESHOLD = 80;
 
+export function hasResolutionSlaInfo(ticket) {
+  return Boolean(
+    ticket &&
+      (ticket.resolutionDueAt != null ||
+        ticket.slaPercentage != null ||
+        ticket.slaBreached != null ||
+        ticket.slaNearDue != null)
+  );
+}
+
 export function getSlaIndicator(ticket) {
   if (!ticket) {
     return { status: "not-applicable", percentage: null, label: "No aplica" };

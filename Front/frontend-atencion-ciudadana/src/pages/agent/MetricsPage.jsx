@@ -9,7 +9,7 @@ import { useAllAgentTickets } from "../../hooks/useAllAgentTickets";
 import { fetchCategories, fetchNeighborhoods } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { NO_LOCATION_FILTER } from "../../utils/ticketLocation";
-import { getSlaIndicator } from "../../utils/ticketIndicators";
+import { hasResolutionSlaInfo } from "../../utils/ticketIndicators";
 
 const PERIODS = [
   { value: 7, label: "Últimos 7 días" },
@@ -32,7 +32,6 @@ const validDate = (value) => { const date = new Date(value); return Number.isNaN
 const percent = (value) => `${Math.round(value || 0)}%`;
 const formatHours = (hours) => hours == null ? "—" : hours < 24 ? `${hours.toFixed(1)} h` : `${(hours / 24).toFixed(1)} d`;
 const nameFor = (ticket, fallback) => ticket.neighborhoodName || ticket.location?.neighborhoodName || fallback[ticket.neighborhoodId] || "Sin ubicación informada";
-const hasResolutionSlaInfo = (ticket) => getSlaIndicator(ticket).status !== "not-applicable" && (ticket.resolutionDueAt != null || ticket.slaPercentage != null || ticket.slaBreached != null || ticket.slaNearDue != null);
 
 function Change({ value }) {
   if (value == null) return <span className="text-xs font-medium text-slate-400">Sin período anterior</span>;
