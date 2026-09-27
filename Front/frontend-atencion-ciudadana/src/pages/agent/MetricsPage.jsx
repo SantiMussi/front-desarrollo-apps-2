@@ -9,6 +9,7 @@ import { useAllAgentTickets } from "../../hooks/useAllAgentTickets";
 import { fetchCategories, fetchNeighborhoods } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { NO_LOCATION_FILTER } from "../../utils/ticketLocation";
+import { getSlaIndicator } from "../../utils/ticketIndicators";
 
 const PERIODS = [
   { value: 7, label: "Últimos 7 días" },
@@ -31,7 +32,7 @@ const validDate = (value) => { const date = new Date(value); return Number.isNaN
 const percent = (value) => `${Math.round(value || 0)}%`;
 const formatHours = (hours) => hours == null ? "—" : hours < 24 ? `${hours.toFixed(1)} h` : `${(hours / 24).toFixed(1)} d`;
 const nameFor = (ticket, fallback) => ticket.neighborhoodName || ticket.location?.neighborhoodName || fallback[ticket.neighborhoodId] || "Sin ubicación informada";
-const hasResolutionSlaInfo = (ticket) => ticket.resolutionDueAt != null || ticket.slaPercentage != null || ticket.slaBreached != null || ticket.slaNearDue != null;
+const hasResolutionSlaInfo = (ticket) => getSlaIndicator(ticket).status !== "not-applicable" && (ticket.resolutionDueAt != null || ticket.slaPercentage != null || ticket.slaBreached != null || ticket.slaNearDue != null);
 
 function Change({ value }) {
   if (value == null) return <span className="text-xs font-medium text-slate-400">Sin período anterior</span>;
@@ -123,7 +124,7 @@ export default function MetricsPage() {
     const resolved = current.filter((ticket) => CLOSED.has(ticket.currentStatus));
     const durations = resolved.map((ticket) => { const a = validDate(ticket.createdAt), b = validDate(ticket.statusChangedAt || ticket.updatedAt); return a && b ? (b-a)/36e5 : null; }).filter((value) => value != null && value >= 0);
     const avgResolution = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : null;
-    const slaKnown = current.filter((ticket) => ticket.slaBreached != null || ticket.slaPercentage != null);
+    const slaKnown = current.filter((ticket) => hasResolutionSlaInfo(ticket) && (ticket.slaBreached != null || ticket.slaPercentage != null));
     const slaMet = slaKnown.filter((ticket) => !ticket.slaBreached && Number(ticket.slaPercentage || 0) <= 100).length;
     const slaRate = slaKnown.length ? (slaMet / slaKnown.length) * 100 : 0;
     const unassigned = current.filter((ticket) => !ticket.assignedAgentId).length;
