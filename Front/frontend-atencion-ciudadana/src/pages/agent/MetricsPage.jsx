@@ -21,6 +21,7 @@ const SLA_FILTERS = [
   { value: "breached", label: "SLA vencido" },
   { value: "near_due", label: "Próximo a vencer" },
   { value: "on_track", label: "En plazo" },
+  { value: "no_resolution_sla", label: "Sin SLA de resolución" },
 ];
 const STATUS_COLORS = { REGISTERED: "#579DFF", IN_REVIEW: "#8777D9", ROUTED: "#00B8D9", IN_PROGRESS: "#F5CD47", PENDING_INFORMATION: "#FEA362", RESOLVED: "#4BCE97", CLOSED: "#8590A2", CANCELLED: "#C1C7D0", DUPLICATE: "#B6A7D8" };
 const FALLBACK_AREA_NAMES = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Obras viales", "AREA-SANITATION": "Higiene urbana", "AREA-GREEN": "Espacios verdes", "AREA-TRAFFIC": "Tránsito" };
@@ -29,6 +30,7 @@ const validDate = (value) => { const date = new Date(value); return Number.isNaN
 const percent = (value) => `${Math.round(value || 0)}%`;
 const formatHours = (hours) => hours == null ? "—" : hours < 24 ? `${hours.toFixed(1)} h` : `${(hours / 24).toFixed(1)} d`;
 const nameFor = (ticket, fallback) => ticket.neighborhoodName || ticket.location?.neighborhoodName || fallback[ticket.neighborhoodId] || "Sin ubicación informada";
+const hasResolutionSlaInfo = (ticket) => ticket.resolutionDueAt != null || ticket.slaPercentage != null || ticket.slaBreached != null || ticket.slaNearDue != null;
 
 function Change({ value }) {
   if (value == null) return <span className="text-xs font-medium text-slate-400">Sin período anterior</span>;
@@ -109,7 +111,8 @@ export default function MetricsPage() {
     const scoped = tickets.filter((ticket) => {
       if (sla === "breached" && ticket.slaBreached !== true) return false;
       if (sla === "near_due" && (ticket.slaNearDue !== true || ticket.slaBreached === true)) return false;
-      if (sla === "on_track" && (ticket.slaBreached === true || ticket.slaNearDue === true)) return false;
+      if (sla === "on_track" && (!hasResolutionSlaInfo(ticket) || ticket.slaBreached === true || ticket.slaNearDue === true)) return false;
+      if (sla === "no_resolution_sla" && hasResolutionSlaInfo(ticket)) return false;
       return true;
     });
     const current = scoped.filter((ticket) => { const date = validDate(ticket.createdAt); return date && date >= start && date <= now; });
