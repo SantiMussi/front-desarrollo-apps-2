@@ -3,40 +3,70 @@ const TERMINAL_STATUSES = new Set(["RESOLVED", "CLOSED", "DUPLICATE", "CANCELLED
 export const SLA_ALERT_THRESHOLD = 80;
 
 export function hasResolutionSlaInfo(ticket) {
+  if (!ticket) return false;
+
   if (
-    ticket?.slaStatus === "NO_SLA" ||
-    ticket?.slaStatus === "NO_SLA_RESOLUTION"
+    ticket.slaStatus === "NO_SLA" ||
+    ticket.slaStatus === "NO_SLA_RESOLUTION"
   ) {
     return false;
   }
 
   return Boolean(
-    ticket?.sla ||
-    ticket?.resolutionDueAt != null ||
-    ticket?.slaPercentage != null ||
-    ticket?.slaBreached === true ||
-    ticket?.slaNearDue === true
+    ticket.sla ||
+    ticket.resolutionDueAt != null ||
+    ticket.slaPercentage != null ||
+    ticket.slaBreached === true ||
+    ticket.slaNearDue === true
   );
 }
 
 export function getSlaIndicator(ticket) {
   if (!ticket) {
-    return { status: "not-applicable", percentage: null, label: "No aplica" };
+    return {
+      status: "not-applicable",
+      percentage: null,
+      label: "No aplica",
+    };
+  }
+
+  if (!hasResolutionSlaInfo(ticket)) {
+    return {
+      status: "not-applicable",
+      percentage: null,
+      label: "Sin SLA",
+    };
   }
 
   if (ticket.slaBreached === true) {
-    return { status: "overdue", percentage: null, label: "SLA vencido" };
+    return {
+      status: "overdue",
+      percentage: null,
+      label: "SLA vencido",
+    };
   }
 
   if (ticket.slaNearDue === true) {
-    return { status: "at-risk", percentage: null, label: "Próximo a vencer" };
+    return {
+      status: "at-risk",
+      percentage: null,
+      label: "Próximo a vencer",
+    };
   }
 
   if (TERMINAL_STATUSES.has(ticket.currentStatus)) {
-    return { status: "not-applicable", percentage: null, label: "No aplica" };
+    return {
+      status: "not-applicable",
+      percentage: null,
+      label: "No aplica",
+    };
   }
 
-  return { status: "on-track", percentage: null, label: "En plazo" };
+  return {
+    status: "on-track",
+    percentage: null,
+    label: "En plazo",
+  };
 }
 
 export function isTicketEscalated(ticket) {

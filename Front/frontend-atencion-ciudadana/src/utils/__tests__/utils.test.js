@@ -43,7 +43,7 @@ describe("indicadores de SLA", () => {
   it("clasifica vencidos, próximos a vencer y vigentes", () => {
     expect(getSlaIndicator({ slaBreached: true })).toMatchObject({ status: "overdue", label: "SLA vencido" });
     expect(getSlaIndicator({ slaNearDue: true })).toMatchObject({ status: "at-risk", label: "Próximo a vencer" });
-    expect(getSlaIndicator({ slaBreached: false, slaNearDue: false })).toMatchObject({ status: "on-track", label: "En plazo" });
+    expect(getSlaIndicator({ slaBreached: false, slaNearDue: false })).toMatchObject({ status: "not-applicable", label: "Sin SLA" });
   });
 
   it("no clasifica tickets sin SLA como En plazo ni los incluye entre los medidos", () => {
