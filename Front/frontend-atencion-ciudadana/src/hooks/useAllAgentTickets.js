@@ -3,7 +3,16 @@ import { fetchAgentTickets } from "../services/apiClient";
 
 const PAGE_SIZE = 200;
 
-export function useAllAgentTickets({ sort = "createdAt,desc" } = {}) {
+export function useAllAgentTickets({
+  categoryId,
+  priority,
+  neighborhoodId,
+  responsibleAreaId,
+  status,
+  labelIds,
+  search,
+  sort = "createdAt,desc",
+} = {}) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,11 +26,20 @@ export function useAllAgentTickets({ sort = "createdAt,desc" } = {}) {
       setError(null);
 
       try {
-        const firstPage = await fetchAgentTickets({ page: 0, size: PAGE_SIZE, sort });
+        const filters = {
+          categoryId,
+          priority,
+          neighborhoodId,
+          responsibleAreaId,
+          status,
+          labelIds,
+          search,
+        };
+        const firstPage = await fetchAgentTickets({ ...filters, page: 0, size: PAGE_SIZE, sort });
         const totalPages = Number(firstPage?.totalPages) || 1;
         const remainingPages = await Promise.all(
           Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
-            fetchAgentTickets({ page: index + 1, size: PAGE_SIZE, sort })
+            fetchAgentTickets({ ...filters, page: index + 1, size: PAGE_SIZE, sort })
           )
         );
         const allTickets = [firstPage, ...remainingPages].flatMap((page) => page?.content ?? []);
@@ -40,7 +58,7 @@ export function useAllAgentTickets({ sort = "createdAt,desc" } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [sort, reloadKey]);
+  }, [categoryId, priority, neighborhoodId, responsibleAreaId, status, labelIds, search, sort, reloadKey]);
 
   const refetch = useCallback(() => setReloadKey((key) => key + 1), []);
 

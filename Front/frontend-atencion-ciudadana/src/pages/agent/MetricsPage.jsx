@@ -26,7 +26,6 @@ const STATUS_COLORS = { REGISTERED: "#579DFF", IN_REVIEW: "#8777D9", ROUTED: "#0
 const FALLBACK_AREA_NAMES = { "AREA-LIGHTING": "Alumbrado público", "AREA-ROADWORKS": "Obras viales", "AREA-SANITATION": "Higiene urbana", "AREA-GREEN": "Espacios verdes", "AREA-TRAFFIC": "Tránsito" };
 
 const validDate = (value) => { const date = new Date(value); return Number.isNaN(date.getTime()) ? null : date; };
-const sameId = (left, right) => String(left ?? "") === String(right ?? "");
 const percent = (value) => `${Math.round(value || 0)}%`;
 const formatHours = (hours) => hours == null ? "—" : hours < 24 ? `${hours.toFixed(1)} h` : `${(hours / 24).toFixed(1)} d`;
 const nameFor = (ticket, fallback) => ticket.neighborhoodName || ticket.location?.neighborhoodName || fallback[ticket.neighborhoodId] || "Sin ubicación informada";
@@ -78,7 +77,13 @@ export default function MetricsPage() {
   const [sla, setSla] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [catalog, setCatalog] = useState({ categories: {}, neighborhoods: {} });
-  const { tickets, loading, error, refetch } = useAllAgentTickets({ sort: "createdAt,desc" });
+  const { tickets, loading, error, refetch } = useAllAgentTickets({
+    categoryId: category || undefined,
+    priority: priority || undefined,
+    neighborhoodId: neighborhood || undefined,
+    responsibleAreaId: area || undefined,
+    sort: "createdAt,desc",
+  });
 
   useEffect(() => {
     Promise.allSettled([fetchCategories(), fetchNeighborhoods()]).then(([categories, neighborhoods]) => setCatalog({
@@ -102,10 +107,6 @@ export default function MetricsPage() {
     const start = new Date(now); start.setDate(start.getDate() - days);
     const previousStart = new Date(start); previousStart.setDate(previousStart.getDate() - days);
     const scoped = tickets.filter((ticket) => {
-      if (area && !sameId(ticket.responsibleAreaId, area)) return false;
-      if (category && ticket.categoryName !== category) return false;
-      if (neighborhood && !sameId(ticket.neighborhoodId, neighborhood)) return false;
-      if (priority && (ticket.currentPriority || ticket.currentPriorityFactor) !== priority) return false;
       if (sla === "breached" && ticket.slaBreached !== true) return false;
       if (sla === "near_due" && (ticket.slaNearDue !== true || ticket.slaBreached === true)) return false;
       if (sla === "on_track" && (ticket.slaBreached === true || ticket.slaNearDue === true)) return false;
@@ -134,7 +135,7 @@ export default function MetricsPage() {
       categories: countBy((ticket) => ticket.categoryName || ticket.requestTypeName || catalog.categories[String(ticket.categoryId)] || ticket.ticketType || "Sin categoría"),
       areas: countBy((ticket) => FALLBACK_AREA_NAMES[ticket.responsibleAreaId] || ticket.responsibleAreaName || ticket.responsibleAreaId || "Sin derivar"),
     };
-  }, [tickets, days, area, category, neighborhood, priority, sla, catalog]);
+  }, [tickets, days, sla, catalog]);
 
   const exportCsv = () => {
     const rows = [["Ticket", "Creado", "Estado", "Área", "Ubicación"], ...report.current.map((ticket) => [ticket.publicId || ticket.id, ticket.createdAt, TICKET_STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus, FALLBACK_AREA_NAMES[ticket.responsibleAreaId] || ticket.responsibleAreaId || "", nameFor(ticket, catalog.neighborhoods)])];
@@ -176,7 +177,7 @@ export default function MetricsPage() {
                   </label>
                   <label className="text-xs font-semibold text-slate-600">Categoría
                     <select value={category} onChange={(e)=>setCategory(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
-                      <option value="">Todas las categorías</option>{Object.entries(catalog.categories).map(([, name])=><option value={name}>{name}</option>)}
+                      <option value="">Todas las categorías</option>{Object.entries(catalog.categories).map(([id, name])=><option key={id} value={id}>{name}</option>)}
                     </select>
                   </label>
                   <label className="text-xs font-semibold text-slate-600">Barrio
