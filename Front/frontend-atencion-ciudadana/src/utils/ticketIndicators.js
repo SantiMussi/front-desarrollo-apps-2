@@ -3,12 +3,19 @@ const TERMINAL_STATUSES = new Set(["RESOLVED", "CLOSED", "DUPLICATE", "CANCELLED
 export const SLA_ALERT_THRESHOLD = 80;
 
 export function hasResolutionSlaInfo(ticket) {
+  if (
+    ticket?.slaStatus === "NO_SLA" ||
+    ticket?.slaStatus === "NO_SLA_RESOLUTION"
+  ) {
+    return false;
+  }
+
   return Boolean(
-    ticket &&
-      (ticket.resolutionDueAt != null ||
-        ticket.slaPercentage != null ||
-        ticket.slaBreached != null ||
-        ticket.slaNearDue != null)
+    ticket?.sla ||
+    ticket?.resolutionDueAt != null ||
+    ticket?.slaPercentage != null ||
+    ticket?.slaBreached === true ||
+    ticket?.slaNearDue === true
   );
 }
 

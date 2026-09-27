@@ -46,13 +46,23 @@ describe("indicadores de SLA", () => {
     expect(getSlaIndicator({ slaBreached: false, slaNearDue: false })).toMatchObject({ status: "on-track", label: "En plazo" });
   });
 
-//   it("no clasifica tickets sin SLA como En plazo ni los incluye entre los medidos", () => {
-//     const ticketWithoutSla = { currentStatus: "IN_PROGRESS" };
-//     expect(getSlaIndicator(ticketWithoutSla)).toEqual({ status: "not-applicable", percentage: null, label: "No aplica" });
-//     expect(hasResolutionSlaInfo(ticketWithoutSla)).toBe(false);
-//     expect(hasResolutionSlaInfo({ slaPercentage: 0 })).toBe(true);
-//     expect(hasResolutionSlaInfo()).toBe(false);
-//   });
+  it("no clasifica tickets sin SLA como En plazo ni los incluye entre los medidos", () => {
+  const ticketWithoutSla = {
+    currentStatus: "IN_PROGRESS",
+    slaBreached: false,
+    slaNearDue: false,
+  };
+
+  expect(getSlaIndicator(ticketWithoutSla)).toEqual({
+    status: "not-applicable",
+    percentage: null,
+    label: "Sin SLA",
+  });
+
+  expect(hasResolutionSlaInfo(ticketWithoutSla)).toBe(false);
+  expect(hasResolutionSlaInfo({ slaPercentage: 0 })).toBe(true);
+  expect(hasResolutionSlaInfo()).toBe(false);
+});
 
   it.each([undefined, { currentStatus: "RESOLVED" }, { currentStatus: "CLOSED" }, { currentStatus: "DUPLICATE" }, { currentStatus: "CANCELLED" }])(
     "marca como no aplicable %#", (ticket) => expect(getSlaIndicator(ticket).status).toBe("not-applicable")
