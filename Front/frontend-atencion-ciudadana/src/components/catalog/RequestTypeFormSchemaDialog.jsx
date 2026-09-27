@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, ClipboardList, Code2, Loader2, Plus, X } from "lucide-react";
 import { fetchAdminRequestTypeForm, saveAdminRequestTypeForm } from "../../services/apiClient";
 import { messageForCatalogError } from "../../utils/catalogErrors";
@@ -60,6 +60,7 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
   const [savedInfo, setSavedInfo] = useState(null);
   const [showJson, setShowJson] = useState(false);
   const [discardPrompt, setDiscardPrompt] = useState(false);
+  const savingRef = useRef(false);
 
   const hydrate = useCallback((response) => {
     const loaded = fieldsFromApi(response);
@@ -152,6 +153,7 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
     });
 
   const handleSave = async () => {
+    if (savingRef.current) return;
     setAttempted(true);
     setSavedInfo(null);
     setSaveError(null);
@@ -159,6 +161,7 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
       setOpenIds((current) => new Set([...current, ...Object.keys(validation.byField)]));
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     try {
       const response = await saveAdminRequestTypeForm(requestType.id, fieldsToApi(fields));
@@ -170,6 +173,7 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
     } catch (err) {
       setSaveError(messageForCatalogError(err));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
