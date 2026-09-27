@@ -31,6 +31,29 @@ describe("useAllAgentTickets", () => {
     await waitFor(() => expect(fetchAgentTickets).toHaveBeenCalledTimes(2));
   });
 
+  it.each([
+    ["ausente", { content: [unlocated] }],
+    ["igual a cero", { content: [unlocated], totalPages: 0 }],
+  ])("trata totalPages %s como una respuesta de una sola página", async (_case, response) => {
+    fetchAgentTickets.mockResolvedValueOnce(response);
+    const { result } = renderHook(() => useAllAgentTickets({ withoutLocation: false }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.tickets).toEqual([unlocated]);
+    expect(fetchAgentTickets).toHaveBeenCalledTimes(1);
+  });
+
+  it("normaliza una respuesta undefined del backend", async () => {
+    fetchAgentTickets.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useAllAgentTickets());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.tickets).toEqual([]);
+    expect(result.current.error).toBeNull();
+  });
+
   it("informa errores con mensaje remoto o predeterminado", async () => {
     fetchAgentTickets.mockRejectedValueOnce(new Error("Sin conexión"));
     const { result, rerender } = renderHook(() => useAllAgentTickets());
@@ -52,6 +75,17 @@ describe("useAgentTickets", () => {
     expect(fetchAgentTickets).toHaveBeenCalledWith(expect.objectContaining({ page: 2, size: 10, priority: "HIGH" }));
   });
 
+	it("solicita una página al backend cuando withoutLocation es false", async () => {
+    fetchAgentTickets.mockResolvedValueOnce({ content: [located] });
+    const { result } = renderHook(() => useAgentTickets({ withoutLocation: false, page: 3, size: 5 }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.tickets).toEqual([located]);
+    expect(fetchAgentTickets).toHaveBeenCalledTimes(1);
+    expect(fetchAgentTickets).toHaveBeenCalledWith(expect.objectContaining({ page: 3, size: 5 }));
+  });
+
   it("recorre, filtra y pagina localmente los tickets sin ubicación", async () => {
     fetchAgentTickets
       .mockResolvedValueOnce({ content: [located, { id: 2 }, { id: 3 }], totalPages: 2 })
@@ -61,6 +95,19 @@ describe("useAgentTickets", () => {
     expect(result.current).toMatchObject({ tickets: [{ id: 4 }], totalElements: 3, totalPages: 2, pageNumber: 1 });
     expect(fetchAgentTickets).toHaveBeenNthCalledWith(1, expect.objectContaining({ page: 0, size: 200 }));
     expect(fetchAgentTickets).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: 1, size: 200 }));
+  });
+
+  it.each([
+    ["ausente", { content: [located] }],
+    ["igual a cero", { content: [located], totalPages: 0 }],
+  ])("usa una sola página con totalPages %s y queda vacío si no hay coincidencias", async (_case, response) => {
+    fetchAgentTickets.mockResolvedValueOnce(response);
+    const { result } = renderHook(() => useAgentTickets({ withoutLocation: true }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current).toMatchObject({ tickets: [], totalElements: 0, totalPages: 0, pageNumber: 0 });
+    expect(fetchAgentTickets).toHaveBeenCalledTimes(1);
   });
 
   it("vacía los datos al fallar y se puede reintentar", async () => {
