@@ -74,7 +74,7 @@ describe("apiClient token and response handling", () => {
 
 describe("apiClient endpoint contracts", () => {
   const noArguments = ["fetchCurrentUser", "fetchCategories", "fetchAdminCategories", "fetchNeighborhoods", "fetchStaffLabels"];
-  const objectArgument = ["login", "register", "createCategory", "createSubcategory", "createRequestType", "createStaffLabel"];
+  const objectArgument = ["login", "register", "createCategory", "createSubcategory", "createRequestType"];
   const idArgument = [
     "fetchSubcategories", "fetchRequestTypes", "fetchRequestTypeForm", "activateCategory", "deactivateCategory",
     "fetchAdminSubcategories", "activateSubcategory", "deactivateSubcategory", "fetchAdminRequestTypes",
@@ -98,6 +98,20 @@ describe("apiClient endpoint contracts", () => {
     await api[name](payload);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/"), expect.objectContaining({ body: JSON.stringify(payload) }));
   });
+
+	it("createStaffLabel serializes only the fields supported by its contract", async () => {
+    await api.createStaffLabel(payload);
+
+    expect(fetch).toHaveBeenCalledWith("/api/staff/labels", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        code: payload.code,
+        name: payload.name,
+        description: payload.description,
+      }),
+    }));
+  });
+
 
   it.each(idArgument)("%s safely sends an identifier", async (name) => {
     await api[name]("id / unsafe");

@@ -20,7 +20,7 @@ const previouslyCovered = new Set([
 
 const productionModules = import.meta.glob("/src/**/*.{js,jsx}");
 const remainingModules = Object.entries(productionModules)
-  .filter(([path]) => !path.includes("/__tests__/") && !path.includes("/test/") && !previouslyCovered.has(path))
+  .filter(([path]) => !path.includes("/__tests__/") && !path.includes("/test/") && !path.includes(".test.") && !previouslyCovered.has(path))
   .sort(([left], [right]) => left.localeCompare(right));
 
 describe("inventario completo de módulos productivos", () => {
@@ -40,7 +40,7 @@ describe("inventario completo de módulos productivos", () => {
   });
 
   it("incluye exactamente los 88 archivos que antes faltaban", () => {
-    expect(remainingModules).toHaveLength(89);
+    expect(remainingModules).toHaveLength(88);
   });
 
   it.each(remainingModules)("%s se puede cargar", async (_path, loadModule) => {
