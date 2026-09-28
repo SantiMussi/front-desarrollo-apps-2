@@ -14,13 +14,11 @@ export default defineConfig({
       include: ["src/**/*.{js,jsx}"],
       exclude: ["src/**/__tests__/**", "src/test/**"],
       thresholds: {
-        // Baseline for the complete 100-file inventory.  Raise these values as
-        // focused behavioural suites are added; unlike the previous 85% gate,
-        // this can no longer pass by omitting 88 files from the denominator.
-        statements: 7,
-        branches: 3,
-        functions: 4,
-        lines: 8,
+        // Enforce the requested project-wide quality gate over every production module.
+        statements: 85,
+        branches: 85,
+        functions: 85,
+        lines: 85,
       },
     },
   },

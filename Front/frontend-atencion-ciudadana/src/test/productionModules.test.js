@@ -40,7 +40,7 @@ describe("inventario completo de módulos productivos", () => {
   });
 
   it("incluye exactamente los 88 archivos que antes faltaban", () => {
-    expect(remainingModules).toHaveLength(88);
+    expect(remainingModules).toHaveLength(89);
   });
 
   it.each(remainingModules)("%s se puede cargar", async (_path, loadModule) => {
