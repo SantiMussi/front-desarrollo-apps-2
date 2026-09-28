@@ -7,7 +7,7 @@ export default function AgentLayout() {
       <AgentSidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden pt-[60px] md:pt-0">
+      <main className="min-w-0 flex-1 flex flex-col h-full relative overflow-hidden pt-[60px] md:pt-0">
         <Outlet />
       </main>
     </div>

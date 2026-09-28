@@ -48,9 +48,9 @@ function KpiCard({ label, value, helper, change, icon: Icon, tone = "blue" }) {
 }
 
 function Panel({ title, subtitle, action, children, className = "" }) {
-  return <section className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
-    <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4"><div><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{subtitle}</p></div>{action}</header>
-    <div className="p-5">{children}</div>
+  return <section className={`min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <header className="flex min-w-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4"><div className="min-w-0"><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{subtitle}</p></div>{action}</header>
+    <div className="min-w-0 p-5">{children}</div>
   </section>;
 }
 
@@ -150,7 +150,7 @@ export default function MetricsPage() {
 
   if (loading) return <div className="flex h-full items-center justify-center bg-slate-50"><Loader2 className="h-7 w-7 animate-spin text-[#0F2C59]" /><span className="ml-3 text-sm text-slate-600">Calculando métricas…</span></div>;
   const maxLocation = report.locations[0]?.[1] || 1;
-  return <div className="h-full overflow-y-auto bg-[#f7f8fa]">
+  return <div className="h-full min-w-0 overflow-x-hidden overflow-y-auto bg-[#f7f8fa]">
     <header className="border-b border-slate-200 bg-white px-5 py-5 md:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -218,7 +218,7 @@ export default function MetricsPage() {
       </div>
     </div>
     </header>
-    <main className="mx-auto max-w-7xl space-y-6 px-5 py-6 md:px-8 md:py-8">
+    <main className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-5 py-6 md:px-8 md:py-8">
       {error && <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><AlertCircle className="h-4 w-4" /> No pudimos cargar todos los datos: {error}</div>}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><KpiCard label="Tickets creados" value={report.current.length.toLocaleString("es-AR")} change={report.delta} icon={TrendingUp} /><KpiCard label="Tasa de resolución" value={percent(report.current.length ? report.resolved.length/report.current.length*100 : 0)} helper={`${report.resolved.length} resueltos en el período`} icon={CheckCircle2} tone="green" /><KpiCard label="Tiempo medio de resolución" value={formatHours(report.avgResolution)} helper="Desde creación hasta última resolución" icon={Clock3} tone="violet" /><KpiCard label="Cumplimiento de SLA" value={report.slaKnown ? percent(report.slaRate) : "—"} helper={report.slaKnown ? `${report.slaKnown} tickets con medición` : "Sin datos de SLA en el período"} icon={Target} tone="amber" /></section>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.75fr)]"><Panel title="Demanda a lo largo del tiempo" subtitle="Tickets creados frente a tickets resueltos en el período"><TrendChart rows={report.trend} /></Panel><Panel title="Estado de los tickets" subtitle="Distribución actual de los creados en el período"><div className="space-y-3">{report.statuses.map(([status,count])=><div key={status}><div className="mb-1.5 flex justify-between text-xs"><span className="flex items-center gap-2 font-medium text-slate-600"><i className="h-2.5 w-2.5 rounded-full" style={{background:STATUS_COLORS[status]||"#64748b"}} />{TICKET_STATUS_LABELS[status]||status}</span><span className="font-bold text-slate-800">{count} · {percent(count/report.current.length*100)}</span></div><div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full" style={{width:`${count/report.current.length*100}%`,background:STATUS_COLORS[status]||"#64748b"}} /></div></div>)}{!report.statuses.length&&<p className="py-16 text-center text-sm text-slate-500">No hay tickets en este período.</p>}</div></Panel></div>
