@@ -1,4 +1,6 @@
 import { useState } from "react";
+import CancellationHistory from "./CancellationHistory";
+import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -222,11 +224,13 @@ export default function CitizenTicketView({
   actionError = null,
   attachments: attachmentsAdapter,
   chat,
+  cancellation,
 }) {
   const [reopenMode, setReopenMode] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [cancelMode, setCancelMode] = useState(false);
   const [cancelComment, setCancelComment] = useState("");
+  const [cancelReasonCode, setCancelReasonCode] = useState("WITHDRAWN_BY_CITIZEN");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
@@ -256,10 +260,12 @@ export default function CitizenTicketView({
     }
   };
 
-  const canCancelTicket = !readOnly && ticket.currentStatus === "REGISTERED";
+  const canCancelTicket = !readOnly && ticket.currentStatus === "REGISTERED" && !cancellation?.pending;
 
   const handleCancelTicket = async () => {
-    const ok = await actions?.requestCancel(cancelComment.trim() || null);
+    const ok = cancellation?.requiresReview
+      ? await cancellation.create({ reasonCode: cancelReasonCode, reason: cancelComment.trim() })
+      : await actions?.requestCancel(cancelComment.trim() || null);
     if (ok) {
       setCancelMode(false);
       setCancelComment("");
@@ -387,6 +393,15 @@ export default function CitizenTicketView({
         <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
       )}
 
+      {!readOnly && cancellation && <section aria-label="Solicitudes de cancelación" className="mt-4 rounded-xl border border-neutral-200 p-4 text-sm">
+        <h2 className="font-semibold">Solicitudes de cancelación</h2>
+        <p className="my-2">Una solicitud pendiente de revisión no cancela el reclamo.</p>
+        <button type="button" onClick={cancellation.reload} disabled={cancellation.busy || cancellation.loading} className="mb-3 underline">Actualizar solicitudes y estado</button>
+        {cancellation.loading && <p>Cargando solicitudes…</p>}
+        {cancellation.error && <p role="alert" className="mb-2 text-red-700">{cancellation.error}</p>}
+        {!cancellation.loading && !cancellation.error && cancellation.history.length === 0 && <p>Sin solicitudes de cancelación.</p>}
+        <CancellationHistory items={cancellation.history} />
+      </section>}
       {canCancelTicket && (
         <div className="mt-3">
           {!cancelMode ? (
@@ -396,18 +411,25 @@ export default function CitizenTicketView({
               className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-neutral-500 hover:text-red-600"
             >
               <X className="h-3.5 w-3.5" />
-              Cancelar reclamo
+              {cancellation?.requiresReview ? "Solicitar revisión de cancelación" : "Cancelar reclamo"}
             </button>
           ) : (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
-              <p className="text-[13px] font-semibold text-red-800">¿Seguro que querés cancelar este reclamo?</p>
-              <p className="mt-0.5 text-[12px] text-red-700">Esta acción no se puede deshacer.</p>
+              <p className="text-[13px] font-semibold text-red-800">{cancellation?.requiresReview ? "Solicitar revisión de cancelación" : "¿Seguro que querés cancelar este reclamo?"}</p>
+              <p className="mt-0.5 text-[12px] text-red-700">{cancellation?.requiresReview ? "M2 revisará el motivo y el alcance. El reclamo conserva su estado mientras la solicitud está pendiente." : "Esta acción no se puede deshacer. Si hay duplicados activos, se requerirá una solicitud para revisión."}</p>
+              {cancellation?.requiresReview && <label className="mt-2 block">Código de motivo
+                <select aria-label="Código de motivo" value={cancelReasonCode} disabled={actionLoading} onChange={(event) => setCancelReasonCode(event.target.value)} className="block w-full rounded border p-2">
+                  {CANCELLATION_REASONS.map((reason) => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+                </select>
+              </label>}
               <label className="mt-2.5 block text-[12px] font-medium text-red-800">
-                Contanos por qué (opcional)
+                {cancellation?.requiresReview ? "Motivo de la solicitud (obligatorio)" : "Contanos por qué (opcional)"}
                 <textarea
                   value={cancelComment}
                   onChange={(e) => setCancelComment(e.target.value)}
                   rows={2}
+                  maxLength={4000}
+                  disabled={actionLoading}
                   placeholder="Ej.: ya no es necesario, lo solucioné por mi cuenta…"
                   className="mt-1 w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-[13px] text-neutral-800 outline-none focus:ring-2 focus:ring-red-200"
                 />
@@ -416,11 +438,11 @@ export default function CitizenTicketView({
                 <button
                   type="button"
                   onClick={handleCancelTicket}
-                  disabled={actionLoading}
+                  disabled={actionLoading || cancellation?.unavailable || (cancellation?.requiresReview && !cancelComment.trim())}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {actionLoading ? <Info className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                  Confirmar cancelación
+                  {cancellation?.requiresReview ? "Enviar solicitud de cancelación" : "Confirmar cancelación"}
                 </button>
                 <button
                   type="button"

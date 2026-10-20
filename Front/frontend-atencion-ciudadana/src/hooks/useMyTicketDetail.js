@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   answerTicketInformation,
-  cancelTicket,
   confirmTicketResolution,
   fetchMyTicketDetail,
   fetchMyTickets,
@@ -11,6 +10,7 @@ import {
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
 import { reclassificationErrorMessage } from "../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../constants/ticketActivities";
+import { useCitizenCancellation } from "./useCitizenCancellation";
 
 function buildFallbackHistory(t) {
   if (!t.createdAt) return [];
@@ -38,6 +38,7 @@ export function normalizeTicketDetail(raw, publicId) {
   const t = raw ?? {};
   return {
     id: t.id ?? null,
+    mainTicketId: t.mainTicketId ?? null,
     publicId: String(t.publicId ?? t.id ?? publicId),
     currentStatus: t.currentStatus ?? t.status ?? "REGISTERED",
     summary: t.summary ?? "",
@@ -213,20 +214,15 @@ export function useMyTicketDetail(publicId) {
     [ticket, runAction]
   );
 
-  const requestCancel = useCallback(
-    (comment) => {
-      if (!ticket?.id) return Promise.resolve(false);
-      return runAction(
-        () => cancelTicket(ticket.id, { reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: comment || null }),
-        {
-          newStatus: "CANCELLED",
-          actionType: "CANCELLED",
-          message: comment ? `El vecino canceló el reclamo: "${comment}"` : "El vecino canceló el reclamo.",
-        }
-      );
-    },
-    [ticket, runAction]
-  );
+  const cancellationTicketId = ticket?.id;
+  const refreshCancellationTicket = useCallback(async (confirmed) => {
+    if (confirmed?.currentStatus) setTicket((prev) => ({ ...prev, currentStatus: confirmed.currentStatus, statusChangedAt: confirmed.statusChangedAt }));
+    const data = normalizeTicketDetail(await fetchMyTicketDetail(cancellationTicketId), publicId);
+    setTicket((prev) => prev?.id === cancellationTicketId ? data : prev);
+    return data;
+  }, [cancellationTicketId, publicId]);
+  const cancellation = useCitizenCancellation({ ticket, refreshTicket: refreshCancellationTicket });
+  const requestCancel = cancellation.requestCancel;
 
   const answerInformation = useCallback(
     async (responseMessage, files = [], structured = undefined) => {
@@ -293,5 +289,5 @@ export function useMyTicketDetail(publicId) {
     [confirmResolution, requestReopen, requestCancel, rateAttention, answerInformation]
   );
 
-  return { ticket, loading, error, actions, actionLoading, actionError, reload: load };
+  return { ticket, loading, error, actions, cancellation, actionLoading: actionLoading || cancellation.busy, actionError: cancellation.error || actionError, reload: load };
 }

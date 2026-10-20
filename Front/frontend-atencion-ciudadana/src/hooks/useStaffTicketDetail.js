@@ -6,12 +6,12 @@ export function useStaffTicketDetail(ticketId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ background = false } = {}) => {
     if (!ticketId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!background) setLoading(true);
     setError(null);
     try {
       const data = await fetchStaffTicketDetail(ticketId);

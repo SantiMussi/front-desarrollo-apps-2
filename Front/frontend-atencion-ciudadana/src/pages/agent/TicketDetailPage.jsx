@@ -26,6 +26,7 @@ import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import ReclassificationPanel from "../../components/ticket/ReclassificationPanel";
+import CancellationReviewPanel from "../../components/ticket/CancellationReviewPanel";
 import { useReclassificationProposals } from "../../hooks/useReclassificationProposals";
 import { isOpenProposal } from "../../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
@@ -160,6 +161,7 @@ export default function TicketDetailPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [startWorkLoading, setStartWorkLoading] = useState(false);
   const [reclassificationBusy, setReclassificationBusy] = useState(false);
+  const [cancellationBusy, setCancellationBusy] = useState(false);
   const canManageClassification = ["AGENT", "ADMIN"].includes(user?.role);
   const reclassification = useReclassificationProposals(ticket, canManageClassification);
   const [transitionError, setTransitionError] = useState(null);
@@ -372,7 +374,7 @@ export default function TicketDetailPage() {
   };
 
   const requestTransition = (nextStatus) => {
-    if (reclassificationBusy) return false;
+    if (reclassificationBusy || cancellationBusy) return false;
     if (canManageClassification && ["ROUTED", "PENDING_INFORMATION"].includes(nextStatus)
         && (reclassification.loading || reclassification.error || reclassification.proposals.some(isOpenProposal))) {
       setTransitionError("Revisá y resolvé la propuesta de reclasificación antes de derivar o solicitar información general.");
@@ -424,14 +426,14 @@ export default function TicketDetailPage() {
     return false;
   };
 
-  const handleReasonConfirm = async ({ reasonCode, publicMessage, internalMessage }) => {
+  const handleReasonConfirm = async ({ reasonCode, publicMessage, internalMessage, cancellationScope, decisionReason }) => {
     if (reasonLoading || !reasonDialog) return;
     setReasonLoading(true);
     setReasonError(null);
     try {
       const updated =
         reasonDialog.kind === "cancel"
-          ? await cancelTicket(ticket.id, { reasonCode, publicMessage, internalMessage })
+          ? await cancelTicket(ticket.id, { reasonCode, publicMessage, internalMessage, ...(cancellationScope ? { cancellationScope, decisionReason } : {}) })
           : await (reasonDialog.kind === "return" ? returnTicketToAgent : rejectTicket)(
               ticket.id,
               fields.responsibleAreaId,
@@ -442,6 +444,10 @@ export default function TicketDetailPage() {
       setReasonDialog(null);
     } catch (err) {
       setReasonError(reasonConfirmErrorMessage(err));
+      if (reasonDialog.kind === "cancel" && err.status === 400 && err.message === "Un principal con duplicados exige cancellationScope y decisionReason") {
+        setReasonDialog((prev) => ({ ...prev, cancellationScopeRequired: true }));
+      }
+      if (err.status === 409) await reload({ background: true });
     } finally {
       setReasonLoading(false);
     }
@@ -806,6 +812,10 @@ export default function TicketDetailPage() {
               proposals={reclassification.proposals} loading={reclassification.loading} error={reclassification.error}
               onRefresh={refreshClassification} onBusyChange={setReclassificationBusy} />
           </DetailCard>}
+          {canManageClassification && <DetailCard title="Cancelaciones y revisión administrativa">
+            <CancellationReviewPanel key={ticket.id} ticket={ticket} readOnly={isOwnTicket || reclassificationBusy}
+              onRefresh={() => reload({ background: true })} onBusyChange={setCancellationBusy} />
+          </DetailCard>}
           <DetailCard title="Adjuntos" icon={Paperclip}>
             <AttachmentGallery
               title=""
@@ -864,6 +874,7 @@ export default function TicketDetailPage() {
         <TicketReasonDialog
           ticketPublicId={ticket.publicId}
           {...REASON_DIALOG_CONFIG[reasonDialog.kind]}
+          cancellationScopeRequired={reasonDialog.cancellationScopeRequired}
           loading={reasonLoading}
           error={reasonError}
           onCancel={() => setReasonDialog(null)}

@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import {
   trackTicket,
-  cancelAnonymousTicket,
   confirmAnonymousResolution,
   reopenAnonymousTicket,
   answerAnonymousInformation,
@@ -13,6 +12,7 @@ import {
 import { reclassificationErrorMessage } from "../utils/reclassification";
 import { normalizeTicketDetail } from "./useMyTicketDetail";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
+import { useCitizenCancellation } from "./useCitizenCancellation";
 
 function messageForAccreditationError(err) {
   if (err?.status === 401) return "La contraseña ingresada no es correcta.";
@@ -105,19 +105,15 @@ export function useAnonymousTicketAccess(trackingCode) {
     [password, trackingCode, runAction]
   );
 
-  const requestCancel = useCallback(
-    (comment) => {
-      if (!password) return Promise.resolve(false);
-      return runAction(
-        () => cancelAnonymousTicket(trackingCode, { ticketPassword: password, reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: comment || null }),
-        {
-          newStatus: "CANCELLED",
-          message: comment ? `Cancelaste el reclamo: "${comment}"` : "Cancelaste el reclamo.",
-        }
-      );
-    },
-    [password, trackingCode, runAction]
-  );
+  const refreshCancellationTicket = useCallback(async (confirmed) => {
+    if (confirmed?.currentStatus) setTicket((prev) => ({ ...prev, currentStatus: confirmed.currentStatus, statusChangedAt: confirmed.statusChangedAt }));
+    const raw = await trackTicket(trackingCode, password);
+    const data = normalizeTicketDetail(raw, raw.publicId);
+    setTicket((prev) => prev?.publicId === data.publicId ? data : prev);
+    return data;
+  }, [trackingCode, password]);
+  const cancellation = useCitizenCancellation({ ticket, refreshTicket: refreshCancellationTicket, trackingCode, password });
+  const requestCancel = cancellation.requestCancel;
 
   const answerInformation = useCallback(
     async (responseMessage, files = [], structured = undefined) => {
@@ -229,8 +225,9 @@ export function useAnonymousTicketAccess(trackingCode) {
     accreditError,
     accredit,
     actions,
-    actionLoading,
-    actionError,
+    cancellation,
+    actionLoading: actionLoading || cancellation.busy,
+    actionError: cancellation.error || actionError,
     attachments,
     sendMessage,
     messageForError: messageForAnonymousActionError,

@@ -9,7 +9,7 @@ import { uploadTicketAttachment, downloadTicketAttachment } from "../../services
 export default function MisReclamoDetailPage() {
   const { publicId } = useParams();
   const { user } = useAuth();
-  const { ticket, loading, error, actions, actionLoading, actionError } =
+  const { ticket, loading, error, actions, actionLoading, actionError, cancellation } =
     useMyTicketDetail(publicId);
   const chatMessages = useTicketMessages(ticket?.id);
 
@@ -44,6 +44,7 @@ export default function MisReclamoDetailPage() {
       backTo="/mis-reclamos"
       backLabel="Mis Reclamos"
       actions={actions}
+      cancellation={cancellation}
       actionLoading={actionLoading}
       actionError={actionError}
       attachments={{

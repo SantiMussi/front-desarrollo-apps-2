@@ -540,11 +540,51 @@ export async function routeTicket(ticketId) {
   return request(`/tickets/${encodeURIComponent(ticketId)}/route`, { method: "POST" });
 }
 
-export async function cancelTicket(ticketId, { reasonCode, publicMessage, internalMessage }) {
+export async function cancelTicket(ticketId, { reasonCode, publicMessage, internalMessage, cancellationScope, decisionReason }) {
   return request(`/tickets/${encodeURIComponent(ticketId)}/cancel`, {
     method: "POST",
-    body: JSON.stringify({ reasonCode, publicMessage: publicMessage || null, internalMessage: internalMessage || null }),
+    body: JSON.stringify({ reasonCode, publicMessage: publicMessage || null, internalMessage: internalMessage || null, ...(cancellationScope ? { cancellationScope, decisionReason } : {}) }),
   });
+}
+
+export function createCancellationRequest(ticketId, payload) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/cancellation-requests`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function fetchCancellationRequests(ticketId) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}/cancellation-requests`);
+}
+
+export function createAnonymousCancellationRequest(trackingCode, anonymousAccessPassword, payload) {
+  return request("/tracking/actions/cancellation-requests", {
+    method: "POST", cache: "no-store", body: JSON.stringify({ trackingCode, anonymousAccessPassword, payload }),
+  });
+}
+
+export function fetchAnonymousCancellationRequests(trackingCode, anonymousAccessPassword) {
+  return request("/tracking/actions/cancellation-requests/history", {
+    method: "POST", cache: "no-store", body: JSON.stringify({ trackingCode, anonymousAccessPassword }),
+  });
+}
+
+const cancellationStaffPath = (ticketId) => `/staff/tickets/${encodeURIComponent(ticketId)}`;
+export function fetchStaffCancellationRequests(ticketId) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-requests`);
+}
+export function fetchStaffCancellationRequest(ticketId, requestId) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-requests/${encodeURIComponent(requestId)}`);
+}
+export function approveCancellationRequest(ticketId, requestId, payload) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-requests/${encodeURIComponent(requestId)}/approve`, { method: "POST", body: JSON.stringify(payload) });
+}
+export function rejectCancellationRequest(ticketId, requestId, payload) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-requests/${encodeURIComponent(requestId)}/reject`, { method: "POST", body: JSON.stringify(payload) });
+}
+export function fetchCancellationConflicts(ticketId) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-conflicts`);
+}
+export function resolveCancellationConflict(ticketId, conflictId, payload) {
+  return request(`${cancellationStaffPath(ticketId)}/cancellation-conflicts/${encodeURIComponent(conflictId)}/resolve`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function linkTicketDuplicate(ticketId, { mainTicketId }) {

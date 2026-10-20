@@ -15,6 +15,8 @@ vi.mock("../../hooks/useResolveTicket", () => ({ useResolveTicket: vi.fn() }));
 vi.mock("../../hooks/useRequestTicketInformation", () => ({ useRequestTicketInformation: vi.fn() }));
 vi.mock("../../hooks/useRequestTypesCatalog", () => ({ useRequestTypesCatalog: vi.fn() }));
 vi.mock("../../services/apiClient", () => ({
+  fetchStaffCancellationRequests: vi.fn().mockResolvedValue([]),
+  fetchCancellationConflicts: vi.fn().mockResolvedValue([]),
   reviewTicket: vi.fn(),
   updateTicketClassification: vi.fn(),
   fetchReclassificationProposals: vi.fn(),
@@ -549,6 +551,27 @@ describe("TicketDetailPage - transiciones de estado", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar cancelación" }));
     await act(async () => {});
     expect(api.cancelTicket).toHaveBeenCalledWith(5, { reasonCode: "OTHER", publicMessage: "Duplicado real", internalMessage: "" });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("solicita alcance explícito cuando backend exige cancelar familia", async () => {
+    api.cancelTicket.mockRejectedValueOnce(httpError(400, "Un principal con duplicados exige cancellationScope y decisionReason")).mockResolvedValueOnce({ currentStatus: "CANCELLED" });
+    await renderPage();
+    await pickTransition("Registrado", "Cancelar ticket");
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByText("Seleccioná un motivo…"));
+    fireEvent.click(screen.getByRole("option", { name: "Otro" }));
+    fireEvent.change(within(dialog).getByPlaceholderText(/Explicá brevemente/), { target: { value: "Se retira el principal" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar cancelación" }));
+    await screen.findByLabelText("Alcance de cancelación");
+    expect(screen.getByLabelText("Alcance de cancelación")).toHaveValue("");
+    expect(within(dialog).getByPlaceholderText(/Explicá brevemente/)).toHaveValue("Se retira el principal");
+    fireEvent.change(screen.getByLabelText("Alcance de cancelación"), { target: { value: "PRINCIPAL_ONLY" } });
+    fireEvent.change(screen.getByLabelText("Justificación de alcance"), { target: { value: "Continúa la gestión de los duplicados" } });
+    fireEvent.click(within(dialog).getByRole("checkbox"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar cancelación" }));
+    await act(async () => {});
+    expect(api.cancelTicket).toHaveBeenLastCalledWith(5, { reasonCode: "OTHER", publicMessage: "Se retira el principal", internalMessage: "", cancellationScope: "PRINCIPAL_ONLY", decisionReason: "Continúa la gestión de los duplicados" });
     expect(reload).toHaveBeenCalled();
   });
 

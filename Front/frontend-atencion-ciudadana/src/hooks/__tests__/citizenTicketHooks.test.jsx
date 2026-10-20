@@ -5,6 +5,8 @@ import { useAnonymousTicketAccess } from "../useAnonymousTicketAccess";
 import * as api from "../../services/apiClient";
 
 vi.mock("../../services/apiClient", () => ({
+  fetchCancellationRequests: vi.fn().mockResolvedValue([]),
+  fetchAnonymousCancellationRequests: vi.fn().mockResolvedValue([]),
   answerTicketInformation: vi.fn(),
   cancelTicket: vi.fn(),
   confirmTicketResolution: vi.fn(),
@@ -185,7 +187,7 @@ describe("useMyTicketDetail", () => {
     expect(result.current.ticket.history.at(-1)).toMatchObject({ actionType: "CLOSED" });
   });
 
-  it("reabre con motivo y cancela con o sin comentario", async () => {
+  it("reabre con motivo y no permite cancelar fuera de REGISTERED", async () => {
     const { result } = await setup();
     api.reopenTicket.mockResolvedValue({});
     api.cancelTicket.mockResolvedValue({});
@@ -197,14 +199,12 @@ describe("useMyTicketDetail", () => {
     await act(async () => {
       await result.current.actions.requestCancel("Ya no lo necesito");
     });
-    expect(api.cancelTicket).toHaveBeenCalledWith(10, { reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: "Ya no lo necesito" });
-    expect(result.current.ticket.currentStatus).toBe("CANCELLED");
-    expect(result.current.ticket.history.at(-1).message).toContain("Ya no lo necesito");
+    expect(api.cancelTicket).not.toHaveBeenCalled();
+    expect(result.current.ticket.currentStatus).toBe("IN_PROGRESS");
     await act(async () => {
       await result.current.actions.requestCancel();
     });
-    expect(api.cancelTicket).toHaveBeenLastCalledWith(10, { reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: null });
-    expect(result.current.ticket.history.at(-1).message).toBe("El vecino canceló el reclamo.");
+    expect(api.cancelTicket).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -375,7 +375,7 @@ describe("useAnonymousTicketAccess", () => {
     await expect(result.current.sendMessage("hola")).rejects.toThrow(/falta acreditar/);
   });
 
-  it("confirma, reabre y cancela con la contraseña", async () => {
+  it("confirma, reabre y bloquea cancelación fuera de REGISTERED", async () => {
     const { result } = await setup();
     api.confirmAnonymousResolution.mockResolvedValue({});
     api.reopenAnonymousTicket.mockResolvedValue({});
@@ -393,12 +393,11 @@ describe("useAnonymousTicketAccess", () => {
     await act(async () => {
       await result.current.actions.requestCancel("Ya no");
     });
-    expect(api.cancelAnonymousTicket).toHaveBeenCalledWith("ABC", { ticketPassword: "pw", reasonCode: "WITHDRAWN_BY_CITIZEN", publicMessage: "Ya no" });
-    expect(result.current.ticket.history.at(-1).message).toContain("Ya no");
+    expect(api.cancelAnonymousTicket).not.toHaveBeenCalled();
     await act(async () => {
       await result.current.actions.requestCancel();
     });
-    expect(result.current.ticket.history.at(-1).message).toBe("Cancelaste el reclamo.");
+    expect(result.current.ticket.currentStatus).toBe("IN_PROGRESS");
   });
 
   it.each([

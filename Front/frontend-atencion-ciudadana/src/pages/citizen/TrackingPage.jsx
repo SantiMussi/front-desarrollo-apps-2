@@ -134,6 +134,7 @@ export default function TrackingPage() {
         <CitizenTicketView
           ticket={anon.ticket}
           actions={anon.actions}
+          cancellation={anon.cancellation}
           actionLoading={anon.actionLoading}
           actionError={anon.actionError}
           attachments={anon.attachments}

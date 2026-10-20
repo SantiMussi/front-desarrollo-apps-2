@@ -5,8 +5,12 @@ import { normalizeTicketDetail, useMyTicketDetail } from "../useMyTicketDetail";
 import { useAnonymousTicketAccess } from "../useAnonymousTicketAccess";
 import * as api from "../../services/apiClient";
 
-vi.mock("../../services/apiClient", () => ({ fetchReclassificationProposals: vi.fn(), fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), answerTicketInformation: vi.fn(), trackTicket: vi.fn(), answerAnonymousInformation: vi.fn() }));
-beforeEach(() => vi.resetAllMocks());
+vi.mock("../../services/apiClient", () => ({ fetchCancellationRequests: vi.fn().mockResolvedValue([]), fetchAnonymousCancellationRequests: vi.fn().mockResolvedValue([]), fetchReclassificationProposals: vi.fn(), fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), answerTicketInformation: vi.fn(), trackTicket: vi.fn(), answerAnonymousInformation: vi.fn() }));
+beforeEach(() => {
+  vi.resetAllMocks();
+  api.fetchCancellationRequests.mockResolvedValue([]);
+  api.fetchAnonymousCancellationRequests.mockResolvedValue([]);
+});
 const pending = { id: "ticket", publicId: "TK-1", currentStatus: "PENDING_INFORMATION", pendingInformationRequest: { purpose: "RECLASSIFICATION", requestedAt: "2026-10-20", reclassification: { fields: [], missingFields: [], availableAnswers: {} } } };
 
 it("carga historial, refresca y conserva errores sin habilitar acciones", async () => {

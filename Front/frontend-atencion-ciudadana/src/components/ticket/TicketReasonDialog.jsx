@@ -19,11 +19,15 @@ export default function TicketReasonDialog({
   error,
   onCancel,
   onConfirm,
+  cancellationScopeRequired = false,
 }) {
   const titleId = useId();
   const [reasonCode, setReasonCode] = useState("");
   const [publicMessage, setPublicMessage] = useState("");
   const [internalMessage, setInternalMessage] = useState("");
+  const [cancellationScope, setCancellationScope] = useState("");
+  const [decisionReason, setDecisionReason] = useState("");
+  const [scopeConfirmed, setScopeConfirmed] = useState(false);
 
   useEffect(() => {
     const onEsc = (e) => e.key === "Escape" && !loading && onCancel();
@@ -35,8 +39,9 @@ export default function TicketReasonDialog({
     () =>
       !loading &&
       reasonCode.trim().length > 0 &&
-      (publicMessage.trim().length > 0 || internalMessage.trim().length > 0),
-    [loading, reasonCode, publicMessage, internalMessage]
+      (publicMessage.trim().length > 0 || internalMessage.trim().length > 0) &&
+      (!cancellationScopeRequired || (cancellationScope && decisionReason.trim() && scopeConfirmed)),
+    [loading, reasonCode, publicMessage, internalMessage, cancellationScopeRequired, cancellationScope, decisionReason, scopeConfirmed]
   );
 
   return (
@@ -45,7 +50,7 @@ export default function TicketReasonDialog({
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && !loading && onCancel()}
     >
-      <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex items-start justify-between border-b border-slate-200 px-5 py-3.5">
           <div>
             <p className={`text-[11px] font-semibold uppercase tracking-wider ${danger ? "text-[#D63031]" : "text-[#0F2C59]"}`}>
@@ -121,6 +126,14 @@ export default function TicketReasonDialog({
             />
           </label>
 
+          {cancellationScopeRequired && <div className="mt-3 space-y-2 text-xs">
+            <label className="block">Alcance de cancelación<select aria-label="Alcance de cancelación" value={cancellationScope} disabled={loading} onChange={(event) => { setCancellationScope(event.target.value); setScopeConfirmed(false); }} className={CONTROL}>
+              <option value="">Seleccionar…</option><option value="GLOBAL">GLOBAL</option><option value="PRINCIPAL_ONLY">PRINCIPAL_ONLY</option>
+            </select></label>
+            <p>GLOBAL cancela el principal y todos los duplicados activos. PRINCIPAL_ONLY cancela sólo el principal, promueve el duplicado activo más antiguo a IN_REVIEW y vincula los restantes al nuevo principal.</p>
+            <label className="block">Justificación de alcance<textarea value={decisionReason} maxLength={4000} disabled={loading} onChange={(event) => setDecisionReason(event.target.value)} className={CONTROL} /></label>
+            <label><input type="checkbox" checked={scopeConfirmed} disabled={loading || !cancellationScope} onChange={(event) => setScopeConfirmed(event.target.checked)} /> Confirmo las consecuencias del alcance elegido.</label>
+          </div>}
           {error && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-700">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -145,6 +158,7 @@ export default function TicketReasonDialog({
                 reasonCode: reasonCode.trim(),
                 publicMessage: publicMessage.trim(),
                 internalMessage: internalMessage.trim(),
+                ...(cancellationScopeRequired ? { cancellationScope, decisionReason: decisionReason.trim() } : {}),
               })
             }
             disabled={!canConfirm}
