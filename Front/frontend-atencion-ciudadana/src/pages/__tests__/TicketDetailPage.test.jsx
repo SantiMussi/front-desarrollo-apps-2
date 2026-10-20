@@ -17,6 +17,11 @@ vi.mock("../../hooks/useRequestTypesCatalog", () => ({ useRequestTypesCatalog: v
 vi.mock("../../services/apiClient", () => ({
   reviewTicket: vi.fn(),
   updateTicketClassification: vi.fn(),
+  fetchReclassificationProposals: vi.fn(),
+  proposeTicketReclassification: vi.fn(),
+  fetchReclassificationProposal: vi.fn(),
+  confirmReclassificationProposal: vi.fn(),
+  abandonReclassificationProposal: vi.fn(),
   routeTicket: vi.fn(),
   startTicketWork: vi.fn(),
   returnTicketToAgent: vi.fn(),
@@ -102,6 +107,7 @@ beforeEach(() => {
       { id: 2, code: "POD", name: "Poda" },
     ],
   });
+  api.fetchReclassificationProposals.mockResolvedValue([]);
   api.fetchMyTicketDetail.mockRejectedValue(httpError(403));
   api.fetchStaffTicketDetail.mockResolvedValue({ publicId: "TK-MAIN" });
   api.fetchDuplicateCandidates.mockResolvedValue([
@@ -272,7 +278,7 @@ describe("TicketDetailPage - propiedad del ticket (solo lectura)", () => {
     await renderPage();
     expect(await screen.findByText(/Este ticket es tuyo/)).toBeInTheDocument();
     expect(screen.getByText("Registrado", { selector: "span.rounded-md" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Tipo de solicitud")).toBeDisabled();
+    expect(screen.queryByLabelText("Nuevo tipo propuesto")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Prioridad")).toBeDisabled();
     expect(screen.getByTestId("labels")).toHaveAttribute("data-readonly", "true");
     expect(screen.queryByText("Adjuntar archivo")).not.toBeInTheDocument();
@@ -791,67 +797,46 @@ describe("TicketDetailPage - resolución", () => {
 });
 
 describe("TicketDetailPage - clasificación, prioridad y adjuntos", () => {
-  const classificationSelect = () => screen.getByLabelText("Tipo de solicitud");
-
-  it("permite corregir la clasificación durante la revisión inicial", async () => {
+  it("crea propuesta sin alterar la clasificación ni usar PATCH", async () => {
     setTicket({ currentStatus: "IN_REVIEW" });
-    api.updateTicketClassification.mockResolvedValue({ responsibleAreaId: "M3", currentPriority: "LOW", estimatedAffectedCount: 4 });
+    api.proposeTicketReclassification.mockResolvedValue({ id: 1, status: "WAITING_INFORMATION" });
     await renderPage();
-    expect(classificationSelect()).toBeEnabled();
-    fireEvent.click(classificationSelect());
-    fireEvent.click(screen.getByRole("option", { name: "Poda" }));
+    fireEvent.change(screen.getByLabelText("Nuevo tipo propuesto"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Proponer reclasificación" }));
     await act(async () => {});
-    expect(api.updateTicketClassification).toHaveBeenCalledWith(5, 2);
-    expect(reload).toHaveBeenCalled();
-    expect(screen.getByText("4")).toBeInTheDocument();
-  });
-
-  it("usa 0 afectados si la clasificación no informa una estimación", async () => {
-    setTicket({ currentStatus: "IN_REVIEW", estimatedAffectedCount: undefined });
-    api.updateTicketClassification.mockResolvedValue({ responsibleAreaId: "M3", currentPriority: "LOW" });
-    await renderPage();
-    expect(screen.getByText("0 personas afectadas")).toBeInTheDocument();
-    fireEvent.click(classificationSelect());
-    fireEvent.click(screen.getByRole("option", { name: "Poda" }));
-    await act(async () => {});
-    expect(screen.getByText("0 personas afectadas")).toBeInTheDocument();
-  });
-
-  it.each([
-    [httpError(409, "Conflicto"), "Conflicto"],
-    [httpError(400, ""), /no es válido/],
-    [httpError(404), "No encontramos el ticket."],
-    [httpError(401), /sesión no es válida/],
-    [httpError(500, "Rota"), "Rota"],
-    [{}, /No pudimos corregir la clasificación/],
-  ])("traduce el error de clasificación %#", async (error, expected) => {
-    setTicket({ currentStatus: "IN_REVIEW" });
-    api.updateTicketClassification.mockRejectedValue(error);
-    await renderPage();
-    fireEvent.click(classificationSelect());
-    fireEvent.click(screen.getByRole("option", { name: "Poda" }));
-    await act(async () => {});
-    expect(screen.getByText(expected)).toBeInTheDocument();
-  });
-
-  it("ignora la selección vacía (el tipo actual) sin llamar al backend", async () => {
-    setTicket({ currentStatus: "IN_REVIEW", requestTypeCode: "SIN_CATALOGO", requestTypeName: "" });
-    await renderPage();
-    fireEvent.click(classificationSelect());
-    fireEvent.click(screen.getByRole("option", { name: "—" }));
-    await act(async () => {});
+    expect(api.proposeTicketReclassification).toHaveBeenCalledWith(5, { requestTypeId: 2 });
     expect(api.updateTicketClassification).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Tipo de solicitud")).toHaveTextContent("Luminaria");
+    expect(reload).toHaveBeenCalled();
   });
 
-  it.each([
-    [{ currentStatus: "REGISTERED" }, /revisión inicial/],
-    [{ currentStatus: "ROUTED" }, /No se puede reclasificar en este estado/],
-    [{ currentStatus: "IN_REVIEW", classificationFinalizedAt: "2026-03-12T12:00:00Z" }, /fijada una vez que el ticket fue derivado/],
-  ])("bloquea la clasificación %j", async (overrides, message) => {
-    setTicket(overrides);
+  it.each(["REGISTERED", "ROUTED", "IN_PROGRESS"])("no propone en %s", async (currentStatus) => {
+    setTicket({ currentStatus });
     await renderPage();
-    expect(classificationSelect()).toBeDisabled();
-    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nuevo tipo propuesto")).not.toBeInTheDocument();
+  });
+
+  it.each(["AGENT", "ADMIN"])("permite excepción visible para %s y delega validación al backend", async (role) => {
+    setTicket({ currentStatus: "IN_REVIEW", classificationFinalizedAt: "2026-03-12", ticketActivities: [{ actionType: "RETURNED_BY_AREA", reasonCode: "REQUEST_TYPE_MISMATCH", newStatus: "IN_REVIEW" }] });
+    await renderPage(authFor({ ...AGENT, role }));
+    expect(screen.getByLabelText("Nuevo tipo propuesto")).toBeEnabled();
+  });
+
+  it("bloquea a AREA_RESPONSIBLE y no consulta historial administrativo", async () => {
+    setTicket({ currentStatus: "IN_REVIEW" });
+    await renderPage(authFor({ ...AGENT, role: "AREA_RESPONSIBLE" }));
+    expect(screen.queryByLabelText("Reclasificación")).not.toBeInTheDocument();
+    expect(api.fetchReclassificationProposals).not.toHaveBeenCalled();
+  });
+
+  it("bloquea derivación ordinaria si hay propuesta abierta", async () => {
+    setTicket({ currentStatus: "IN_REVIEW" });
+    api.fetchReclassificationProposals.mockResolvedValue([{ id: 3, requestTypeId: 2, status: "READY" }]);
+    await renderPage();
+    openMenu("En revisión");
+    fireEvent.click(screen.getByRole("menuitem", { name: /Derivar al área/ }));
+    expect(screen.getByText(/Revisá y resolvé la propuesta/)).toBeInTheDocument();
+    expect(api.routeTicket).not.toHaveBeenCalled();
   });
 
   it("cambia la prioridad localmente", async () => {

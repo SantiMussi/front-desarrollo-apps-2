@@ -2,6 +2,8 @@ export const ACTIVITY_TYPE_LABELS = {
   TICKET_CREATED: "Ticket creado",
   REVIEW_STARTED: "Análisis iniciado",
   STATE_CHANGED: "Estado actualizado",
+  RECLASSIFICATION_PROPOSED: "Reclasificación propuesta",
+  RECLASSIFICATION_ABANDONED: "Propuesta de reclasificación abandonada",
   REQUEST_TYPE_CHANGED: "Clasificación corregida",
   ROUTED: "Derivado al área",
   RETURNED_BY_AREA: "Devuelto por el área",

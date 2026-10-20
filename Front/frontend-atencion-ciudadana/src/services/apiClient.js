@@ -190,12 +190,13 @@ export async function reopenTicket(ticketId, { reason }) {
   });
 }
 
-export async function answerTicketInformation(ticketId, { responseMessage, attachments = [] }) {
+export async function answerTicketInformation(ticketId, { responseMessage, formData: answers, location, attachments = [] }) {
+  const payload = { responseMessage, ...(answers !== undefined ? { formData: answers } : {}), ...(location !== undefined ? { location } : {}) };
   if (attachments.length > 0) {
     const formData = new FormData();
     formData.append(
       "data",
-      new Blob([JSON.stringify({ responseMessage: responseMessage || null })], { type: "application/json" })
+      new Blob([JSON.stringify({ ...payload, responseMessage: responseMessage || null })], { type: "application/json" })
     );
     attachments.forEach((file) => formData.append("attachments", file));
     return postMultipart(
@@ -206,7 +207,7 @@ export async function answerTicketInformation(ticketId, { responseMessage, attac
   }
   return request(`/tickets/${encodeURIComponent(ticketId)}/information-response`, {
     method: "POST",
-    body: JSON.stringify({ responseMessage }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -262,7 +263,8 @@ export async function sendAnonymousMessage(trackingCode, { ticketPassword, text 
   });
 }
 
-export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage, attachments = [] }) {
+export async function answerAnonymousInformation(trackingCode, { ticketPassword, responseMessage, formData: answers, location, attachments = [] }) {
+  const payload = { responseMessage, ...(answers !== undefined ? { formData: answers } : {}), ...(location !== undefined ? { location } : {}) };
   if (attachments.length > 0) {
     const formData = new FormData();
     formData.append(
@@ -272,7 +274,7 @@ export async function answerAnonymousInformation(trackingCode, { ticketPassword,
           JSON.stringify({
             trackingCode,
             anonymousAccessPassword: ticketPassword,
-            payload: { responseMessage: responseMessage || null },
+            payload: { ...payload, responseMessage: responseMessage || null },
           }),
         ],
         { type: "application/json" }
@@ -283,7 +285,7 @@ export async function answerAnonymousInformation(trackingCode, { ticketPassword,
   }
   return request("/tracking/actions/information-response", {
     method: "POST",
-    body: JSON.stringify({ trackingCode, anonymousAccessPassword: ticketPassword, payload: { responseMessage } }),
+    body: JSON.stringify({ trackingCode, anonymousAccessPassword: ticketPassword, payload }),
   });
 }
 
@@ -425,6 +427,28 @@ export async function updateTicketClassification(ticketId, requestTypeId) {
     method: "PATCH",
     body: JSON.stringify({ requestTypeId }),
   });
+}
+
+const proposalPath = (ticketId) => `/staff/tickets/${encodeURIComponent(ticketId)}/reclassification-proposals`;
+
+export async function proposeTicketReclassification(ticketId, payload) {
+  return request(proposalPath(ticketId), { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchReclassificationProposals(ticketId) {
+  return request(proposalPath(ticketId));
+}
+
+export async function fetchReclassificationProposal(ticketId, proposalId) {
+  return request(`${proposalPath(ticketId)}/${encodeURIComponent(proposalId)}`);
+}
+
+export async function confirmReclassificationProposal(ticketId, proposalId) {
+  return request(`${proposalPath(ticketId)}/${encodeURIComponent(proposalId)}/confirm`, { method: "POST" });
+}
+
+export async function abandonReclassificationProposal(ticketId, proposalId, reason) {
+  return request(`${proposalPath(ticketId)}/${encodeURIComponent(proposalId)}/abandon`, { method: "POST", body: JSON.stringify({ reason }) });
 }
 
 export async function reviewTicket(ticketId) {

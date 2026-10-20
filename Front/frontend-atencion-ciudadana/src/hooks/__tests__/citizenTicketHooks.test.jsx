@@ -101,7 +101,7 @@ describe("normalizeTicketDetail", () => {
       { pendingInformationRequest: { status: "OPEN", messageForCitizen: "m", requestedAt: "r", dueAt: "d", attachments: [{ id: 1 }] } },
       "x"
     );
-    expect(ticket.pendingInformationRequest).toEqual({ status: "OPEN", messageForCitizen: "m", requestedAt: "r", dueAt: "d", attachments: [{ id: 1 }] });
+    expect(ticket.pendingInformationRequest).toEqual({ status: "OPEN", purpose: "GENERAL", reclassification: null, messageForCitizen: "m", requestedAt: "r", dueAt: "d", attachments: [{ id: 1 }] });
     expect(normalizeTicketDetail({ pendingInformationRequest: { status: "OPEN" } }, "x").pendingInformationRequest.attachments).toEqual([]);
   });
 
@@ -282,7 +282,7 @@ describe("useMyTicketDetail", () => {
       ok = await result.current.actions.answerInformation("tarde");
     });
     expect(ok).toBe(false);
-    expect(result.current.actionError).toBe("El plazo para responder venció.");
+    expect(result.current.actionError).toMatch(/El plazo para responder venció/);
   });
 
   it("califica la atención sólo si el ticket está cerrado", async () => {

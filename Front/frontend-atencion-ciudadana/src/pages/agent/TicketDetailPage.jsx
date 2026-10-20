@@ -21,10 +21,13 @@ import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
 import { useAuth } from "../../context/useAuth";
-import { reviewTicket, updateTicketClassification, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTicketDetail } from "../../services/apiClient";
+import { reviewTicket, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTicketDetail } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
+import ReclassificationPanel from "../../components/ticket/ReclassificationPanel";
+import { useReclassificationProposals } from "../../hooks/useReclassificationProposals";
+import { isOpenProposal } from "../../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
 
 function reviewErrorMessage(err) {
@@ -32,14 +35,6 @@ function reviewErrorMessage(err) {
   if (err?.status === 404) return "No encontramos el ticket.";
   if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
   return err?.message || "No pudimos iniciar el análisis. Intentá de nuevo.";
-}
-
-function classificationErrorMessage(err) {
-  if (err?.status === 409) return err?.message || "El ticket ya no permite corregir la clasificación.";
-  if (err?.status === 400) return err?.message || "Ese tipo de solicitud no es válido.";
-  if (err?.status === 404) return "No encontramos el ticket.";
-  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
-  return err?.message || "No pudimos corregir la clasificación. Intentá de nuevo.";
 }
 
 function reasonConfirmErrorMessage(err) {
@@ -164,7 +159,9 @@ export default function TicketDetailPage() {
   const [infoRequestOpen, setInfoRequestOpen] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [startWorkLoading, setStartWorkLoading] = useState(false);
-  const [classificationLoading, setClassificationLoading] = useState(false);
+  const [reclassificationBusy, setReclassificationBusy] = useState(false);
+  const canManageClassification = ["AGENT", "ADMIN"].includes(user?.role);
+  const reclassification = useReclassificationProposals(ticket, canManageClassification);
   const [transitionError, setTransitionError] = useState(null);
   const [reasonDialog, setReasonDialog] = useState(null);
   const [reasonLoading, setReasonLoading] = useState(false);
@@ -177,9 +174,9 @@ export default function TicketDetailPage() {
   const { requestInformation, loading: infoRequestLoading, error: infoRequestError, reset: resetInfoRequest } = useRequestTicketInformation();
   const [now, setNow] = useState(() => Date.now());
 
-  const [ticketIdForFields, setTicketIdForFields] = useState(null);
-  if (ticket && ticket.id !== ticketIdForFields) {
-    setTicketIdForFields(ticket.id);
+  const [ticketForFields, setTicketForFields] = useState(null);
+  if (ticket && ticket !== ticketForFields) {
+    setTicketForFields(ticket);
     setStatus(ticket.currentStatus);
     setFields({
       responsibleAreaId: ticket.responsibleAreaId,
@@ -355,26 +352,8 @@ export default function TicketDetailPage() {
     }
   };
 
-  const classificationLocked = Boolean(ticket?.classificationFinalizedAt) || status !== "IN_REVIEW";
-
-  const updateClassification = async (requestTypeId) => {
-    if (classificationLoading || !requestTypeId) return;
-    setClassificationLoading(true);
-    setTransitionError(null);
-    try {
-      const updated = await updateTicketClassification(ticket.id, Number(requestTypeId));
-      setFields((current) => ({
-        ...current,
-        responsibleAreaId: updated.responsibleAreaId,
-        priority: updated.currentPriority,
-        affectedCount: updated.estimatedAffectedCount ?? 0,
-      }));
-      reload();
-    } catch (err) {
-      setTransitionError(classificationErrorMessage(err));
-    } finally {
-      setClassificationLoading(false);
-    }
+  const refreshClassification = async () => {
+    await Promise.all([reload(), reclassification.reload()]);
   };
 
   const startWork = async () => {
@@ -393,6 +372,12 @@ export default function TicketDetailPage() {
   };
 
   const requestTransition = (nextStatus) => {
+    if (reclassificationBusy) return false;
+    if (canManageClassification && ["ROUTED", "PENDING_INFORMATION"].includes(nextStatus)
+        && (reclassification.loading || reclassification.error || reclassification.proposals.some(isOpenProposal))) {
+      setTransitionError("Revisá y resolvé la propuesta de reclasificación antes de derivar o solicitar información general.");
+      return false;
+    }
     if (status === "REGISTERED" && nextStatus === "IN_REVIEW") {
       startReview();
       return false;
@@ -544,7 +529,7 @@ export default function TicketDetailPage() {
     setInfoRequestOpen(false);
   };
 
-  if (loading) {
+  if (loading && !ticket) {
     return (
       <div className="flex h-full min-h-[70vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-[#0F2C59]" />
@@ -800,28 +785,8 @@ export default function TicketDetailPage() {
           <DetailCard title="Detalles">
             <dl className="divide-y divide-slate-100">
               <Field label="Tipo de solicitud">
-                <Select
-                  size="xs"
-                  ariaLabel="Tipo de solicitud"
-                  disabled={isOwnTicket || classificationLocked || classificationLoading}
-                  value={requestTypes.find((rt) => rt.code === ticket.requestTypeCode)?.id ?? ""}
-                  onChange={(nextValue) => updateClassification(nextValue)}
-                  options={[
-                    ...(!requestTypes.some((rt) => rt.code === ticket.requestTypeCode)
-                      ? [{ value: "", label: ticket.requestTypeName || "—" }]
-                      : []),
-                    ...requestTypes.map((rt) => ({ value: rt.id, label: rt.name })),
-                  ]}
-                />
-                {classificationLocked && (
-                  <span className="mt-1.5 block text-[10px] font-normal leading-4 text-amber-700">
-                    {ticket.classificationFinalizedAt
-                      ? "La clasificación quedó fijada una vez que el ticket fue derivado."
-                      : status === "REGISTERED"
-                        ? "Solo se puede corregir durante la revisión inicial (después de \"Empezar análisis\")."
-                        : "No se puede reclasificar en este estado."}
-                  </span>
-                )}
+                <span aria-label="Tipo de solicitud">{ticket.requestTypeName || "—"}</span>
+                <span className="mt-1 block text-[10px] text-slate-500">Clasificación actual</span>
               </Field>
               <Field label="Responsable">{data.assignee.name}</Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen} size="sm" />{data.citizen.name}</span></Field>
@@ -836,6 +801,11 @@ export default function TicketDetailPage() {
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>
           </DetailCard>
+          {canManageClassification && <DetailCard title="Propuestas de clasificación">
+            <ReclassificationPanel key={ticket.id} ticket={ticket} requestTypes={requestTypes} readOnly={isOwnTicket}
+              proposals={reclassification.proposals} loading={reclassification.loading} error={reclassification.error}
+              onRefresh={refreshClassification} onBusyChange={setReclassificationBusy} />
+          </DetailCard>}
           <DetailCard title="Adjuntos" icon={Paperclip}>
             <AttachmentGallery
               title=""

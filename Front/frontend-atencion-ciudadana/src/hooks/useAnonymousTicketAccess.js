@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   trackTicket,
   cancelAnonymousTicket,
@@ -10,6 +10,7 @@ import {
   uploadAnonymousAttachment,
   downloadAnonymousAttachment,
 } from "../services/apiClient";
+import { reclassificationErrorMessage } from "../utils/reclassification";
 import { normalizeTicketDetail } from "./useMyTicketDetail";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
 
@@ -33,6 +34,7 @@ export function useAnonymousTicketAccess(trackingCode) {
   const [accrediting, setAccrediting] = useState(false);
   const [accreditError, setAccreditError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const informationInFlight = useRef(false);
   const [actionError, setActionError] = useState(null);
   const [password, setPassword] = useState(null);
 
@@ -42,7 +44,6 @@ export function useAnonymousTicketAccess(trackingCode) {
       setAccreditError(null);
       try {
         const response = await trackTicket(trackingCode, ticketPassword);
-        console.log("[QA] Respuesta cruda de POST /tracking/access (fijate que no trae 'attachments'):", response);
         setTicket(normalizeTicketDetail(response, response.publicId));
         setAccredited(true);
         setPassword(ticketPassword);
@@ -119,8 +120,9 @@ export function useAnonymousTicketAccess(trackingCode) {
   );
 
   const answerInformation = useCallback(
-    async (responseMessage, files = []) => {
-      if (!password || !ticket) return false;
+    async (responseMessage, files = [], structured = undefined) => {
+      if (!password || !ticket || informationInFlight.current) return false;
+      informationInFlight.current = true;
       setActionLoading(true);
       setActionError(null);
       try {
@@ -128,6 +130,7 @@ export function useAnonymousTicketAccess(trackingCode) {
           ticketPassword: password,
           responseMessage,
           attachments: files,
+          ...structured,
         });
         const now = result?.answeredAt || new Date().toISOString();
         setTicket((prev) =>
@@ -149,11 +152,18 @@ export function useAnonymousTicketAccess(trackingCode) {
               }
             : prev
         );
+        if (structured) {
+          try { const raw = await trackTicket(trackingCode, password); setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch { /* Keep the accepted transition visible if refresh fails. */ }
+        }
         return true;
       } catch (err) {
-        setActionError(messageForAnonymousActionError(err));
+        setActionError([409, 410, 422].includes(err.status) ? reclassificationErrorMessage(err) : messageForAnonymousActionError(err));
+        if ([409, 410].includes(err.status)) {
+          try { const raw = await trackTicket(trackingCode, password); setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch { /* Preserve the draft if refresh fails. */ }
+        }
         return false;
       } finally {
+        informationInFlight.current = false;
         setActionLoading(false);
       }
     },

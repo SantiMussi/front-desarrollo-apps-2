@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   answerTicketInformation,
   cancelTicket,
@@ -9,6 +9,7 @@ import {
   reopenTicket,
 } from "../services/apiClient";
 import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticketStatuses";
+import { reclassificationErrorMessage } from "../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../constants/ticketActivities";
 
 function buildFallbackHistory(t) {
@@ -65,6 +66,8 @@ export function normalizeTicketDetail(raw, publicId) {
     pendingInformationRequest: t.pendingInformationRequest
       ? {
           status: t.pendingInformationRequest.status,
+          purpose: t.pendingInformationRequest.purpose ?? "GENERAL",
+          reclassification: t.pendingInformationRequest.reclassification ?? null,
           messageForCitizen: t.pendingInformationRequest.messageForCitizen,
           requestedAt: t.pendingInformationRequest.requestedAt,
           dueAt: t.pendingInformationRequest.dueAt,
@@ -118,6 +121,7 @@ export function useMyTicketDetail(publicId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const informationInFlight = useRef(false);
   const [actionError, setActionError] = useState(null);
 
   const load = useCallback(async () => {
@@ -225,12 +229,13 @@ export function useMyTicketDetail(publicId) {
   );
 
   const answerInformation = useCallback(
-    async (responseMessage, files = []) => {
-      if (!ticket?.id) return false;
+    async (responseMessage, files = [], structured = undefined) => {
+      if (!ticket?.id || informationInFlight.current) return false;
+      informationInFlight.current = true;
       setActionLoading(true);
       setActionError(null);
       try {
-        const result = await answerTicketInformation(ticket.id, { responseMessage, attachments: files });
+        const result = await answerTicketInformation(ticket.id, { responseMessage, attachments: files, ...structured });
         const now = result.answeredAt || new Date().toISOString();
         setTicket((prev) =>
           prev
@@ -246,15 +251,22 @@ export function useMyTicketDetail(publicId) {
             }
             : prev
         );
+        if (structured) {
+          try { setTicket(normalizeTicketDetail(await fetchMyTicketDetail(ticket.id), publicId)); } catch { /* The accepted response remains reflected locally; reload is still available. */ }
+        }
         return true;
       } catch (err) {
-        setActionError(messageForActionError(err));
+        setActionError([409, 410, 422].includes(err.status) ? reclassificationErrorMessage(err) : messageForActionError(err));
+        if ([409, 410].includes(err.status)) {
+          try { setTicket(normalizeTicketDetail(await fetchMyTicketDetail(ticket.id), publicId)); } catch { /* Preserve the draft when refresh is unavailable. */ }
+        }
         return false;
       } finally {
+        informationInFlight.current = false;
         setActionLoading(false);
       }
     },
-    [ticket]
+    [ticket, publicId]
   );
 
   const rateAttention = useCallback(

@@ -28,6 +28,7 @@ import {
   TERMINAL_STATUSES,
 } from "../../constants/ticketStatuses";
 import AttachmentGallery from "../ui/AttachmentGallery";
+import ReclassificationResponseForm from "./ReclassificationResponseForm";
 
 const dateTime = (v) =>
   v
@@ -237,6 +238,7 @@ export default function CitizenTicketView({
   const [infoResponse, setInfoResponse] = useState("");
   const [infoResponseFiles, setInfoResponseFiles] = useState([]);
 
+  const structuredRequest = ticket.pendingInformationRequest?.purpose === "RECLASSIFICATION";
   const isResolved = ticket.currentStatus === "RESOLVED";
   const isPendingInformation = ticket.currentStatus === "PENDING_INFORMATION";
   const messages = chat?.items ?? [];
@@ -380,6 +382,10 @@ export default function CitizenTicketView({
         </div>
         <StatusPill status={ticket.currentStatus} />
       </div>
+
+      {!readOnly && actionError && ["IN_REVIEW", "IN_PROGRESS", "ROUTED", "CANCELLED", "DUPLICATE"].includes(ticket.currentStatus) && (
+        <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
+      )}
 
       {canCancelTicket && (
         <div className="mt-3">
@@ -561,6 +567,12 @@ export default function CitizenTicketView({
           </div>
           {!readOnly && (
             <div className="border-t border-amber-200 bg-white/60 px-5 py-4">
+              {structuredRequest ? (ticket.pendingInformationRequest.reclassification ? <ReclassificationResponseForm
+                key={`${ticket.id}-${ticket.pendingInformationRequest.requestedAt}`}
+                requirements={ticket.pendingInformationRequest.reclassification}
+                dueAt={ticket.pendingInformationRequest.dueAt}
+                loading={actionLoading} error={actionError} onAnswer={actions?.answerInformation}
+              /> : <p role="alert">No pudimos obtener los requisitos de esta solicitud. Volvé a consultar el detalle.</p>) : <>
               <label className="block text-[12.5px] font-medium text-amber-900">
                 Tu respuesta
                 <textarea
@@ -610,6 +622,7 @@ export default function CitizenTicketView({
               {actionError && (
                 <p className="mt-2 text-[12.5px] text-red-700">{actionError}</p>
               )}
+              </>}
             </div>
           )}
         </div>
