@@ -54,6 +54,12 @@ jobs:
         env:
           VITE_API_BASE_URL: /api
 
+      - name: Validate Nginx proxy configuration
+        run: |
+          docker run --rm --network none \
+            -v "$PWD/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.28-alpine nginx -t
+
       - name: Build Frontend container image
         if: github.event_name != 'push' || github.ref != 'refs/heads/dev'
         run: docker build --build-arg VITE_API_BASE_URL=/api --tag frontend-ci:${{ github.sha }} .
