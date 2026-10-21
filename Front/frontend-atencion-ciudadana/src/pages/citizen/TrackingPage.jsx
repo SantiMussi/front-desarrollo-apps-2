@@ -24,7 +24,7 @@ function AccreditationPanel({ onAccredit, accrediting, accreditError }) {
         ¿Sos el dueño de este ticket?
       </p>
       <p className="mt-0.5 text-[12px] text-neutral-500">
-        Ingresá la contraseña del ticket para responder, confirmar la resolución, reabrirlo o calificarlo.
+        Ingresá la contraseña del ticket para responder, confirmar la resolución o reabrirlo.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input

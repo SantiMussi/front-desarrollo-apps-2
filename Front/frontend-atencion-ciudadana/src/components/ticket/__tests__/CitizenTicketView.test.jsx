@@ -263,8 +263,8 @@ describe("CitizenTicketView - información pendiente", () => {
     const actions = makeActions({ answerInformation: vi.fn().mockResolvedValue(false) });
     const { container } = view({ ticket: pending(), actions, actionError: "Falló el envío" });
     const input = container.querySelector('input[type="file"]');
-    const first = new File(["a"], "a.png");
-    const second = new File(["b"], "b.png");
+    const first = new File(["a"], "a.png", { type: "image/png" });
+    const second = new File(["b"], "b.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [] } });
     fireEvent.change(input, { target: { files: [first, second] } });
     expect(screen.getByText("a.png")).toBeInTheDocument();
@@ -346,10 +346,10 @@ describe("CitizenTicketView - ticket cerrado y calificación", () => {
     expect(screen.getByText("Enviando…")).toBeInTheDocument();
   });
 
-  it("no falla al calificar sin actions", () => {
-    view({ ticket: closed() });
-    fireEvent.click(screen.getByLabelText("5 estrellas"));
-    fireEvent.click(screen.getByText("Enviar calificación"));
+  it("oculta encuesta cuando el adaptador no ofrece esa acción", () => {
+    view({ ticket: baseTicket({ currentStatus: "CLOSED" }) });
+    expect(screen.queryByRole("button", { name: "5 estrellas" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Enviar calificación")).not.toBeInTheDocument();
   });
 });
 

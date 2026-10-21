@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../services/apiClient";
 import { cancellationErrorMessage, cancellationReviewRequired } from "../utils/cancellation";
 
-export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, password }) {
+export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, password, onUnauthorized }) {
   const anonymous = trackingCode !== undefined;
   const id = anonymous ? ticket?.publicId : ticket?.id;
   const enabled = Boolean(id && (!anonymous || password));
@@ -26,9 +26,10 @@ export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, pa
       if (!Array.isArray(history)) throw new Error("Invalid cancellation history response");
       if (current === generation.current) setState({ key: id, history, loading: false, error: null });
     } catch (err) {
+      if (current === generation.current && err.status === 401) onUnauthorized?.(err);
       if (current === generation.current) setState((prev) => ({ key: id, history: prev.key === id ? prev.history : [], loading: false, error: cancellationErrorMessage(err) }));
     }
-  }, [enabled, historyCall, id]);
+  }, [enabled, historyCall, id, onUnauthorized]);
 
   useEffect(() => {
     generation.current += 1;
@@ -68,9 +69,10 @@ export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, pa
       return true;
     } catch (err) {
       if (currentGeneration !== generation.current) return false;
+      if (err.status === 401) onUnauthorized?.(err);
       let current = null;
       if (err.status === 409) {
-        try { current = await refreshTicket(); } catch { setNeedsRefresh(true); }
+        try { current = await refreshTicket(); } catch (refreshError) { if (refreshError.status === 401) onUnauthorized?.(refreshError); setNeedsRefresh(true); }
         await loadHistory();
       }
       const review = direct && cancellationReviewRequired(err, current);
@@ -84,7 +86,7 @@ export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, pa
   const reload = async () => {
     setError(null);
     try { await refreshTicket(); await loadHistory(); setNeedsRefresh(false); }
-    catch (err) { setError(cancellationErrorMessage(err)); }
+    catch (err) { if (err.status === 401) onUnauthorized?.(err); setError(cancellationErrorMessage(err)); }
   };
   return { history, pending, requiresReview, loading, busy, error: error || (enabled ? state.error : null),
     unavailable: !enabled || loading || busy || Boolean(state.error) || needsRefresh || pending,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchTicketCitizenView } from "../services/apiClient";
 
 function messageForError(err) {
@@ -11,10 +11,15 @@ function messageForError(err) {
 
 export function useTicketCitizenView(ticketId) {
   const [view, setView] = useState(null);
+  const [loadedId, setLoadedId] = useState(null);
+  const generation = useRef(0);
+  const request = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    const current = ++request.current;
+    const context = generation.current;
     if (!ticketId) {
       setLoading(false);
       return;
@@ -23,12 +28,16 @@ export function useTicketCitizenView(ticketId) {
     setError(null);
     try {
       const data = await fetchTicketCitizenView(ticketId);
+      if (current !== request.current || context !== generation.current) return;
+      setLoadedId(ticketId);
       setView(data);
     } catch (err) {
+      if (current !== request.current || context !== generation.current) return;
+      setLoadedId(ticketId);
       setView(null);
       setError(messageForError(err));
     } finally {
-      setLoading(false);
+      if (current === request.current && context === generation.current) setLoading(false);
     }
   }, [ticketId]);
 
@@ -39,8 +48,9 @@ export function useTicketCitizenView(ticketId) {
     })();
     return () => {
       cancelled = true;
+      generation.current += 1;
     };
   }, [load]);
 
-  return { view, loading, error, reload: load };
+  return { view: loadedId === ticketId ? view : null, loading: Boolean(ticketId) && (loadedId !== ticketId || loading), error: loadedId === ticketId ? error : null, reload: load };
 }

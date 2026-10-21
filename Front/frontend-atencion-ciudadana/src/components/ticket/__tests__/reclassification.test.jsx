@@ -171,7 +171,7 @@ describe("formulario ciudadano versionado", () => {
     expect(screen.queryByText("foto.png")).not.toBeInTheDocument();
   });
   it("no pierde archivos ante error y permite quitarlos", async () => {
-    const file = new File(["evidencia"], "foto.png");
+    const file = new File(["evidencia"], "foto.png", { type: "image/png" });
     const { props } = responseForm({ onAnswer: vi.fn().mockResolvedValue(false) });
     fireEvent.change(screen.getByLabelText("Adjuntar evidencia (opcional)"), { target: { files: [file] } });
     send(); await waitFor(() => expect(props.onAnswer).toHaveBeenCalledOnce());

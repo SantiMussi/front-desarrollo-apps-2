@@ -113,7 +113,6 @@ const REQUESTS = [
     "/api/tracking/actions/information-response",
     { trackingCode: "ABC", anonymousAccessPassword: "pw", payload: { responseMessage: "r" } },
   ],
-  ["rateAnonymousTicketAttention", ["A B", { ticketPassword: "pw", stars: 5 }], "POST", "/api/tracking/A%20B/rating", { ticketPassword: "pw", stars: 5 }],
   ["fetchNeighborhoods", [], undefined, "/api/catalog/neighborhoods"],
   ["fetchStaffTicketDetail", [1], undefined, "/api/staff/tickets/1"],
   ["fetchTicketCitizenView", [1], undefined, "/api/staff/tickets/1/citizen-view"],

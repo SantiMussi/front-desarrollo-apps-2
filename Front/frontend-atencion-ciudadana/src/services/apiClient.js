@@ -289,13 +289,6 @@ export async function answerAnonymousInformation(trackingCode, { ticketPassword,
   });
 }
 
-// No existe un endpoint de encuesta de satisfacción para tickets anónimos.
-export async function rateAnonymousTicketAttention(trackingCode, { ticketPassword, stars }) {
-  return request(`/tracking/${encodeURIComponent(trackingCode)}/rating`, {
-    method: "POST",
-    body: JSON.stringify({ ticketPassword, stars }),
-  });
-}
 
 export async function fetchNeighborhoods() {
   return request("/catalog/neighborhoods");

@@ -67,9 +67,23 @@ describe("AttachmentGallery", () => {
     const uploadFile = vi.fn(() => new Promise((resolve) => (finish = resolve)));
     const { container } = render(<AttachmentGallery items={[]} canUpload uploadFile={uploadFile} />);
     selectFile(container.querySelector('input[type="file"]'), [file()]);
+    selectFile(container.querySelector('input[type="file"]'), [file()]);
     expect(await screen.findByText("Subiendo…")).toBeInTheDocument();
+    expect(uploadFile).toHaveBeenCalledTimes(1);
     await act(async () => finish({ id: 1, fileName: "ok.png" }));
     expect(screen.getByText("Adjuntar archivo")).toBeInTheDocument();
+  });
+
+  it("rechaza formato no soportado y exceso de tamaño antes de subir", () => {
+    const uploadFile = vi.fn();
+    const { container } = render(<AttachmentGallery items={[]} canUpload uploadFile={uploadFile} />);
+    const input = container.querySelector('input[type="file"]');
+    selectFile(input, [new File(["doc"], "bad.doc", { type: "application/msword" })]);
+    expect(screen.getByText(/Formato no admitido/)).toBeInTheDocument();
+    const oversized = file(); Object.defineProperty(oversized, "size", { value: 10 * 1024 * 1024 + 1 });
+    selectFile(input, [oversized]);
+    expect(screen.getByText(/10 MiB/)).toBeInTheDocument();
+    expect(uploadFile).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -1,10 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   trackTicket,
   confirmAnonymousResolution,
   reopenAnonymousTicket,
   answerAnonymousInformation,
-  rateAnonymousTicketAttention,
   sendAnonymousMessage,
   uploadAnonymousAttachment,
   downloadAnonymousAttachment,
@@ -29,40 +28,78 @@ function messageForAnonymousActionError(err) {
 }
 
 export function useAnonymousTicketAccess(trackingCode) {
-  const [ticket, setTicket] = useState(null);
+  const [storedTicket, setTicket] = useState(null);
   const [accredited, setAccredited] = useState(false);
   const [accrediting, setAccrediting] = useState(false);
   const [accreditError, setAccreditError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const informationInFlight = useRef(false);
+  const actionInFlight = useRef(false);
+  const generation = useRef(0);
   const [actionError, setActionError] = useState(null);
-  const [password, setPassword] = useState(null);
+  const [credentials, setCredentials] = useState(null);
+  const password = credentials?.trackingCode === trackingCode ? credentials.password : null;
+  const ticket = password ? storedTicket : null;
+
+  const reset = useCallback(() => {
+    generation.current += 1;
+    informationInFlight.current = false;
+    actionInFlight.current = false;
+    setTicket(null);
+    setAccredited(false);
+    setAccrediting(false);
+    setAccreditError(null);
+    setActionLoading(false);
+    setActionError(null);
+    setCredentials(null);
+  }, []);
+
+  useEffect(() => {
+    const current = generation.current;
+    Promise.resolve().then(() => { if (current === generation.current) reset(); });
+    return () => { generation.current += 1; };
+  }, [trackingCode, reset]);
+
+  const revoke = useCallback((err) => {
+    if (err?.status === 401) {
+      reset();
+      setAccreditError(messageForAnonymousActionError(err));
+    }
+  }, [reset]);
 
   const accredit = useCallback(
     async (ticketPassword) => {
+      reset();
+      const current = generation.current;
       setAccrediting(true);
       setAccreditError(null);
       try {
         const response = await trackTicket(trackingCode, ticketPassword);
+        if (current !== generation.current) return false;
         setTicket(normalizeTicketDetail(response, response.publicId));
         setAccredited(true);
-        setPassword(ticketPassword);
+        setCredentials({ trackingCode, password: ticketPassword });
         return true;
       } catch (err) {
+        if (current !== generation.current) return false;
         setAccreditError(messageForAccreditationError(err));
         return false;
       } finally {
-        setAccrediting(false);
+        if (current === generation.current) setAccrediting(false);
       }
     },
-    [trackingCode]
+    [trackingCode, reset]
   );
 
   const runAction = useCallback(async (apiCall, { newStatus, message }) => {
+    if (actionInFlight.current) return false;
+    actionInFlight.current = true;
+    const current = generation.current;
     setActionLoading(true);
     setActionError(null);
     try {
       await apiCall();
+      if (current !== generation.current) return false;
       const now = new Date().toISOString();
       setTicket((prev) =>
         prev
@@ -79,12 +116,14 @@ export function useAnonymousTicketAccess(trackingCode) {
       );
       return true;
     } catch (err) {
+      if (current !== generation.current) return false;
+      revoke(err);
       setActionError(messageForAnonymousActionError(err));
       return false;
     } finally {
-      setActionLoading(false);
+      if (current === generation.current) { actionInFlight.current = false; setActionLoading(false); }
     }
-  }, []);
+  }, [revoke]);
 
   const confirmResolution = useCallback(() => {
     if (!password) return Promise.resolve(false);
@@ -106,19 +145,22 @@ export function useAnonymousTicketAccess(trackingCode) {
   );
 
   const refreshCancellationTicket = useCallback(async (confirmed) => {
+    const current = generation.current;
     if (confirmed?.currentStatus) setTicket((prev) => ({ ...prev, currentStatus: confirmed.currentStatus, statusChangedAt: confirmed.statusChangedAt }));
     const raw = await trackTicket(trackingCode, password);
+    if (current !== generation.current) return null;
     const data = normalizeTicketDetail(raw, raw.publicId);
     setTicket((prev) => prev?.publicId === data.publicId ? data : prev);
     return data;
   }, [trackingCode, password]);
-  const cancellation = useCitizenCancellation({ ticket, refreshTicket: refreshCancellationTicket, trackingCode, password });
+  const cancellation = useCitizenCancellation({ ticket: password ? ticket : null, refreshTicket: refreshCancellationTicket, trackingCode, password, onUnauthorized: revoke });
   const requestCancel = cancellation.requestCancel;
 
   const answerInformation = useCallback(
     async (responseMessage, files = [], structured = undefined) => {
       if (!password || !ticket || informationInFlight.current) return false;
       informationInFlight.current = true;
+      const current = generation.current;
       setActionLoading(true);
       setActionError(null);
       try {
@@ -128,6 +170,7 @@ export function useAnonymousTicketAccess(trackingCode) {
           attachments: files,
           ...structured,
         });
+        if (current !== generation.current) return false;
         const now = result?.answeredAt || new Date().toISOString();
         setTicket((prev) =>
           prev
@@ -149,48 +192,40 @@ export function useAnonymousTicketAccess(trackingCode) {
             : prev
         );
         if (structured) {
-          try { const raw = await trackTicket(trackingCode, password); setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch { /* Keep the accepted transition visible if refresh fails. */ }
+          try { const raw = await trackTicket(trackingCode, password); if (current === generation.current) setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch (err) { if (current === generation.current) revoke(err); }
         }
         return true;
       } catch (err) {
+        if (current !== generation.current) return false;
+        revoke(err);
         setActionError([409, 410, 422].includes(err.status) ? reclassificationErrorMessage(err) : messageForAnonymousActionError(err));
         if ([409, 410].includes(err.status)) {
-          try { const raw = await trackTicket(trackingCode, password); setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch { /* Preserve the draft if refresh fails. */ }
+          try { const raw = await trackTicket(trackingCode, password); if (current === generation.current) setTicket(normalizeTicketDetail(raw, raw.publicId)); } catch (err) { if (current === generation.current) revoke(err); }
         }
         return false;
       } finally {
-        informationInFlight.current = false;
-        setActionLoading(false);
+        if (current === generation.current) { informationInFlight.current = false; setActionLoading(false); }
       }
     },
-    [password, trackingCode, ticket]
+    [password, trackingCode, ticket, revoke]
   );
 
-  const rateAttention = useCallback(
-    async (stars) => {
-      if (!password || ticket?.currentStatus !== "CLOSED") return false;
-      setActionLoading(true);
-      setActionError(null);
-      try {
-        await rateAnonymousTicketAttention(trackingCode, { ticketPassword: password, stars });
-        setTicket((prev) => (prev ? { ...prev, rating: stars } : prev));
-        return true;
-      } catch (err) {
-        setActionError(messageForAnonymousActionError(err));
-        return false;
-      } finally {
-        setActionLoading(false);
-      }
-    },
-    [password, trackingCode, ticket]
-  );
+  const actions = { confirmResolution, requestReopen, requestCancel, answerInformation };
 
-  const actions = { confirmResolution, requestReopen, requestCancel, answerInformation, rateAttention };
+  const protectedAttachment = async (call) => {
+    if (!password) throw new Error("Falta acreditar el ticket.");
+    const current = generation.current;
+    try {
+      const response = await call();
+      if (current !== generation.current) throw new Error("La acreditación cambió.");
+      return response;
+    } catch (err) { if (current === generation.current) revoke(err); throw err; }
+  };
 
   const attachments = {
-    canUpload: true,
-    uploadFile: (file) => uploadAnonymousAttachment(trackingCode, password, file),
-    downloadFile: (attachment) => downloadAnonymousAttachment(trackingCode, password, attachment.id),
+    canUpload: Boolean(password && accredited),
+    uploadFile: (file) => protectedAttachment(() => uploadAnonymousAttachment(trackingCode, password, file)),
+    downloadFile: (attachment) => protectedAttachment(() => downloadAnonymousAttachment(trackingCode, password, attachment.id)),
   };
 
   // El chat anónimo sólo permite enviar (siempre PUBLIC, sin editar/borrar):
@@ -201,26 +236,22 @@ export function useAnonymousTicketAccess(trackingCode) {
   const sendMessage = useCallback(
     async (text) => {
       if (!password) throw new Error("No se pudo enviar: falta acreditar el ticket.");
-      const created = await sendAnonymousMessage(trackingCode, { ticketPassword: password, text });
+      const current = generation.current;
+      let created;
+      try { created = await sendAnonymousMessage(trackingCode, { ticketPassword: password, text }); }
+      catch (err) { if (current === generation.current) revoke(err); throw err; }
+      if (current !== generation.current) throw new Error("La acreditación cambió.");
       setTicket((prev) => (prev ? { ...prev, messages: [...(prev.messages ?? []), created] } : prev));
       return created;
     },
-    [password, trackingCode]
+    [password, trackingCode, revoke]
   );
 
-  const reset = useCallback(() => {
-    setTicket(null);
-    setAccredited(false);
-    setAccrediting(false);
-    setAccreditError(null);
-    setActionLoading(false);
-    setActionError(null);
-    setPassword(null);
-  }, []);
+
 
   return {
-    ticket,
-    accredited,
+    ticket: password ? ticket : null,
+    accredited: Boolean(password && accredited),
     accrediting,
     accreditError,
     accredit,

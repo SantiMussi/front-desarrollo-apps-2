@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 import { useEffect, useId, useRef, useState } from "react";
 import { fetchNeighborhoods } from "../../services/apiClient";
 import ReclassificationRequirements from "./ReclassificationRequirements";
@@ -57,6 +58,8 @@ export default function ReclassificationResponseForm({ requirements, dueAt, load
       }
       data[field.code] = parsed;
     }
+    const filesError = attachmentError(files);
+    if (filesError) { setLocalError(filesError); return; }
     if (requirements.evidenceRequired && files.length === 0) { setLocalError("Falta adjuntar evidencia."); return; }
     const suppliedLocation = Object.fromEntries(Object.entries(location).filter(([, value]) => value !== ""));
     if (requirements.locationRequired && !suppliedLocation.addressLine?.trim() && !suppliedLocation.neighborhoodId && !(suppliedLocation.latitude != null && suppliedLocation.longitude != null)) {
@@ -106,7 +109,7 @@ export default function ReclassificationResponseForm({ requirements, dueAt, load
         {requirements.neighborhoodRequired && <label className="block text-sm">Barrio<select className={inputClass} value={location.neighborhoodId ?? ""} onChange={(event) => setLocation((previous) => ({ ...previous, neighborhoodId: event.target.value }))}><option value="">Seleccionar…</option>{neighborhoods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         {neighborhoodError && <p role="alert">{neighborhoodError} <button type="button" onClick={() => setCatalogRetry((current) => current + 1)}>Reintentar barrios</button></p>}
         <label className="block text-sm">Tu respuesta (opcional)<textarea className={inputClass} value={message} onChange={(event) => setMessage(event.target.value)} /></label>
-        <label className="block text-sm">{requirements.evidenceRequired ? "Adjuntar evidencia (obligatoria)" : "Adjuntar evidencia (opcional)"}<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(event) => { setFiles((previous) => [...previous, ...Array.from(event.target.files)]); event.target.value = ""; }} className="mt-1 block w-full text-xs" /></label>
+        <label className="block text-sm">{requirements.evidenceRequired ? "Adjuntar evidencia (obligatoria)" : "Adjuntar evidencia (opcional)"}<input type="file" multiple accept={ATTACHMENT_ACCEPT} onChange={(event) => { const selected = Array.from(event.target.files); event.target.value = ""; const validation = attachmentError([...files, ...selected]); setLocalError(validation); if (!validation) setFiles((previous) => [...previous, ...selected]); }} className="mt-1 block w-full text-xs" /></label>
         <ul>{files.map((file, index) => <li key={`${file.name}-${index}`} className="text-xs">{file.name} <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => setFiles((previous) => previous.filter((_, position) => position !== index))}>Quitar</button></li>)}</ul>
         <button type="submit" className="rounded bg-[#0F2C59] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{sending || loading ? "Enviando…" : "Enviar respuesta"}</button>
       </fieldset>

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:coverage:ci": "vitest run --coverage --reporter=verbose"
+    "test:coverage:ci": "vitest run --coverage --reporter=verbose",
+    "test:integration:real": "node scripts/test-real.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

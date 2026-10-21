@@ -12,15 +12,8 @@ import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { useAuth } from "../../context/useAuth";
 import { fetchRequestTypeForm } from "../../services/apiClient";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const UNKNOWN_VALUE = "__UNKNOWN__";
-
-const normalizeText = (s) =>
-  String(s ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+import { UNKNOWN_VALUE, creationLocation, specificAnswers } from "../../utils/ticketFormValidation";
+import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 
 const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTACT_PHONE_RE = /^\+?[0-9()\-\s]{6,20}$/;
@@ -31,7 +24,7 @@ function isValidContactChannel(value) {
   return CONTACT_EMAIL_RE.test(trimmed) || CONTACT_PHONE_RE.test(trimmed);
 }
 
-function validateForm(formData, specificFields) {
+function validateForm(formData, specificFields, requiresLocation) {
   const errors = {};
 
   if (formData.contactChannel && !isValidContactChannel(formData.contactChannel)) {
@@ -52,32 +45,9 @@ function validateForm(formData, specificFields) {
     errors.description = "La descripción debe tener al menos 10 caracteres";
   }
 
-  if (!formData.address.trim()) {
-    errors.address = "La calle es obligatoria";
-  }
-
-  if (!formData.streetNumber.trim()) {
-    errors.streetNumber = "La altura es obligatoria";
-  }
-
-  if (!formData.neighborhoodId) {
-    errors.neighborhoodId = "Seleccioná un barrio";
-  }
-
-  if (Array.isArray(specificFields)) {
-    specificFields.forEach((field) => {
-      if (!field.required) return;
-      const value = formData.specificData[field.key];
-      if (field.allowUnknown) {
-        if (value === undefined || value === null || value === "") {
-          errors[`specific_${field.key}`] = `Respondé "${field.label}" o marcá "No sé / Prefiero no responder"`;
-        }
-      } else if (!value) {
-        errors[`specific_${field.key}`] = `${field.label} es obligatorio`;
-      }
-    });
-  }
-
+  const location = creationLocation(formData, requiresLocation);
+  if (location.error) errors.location = location.error;
+  Object.assign(errors, specificAnswers(specificFields, formData.specificData).errors);
   return errors;
 }
 
@@ -215,7 +185,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       formData.description.trim() !== "" ||
       formData.address.trim() !== "" ||
       formData.neighborhoodId !== "" ||
-      Object.values(formData.specificData).some((v) => v && String(v).trim() !== "") ||
+      Object.values(formData.specificData).some((v) => v !== undefined && v !== "") ||
       attachments.length > 0;
     onDirtyChange(isDirty);
   }, [formData, attachments, onDirtyChange]);
@@ -229,7 +199,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         ? { addressSource: "input", latitude: null, longitude: null }
         : {}),
     }));
-    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined, ...(["address", "streetNumber", "neighborhoodId"].includes(name) ? { location: undefined } : {}) }));
   };
 
   const handleSpecificChange = (e) => {
@@ -255,51 +225,21 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   const handleReloadFields = () => setFieldsReloadKey((k) => k + 1);
 
-  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, neighborhoods: geoNeighborhoods, source }) => {
-    let matchedNeighborhoodId = undefined;
-    if (geoNeighborhoods && geoNeighborhoods.length > 0) {
-      for (const nb of geoNeighborhoods) {
-        if (!nb) continue;
-        const normalizedQuery = normalizeText(nb);
-        const match = neighborhoods.find((n) => {
-          const normalizedName = normalizeText(n.name);
-          return normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
-        });
-        if (match) {
-          matchedNeighborhoodId = match.id;
-          break;
-        }
-      }
-    }
-
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, source }) => {
     setFormData((prev) => ({
-      ...prev,
-      latitude: lat,
-      longitude: lng,
+      ...prev, latitude: lat, longitude: lng,
       addressSource: source === "map" ? "map" : "geocode",
-      ...(source === "map"
-        ? {
-            address: street || addr || prev.address,
-            streetNumber: streetNumber ?? "",
-          }
-        : {}),
-      ...(matchedNeighborhoodId ? { neighborhoodId: matchedNeighborhoodId } : {}),
+      ...(source === "map" ? { address: street || addr || prev.address, streetNumber: streetNumber ?? "" } : {}),
     }));
-
-    setFieldErrors((prev) => {
-      const newErrors = { ...prev, address: undefined };
-      if (source === "map" && streetNumber) {
-        newErrors.streetNumber = undefined;
-      }
-      if (matchedNeighborhoodId) {
-        newErrors.neighborhoodId = undefined;
-      }
-      return newErrors;
-    });
-  }, [neighborhoods]);
+    setFieldErrors((prev) => ({ ...prev, location: undefined }));
+  }, []);
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const error = attachmentError([...attachments, ...files]);
+    setFieldErrors((prev) => ({ ...prev, attachments: error }));
+    if (error) return;
     const newAttachments = files.map((file) => ({
       name: file.name,
       mimeType: file.type,
@@ -311,59 +251,19 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
   const removeAttachment = (index) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setFieldErrors((prev) => ({ ...prev, attachments: undefined }));
   };
 
   const submitTicket = useCallback(async () => {
-    const mappedFormData = {};
-    Object.entries(formData.specificData || {}).forEach(([key, rawValue]) => {
-      const field = specificFields.find((f) => f.key === key);
-      if (!field) return;
-
-      if (rawValue === UNKNOWN_VALUE) {
-        if (field.allowUnknown) mappedFormData[field.code] = null;
-        return;
-      }
-
-      if (rawValue === "" || rawValue === null || rawValue === undefined) return;
-
-      let value = rawValue;
-      if (field.backendType === "BOOLEAN") {
-        value = rawValue === true || rawValue === "true";
-      } else if (field.backendType === "NUMBER") {
-        value = Number(rawValue);
-        if (Number.isNaN(value)) return;
-      }
-      mappedFormData[field.code] = value;
-    });
-
-    const selectedNeighborhoodId = formData.neighborhoodId ?? "";
-    const neighborhoodId = UUID_RE.test(selectedNeighborhoodId) ? selectedNeighborhoodId : null;
-    const selectedNeighborhoodName = neighborhoods.find(
-      (n) => n.id === selectedNeighborhoodId
-    )?.name;
-
-    const hasCoords =
-      formData.latitude != null &&
-      formData.longitude != null &&
-      !Number.isNaN(Number(formData.latitude)) &&
-      !Number.isNaN(Number(formData.longitude));
+    const mappedFormData = specificAnswers(specificFields, formData.specificData).data;
+    const { location } = creationLocation(formData, requestType.requiresLocation);
 
     const payload = {
       requestTypeId: Number(requestType.id || requestType.code || 0),
       summary: formData.summary,
       description: formData.description,
       formData: mappedFormData,
-      location: {
-        addressLine: `${formData.address} ${formData.streetNumber}`.trim(),
-        street: formData.address,
-        streetNumber: formData.streetNumber,
-        neighborhoodId,
-        latitude: hasCoords ? Number(formData.latitude) : null,
-        longitude: hasCoords ? Number(formData.longitude) : null,
-        reference: !neighborhoodId && selectedNeighborhoodName
-          ? `Barrio: ${selectedNeighborhoodName}`
-          : ""
-      },
+      location,
       ...(submittingAnonymously
         ? {
             anonymousContact: formData.contactChannel.trim()
@@ -378,14 +278,16 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     };
 
     await submit(payload, attachments, { skipAuth: submittingAnonymously });
-  }, [formData, specificFields, neighborhoods, requestType, attachments, submit, submittingAnonymously]);
+  }, [formData, specificFields, requestType, attachments, submit, submittingAnonymously]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
 
-    if (loadingFields || fieldsError) return;
+    if (loading || loadingFields || fieldsError) return;
 
-    const errors = validateForm(formData, specificFields);
+    const errors = validateForm(formData, specificFields, requestType.requiresLocation);
+    const filesError = attachmentError(attachments);
+    if (filesError) errors.attachments = filesError;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -433,9 +335,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   }, [trackingCode, error, onStatusChange]);
 
   const isSubmitDisabled = loading || loadingFields || fieldsError ||
-    !formData.latitude ||
-    !formData.longitude ||
-    Object.keys(validateForm(formData, specificFields)).length > 0;
+    Object.keys(validateForm(formData, specificFields, requestType.requiresLocation)).length > 0;
 
   if (errorCode === 'EVIDENCE_REQUIRED') {
     return (
@@ -656,7 +556,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         submitTicket();
       }}
     />
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form noValidate onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <Alert
           variant="error"
@@ -810,8 +710,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
               value={formData.address}
               onChange={handleChange}
               error={fieldErrors.address}
-              required
-              disabled={loading}
+                  disabled={loading}
             />
           </div>
           <div className="flex-1">
@@ -823,8 +722,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
               value={formData.streetNumber}
               onChange={handleChange}
               error={fieldErrors.streetNumber}
-              required
-              disabled={loading}
+                  disabled={loading}
             />
           </div>
         </div>
@@ -832,13 +730,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           label="Barrio"
           name="neighborhoodId"
           type="searchable-select"
-          options={neighborhoods.map((n) => ({ value: n.id, label: n.name }))}
+          options={neighborhoods.filter((n) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(n.id)).map((n) => ({ value: n.id, label: n.name }))}
           value={formData.neighborhoodId}
           onChange={handleChange}
           error={fieldErrors.neighborhoodId}
-          required
           disabled={loading}
         />
+        <p className="text-xs text-neutral-500">{requestType.requiresLocation ? "Indicá una dirección, un barrio o un punto en el mapa." : "Ubicación opcional."} Podés continuar con una dirección manual si el mapa no está disponible.</p>
+        {fieldErrors.location && <p role="alert" className="text-xs text-red-500">{fieldErrors.location}</p>}
         <LocationMap
           address={formData.address}
           streetNumber={formData.streetNumber}
@@ -895,7 +794,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                   type={field.type}
                   placeholder={field.placeholder}
                   options={field.options || []}
-                  value={isUnknown ? "" : (formData.specificData[field.key] || "")}
+                  value={isUnknown ? "" : (formData.specificData[field.key] ?? "")}
                   onChange={handleSpecificChange}
                   error={fieldErrors[`specific_${field.key}`]}
                   required={field.required && !field.allowUnknown}
@@ -938,13 +837,15 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           <input
             type="file"
             multiple
-            accept="image/*,.pdf,.doc,.docx"
+            accept={ATTACHMENT_ACCEPT}
             onChange={handleFileChange}
             className="hidden"
             disabled={loading}
           />
         </label>
 
+        <p className="text-xs text-neutral-500">JPEG, PNG, WebP, HEIC, HEIF o PDF. Hasta cinco archivos, 10 MiB por archivo y 50 MiB en total.</p>
+        {fieldErrors.attachments && <p role="alert" className="text-xs text-red-500">{fieldErrors.attachments}</p>}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {attachments.map((file, index) => (

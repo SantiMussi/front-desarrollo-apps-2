@@ -118,14 +118,22 @@ function messageForRatingError(err) {
 }
 
 export function useMyTicketDetail(publicId) {
-  const [ticket, setTicket] = useState(null);
+  const [storedTicket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const informationInFlight = useRef(false);
+  const actionInFlight = useRef(false);
+  const generation = useRef(0);
+  const request = useRef(0);
+  const [loadedId, setLoadedId] = useState(null);
+  const ticket = loadedId === publicId ? storedTicket : null;
   const [actionError, setActionError] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ resetActions = false } = {}) => {
+    const current = ++request.current;
+    const context = generation.current;
+    if (resetActions) { setActionLoading(false); setActionError(null); }
     setLoading(true);
     setError(null);
     try {
@@ -137,24 +145,32 @@ export function useMyTicketDetail(publicId) {
         notFound.status = 404;
         throw notFound;
       }
+      if (current !== request.current || context !== generation.current) return;
       const raw = await fetchMyTicketDetail(match.id);
+      if (current !== request.current || context !== generation.current) return;
       const data = normalizeTicketDetail(raw, publicId);
+      setLoadedId(publicId);
       setTicket(data);
     } catch (err) {
+      if (current !== request.current || context !== generation.current) return;
+      setLoadedId(publicId);
       setTicket(null);
       setError(messageForLoadError(err));
     } finally {
-      setLoading(false);
+      if (current === request.current && context === generation.current) setLoading(false);
     }
   }, [publicId]);
 
   useEffect(() => {
     let cancelled = false;
+    informationInFlight.current = false;
+    actionInFlight.current = false;
     (async () => {
-      if (!cancelled) await load();
+      if (!cancelled) await load({ resetActions: true });
     })();
     return () => {
       cancelled = true;
+      generation.current += 1;
     };
   }, [load]);
 
@@ -177,17 +193,22 @@ export function useMyTicketDetail(publicId) {
 
   const runAction = useCallback(
     async (apiCall, { newStatus, actionType, message }) => {
+      if (actionInFlight.current) return false;
+      actionInFlight.current = true;
+      const context = generation.current;
       setActionLoading(true);
       setActionError(null);
       try {
         await apiCall();
+        if (context !== generation.current) return false;
         applyLocalTransition(newStatus, actionType, message);
         return true;
       } catch (err) {
+        if (context !== generation.current) return false;
         setActionError(messageForActionError(err));
         return false;
       } finally {
-        setActionLoading(false);
+        if (context === generation.current) { actionInFlight.current = false; setActionLoading(false); }
       }
     },
     [applyLocalTransition]
@@ -216,8 +237,10 @@ export function useMyTicketDetail(publicId) {
 
   const cancellationTicketId = ticket?.id;
   const refreshCancellationTicket = useCallback(async (confirmed) => {
+    const context = generation.current;
     if (confirmed?.currentStatus) setTicket((prev) => ({ ...prev, currentStatus: confirmed.currentStatus, statusChangedAt: confirmed.statusChangedAt }));
     const data = normalizeTicketDetail(await fetchMyTicketDetail(cancellationTicketId), publicId);
+    if (context !== generation.current) return null;
     setTicket((prev) => prev?.id === cancellationTicketId ? data : prev);
     return data;
   }, [cancellationTicketId, publicId]);
@@ -228,10 +251,12 @@ export function useMyTicketDetail(publicId) {
     async (responseMessage, files = [], structured = undefined) => {
       if (!ticket?.id || informationInFlight.current) return false;
       informationInFlight.current = true;
+      const context = generation.current;
       setActionLoading(true);
       setActionError(null);
       try {
         const result = await answerTicketInformation(ticket.id, { responseMessage, attachments: files, ...structured });
+        if (context !== generation.current) return false;
         const now = result.answeredAt || new Date().toISOString();
         setTicket((prev) =>
           prev
@@ -248,18 +273,18 @@ export function useMyTicketDetail(publicId) {
             : prev
         );
         if (structured) {
-          try { setTicket(normalizeTicketDetail(await fetchMyTicketDetail(ticket.id), publicId)); } catch { /* The accepted response remains reflected locally; reload is still available. */ }
+          try { const raw = await fetchMyTicketDetail(ticket.id); if (context === generation.current) setTicket(normalizeTicketDetail(raw, publicId)); } catch { /* The accepted response remains reflected locally; reload is still available. */ }
         }
         return true;
       } catch (err) {
+        if (context !== generation.current) return false;
         setActionError([409, 410, 422].includes(err.status) ? reclassificationErrorMessage(err) : messageForActionError(err));
         if ([409, 410].includes(err.status)) {
-          try { setTicket(normalizeTicketDetail(await fetchMyTicketDetail(ticket.id), publicId)); } catch { /* Preserve the draft when refresh is unavailable. */ }
+          try { const raw = await fetchMyTicketDetail(ticket.id); if (context === generation.current) setTicket(normalizeTicketDetail(raw, publicId)); } catch { /* Preserve the draft when refresh is unavailable. */ }
         }
         return false;
       } finally {
-        informationInFlight.current = false;
-        setActionLoading(false);
+        if (context === generation.current) { informationInFlight.current = false; setActionLoading(false); }
       }
     },
     [ticket, publicId]
@@ -268,17 +293,22 @@ export function useMyTicketDetail(publicId) {
   const rateAttention = useCallback(
     async (score, comment) => {
       if (!ticket?.id || ticket.currentStatus !== "CLOSED") return false;
+      if (actionInFlight.current) return false;
+      actionInFlight.current = true;
+      const context = generation.current;
       setActionLoading(true);
       setActionError(null);
       try {
         await submitSatisfactionSurvey(ticket.id, { score, comment });
+        if (context !== generation.current) return false;
         setTicket((prev) => (prev ? { ...prev, rating: score, ratingComment: comment || null } : prev));
         return true;
       } catch (err) {
+        if (context !== generation.current) return false;
         setActionError(messageForRatingError(err));
         return false;
       } finally {
-        setActionLoading(false);
+        if (context === generation.current) { actionInFlight.current = false; setActionLoading(false); }
       }
     },
     [ticket]
@@ -289,5 +319,5 @@ export function useMyTicketDetail(publicId) {
     [confirmResolution, requestReopen, requestCancel, rateAttention, answerInformation]
   );
 
-  return { ticket, loading, error, actions, cancellation, actionLoading: actionLoading || cancellation.busy, actionError: cancellation.error || actionError, reload: load };
+  return { ticket: loadedId === publicId ? ticket : null, loading: loadedId !== publicId || loading, error, actions, cancellation, actionLoading: actionLoading || cancellation.busy, actionError: cancellation.error || actionError, reload: load };
 }

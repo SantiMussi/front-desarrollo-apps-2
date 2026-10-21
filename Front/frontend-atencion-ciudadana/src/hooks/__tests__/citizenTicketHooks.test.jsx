@@ -19,7 +19,6 @@ vi.mock("../../services/apiClient", () => ({
   confirmAnonymousResolution: vi.fn(),
   reopenAnonymousTicket: vi.fn(),
   answerAnonymousInformation: vi.fn(),
-  rateAnonymousTicketAttention: vi.fn(),
   sendAnonymousMessage: vi.fn(),
   uploadAnonymousAttachment: vi.fn(),
   downloadAnonymousAttachment: vi.fn(),
@@ -371,7 +370,7 @@ describe("useAnonymousTicketAccess", () => {
     await expect(result.current.actions.requestReopen("x")).resolves.toBe(false);
     await expect(result.current.actions.requestCancel("x")).resolves.toBe(false);
     await expect(result.current.actions.answerInformation("x")).resolves.toBe(false);
-    await expect(result.current.actions.rateAttention(5)).resolves.toBe(false);
+    expect(result.current.actions.rateAttention).toBeUndefined();
     await expect(result.current.sendMessage("hola")).rejects.toThrow(/falta acreditar/);
   });
 
@@ -443,27 +442,11 @@ describe("useAnonymousTicketAccess", () => {
     expect(ok).toBe(false);
   });
 
-  it("califica sólo con el ticket cerrado", async () => {
+  it("no ofrece encuesta anónima aunque el ticket esté cerrado", async () => {
     const { result } = await setup();
-    await expect(result.current.actions.rateAttention(5)).resolves.toBe(false);
     api.trackTicket.mockResolvedValue({ ...accreditedTicket, currentStatus: "CLOSED" });
-    await act(async () => {
-      await result.current.accredit("pw");
-    });
-    api.rateAnonymousTicketAttention.mockResolvedValueOnce({});
-    let ok;
-    await act(async () => {
-      ok = await result.current.actions.rateAttention(5);
-    });
-    expect(ok).toBe(true);
-    expect(api.rateAnonymousTicketAttention).toHaveBeenCalledWith("ABC", { ticketPassword: "pw", stars: 5 });
-    expect(result.current.ticket.rating).toBe(5);
-    api.rateAnonymousTicketAttention.mockRejectedValueOnce(httpError(404));
-    await act(async () => {
-      ok = await result.current.actions.rateAttention(1);
-    });
-    expect(ok).toBe(false);
-    expect(result.current.actionError).toBe("No encontramos ese ticket.");
+    await act(async () => { await result.current.accredit("pw"); });
+    expect(result.current.actions.rateAttention).toBeUndefined();
   });
 
   it("envía mensajes, sube y descarga adjuntos con la contraseña", async () => {

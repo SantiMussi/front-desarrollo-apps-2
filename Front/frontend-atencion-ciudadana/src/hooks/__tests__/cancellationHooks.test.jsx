@@ -71,10 +71,16 @@ it.each([400, 401, 403, 404, 409, 410, 500])("errores %s conservan estado y no r
   const { result } = await setup(true);
   api.cancelAnonymousTicket.mockRejectedValue(http(status));
   await act(async () => expect(await result.current.actions.requestCancel("motivo")).toBe(false));
-  expect(result.current.ticket.currentStatus).toBe("REGISTERED");
+  if (status === 401) {
+    expect(result.current.ticket).toBeNull();
+    expect(result.current.accredited).toBe(false);
+    expect(result.current.accreditError).toMatch(/ya no acredita/);
+  } else {
+    expect(result.current.ticket.currentStatus).toBe("REGISTERED");
+    expect(result.current.actionError).toBe(cancellationErrorMessage({ status }));
+    expect(result.current.actionError).not.toContain("secret");
+  }
   expect(result.current.cancellation.requiresReview).toBe(false);
-  expect(result.current.actionError).toBe(cancellationErrorMessage({ status }));
-  expect(result.current.actionError).not.toContain("secret");
 });
 it("no habilita solicitud por un 409 genérico ni por REGISTERED obsoleto", async () => {
   expect(cancellationReviewRequired(reviewError(), { currentStatus: "IN_REVIEW" })).toBe(false);

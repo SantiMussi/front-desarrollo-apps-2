@@ -15,7 +15,7 @@ vi.mock("../../../hooks/useNeighborhoods", () => ({
   useNeighborhoods: () => ({
     neighborhoods: [
       { id: "11111111-1111-4111-8111-111111111111", name: "Palermo" },
-      { id: "legacy-2", name: "Belgrano" },
+      { id: "22222222-2222-4222-8222-222222222222", name: "Belgrano" },
     ],
   }),
 }));
@@ -46,6 +46,7 @@ const requestType = (overrides = {}) => ({
   name: "Luminaria apagada",
   description: "Informá una luminaria",
   allowsAnonymous: false,
+  requiresLocation: true,
   ...overrides,
 });
 
@@ -73,6 +74,8 @@ const fillBasics = () => {
   type(/^Calle/, "Av. Corrientes");
   type(/^Altura/, "1234");
   fireEvent.click(screen.getByText("map-click"));
+  fireEvent.click(screen.getByRole("button", { name: "Seleccionar..." }));
+  fireEvent.click(screen.getByRole("button", { name: "Palermo" }));
 };
 
 const submitForm = () => fireEvent.submit(screen.getByRole("button", { name: /Enviar solicitud/ }).closest("form"));
@@ -90,7 +93,7 @@ describe("TicketForm - estructura", () => {
     expect(screen.queryByText(/no admite presentación anónima/)).not.toBeInTheDocument();
   });
 
-  it("el botón de enviar está deshabilitado hasta completar todo (incluida la ubicación en el mapa)", async () => {
+  it("acepta dirección manual sin exigir mapa ni barrio", async () => {
     await setup();
     const submit = screen.getByRole("button", { name: /Enviar solicitud/ });
     expect(submit).toBeDisabled();
@@ -100,7 +103,7 @@ describe("TicketForm - estructura", () => {
     type(/^Altura/, "100");
     fireEvent.click(screen.getByText("Seleccionar..."));
     fireEvent.click(screen.getByRole("button", { name: "Palermo" }));
-    expect(submit).toBeDisabled();
+    expect(submit).toBeEnabled();
     fireEvent.click(screen.getByText("map-click"));
     expect(submit).toBeEnabled();
   });
@@ -128,9 +131,7 @@ describe("TicketForm - validaciones", () => {
     submitForm();
     expect(screen.getByText("El título / resumen es obligatorio")).toBeInTheDocument();
     expect(screen.getByText("La descripción es obligatoria")).toBeInTheDocument();
-    expect(screen.getByText("La calle es obligatoria")).toBeInTheDocument();
-    expect(screen.getByText("La altura es obligatoria")).toBeInTheDocument();
-    expect(screen.getByText("Seleccioná un barrio")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Indicá una dirección, un barrio o coordenadas válidas.");
     expect(createTicket).not.toHaveBeenCalled();
   });
 
@@ -143,7 +144,7 @@ describe("TicketForm - validaciones", () => {
     expect(screen.queryByText("La descripción debe tener al menos 10 caracteres")).not.toBeInTheDocument();
   });
 
-  it("completa calle, altura y barrio desde el mapa y limpia esos errores", async () => {
+  it("completa dirección desde el mapa sin deducir el barrio", async () => {
     await setup();
     submitForm();
     fireEvent.click(screen.getByText("map-click"));
@@ -154,13 +155,13 @@ describe("TicketForm - validaciones", () => {
     expect(screen.getByLabelText(/^Altura/)).toHaveValue("1234");
   });
 
-  it("acepta un resultado de geocodificación por dirección sin pisar los campos y usa el segundo barrio", async () => {
+  it("acepta un resultado de geocodificación por dirección sin pisar los campos ni deducir barrio", async () => {
     await setup();
     type(/^Calle/, "Mi calle");
     fireEvent.click(screen.getByText("geocode"));
     expect(screen.getByLabelText(/^Calle/)).toHaveValue("Mi calle");
     expect(screen.getByTestId("map")).toHaveAttribute("data-source", "geocode");
-    expect(screen.getByText("Belgrano")).toBeInTheDocument();
+    expect(screen.getByText("Seleccionar...")).toBeInTheDocument();
   });
 
   it("usa el nombre del lugar como calle y no cambia el barrio si no hay coincidencia", async () => {
@@ -204,20 +205,15 @@ describe("TicketForm - envío con sesión", () => {
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
   });
 
-  it("envía una referencia con el barrio cuando el id no es un UUID", async () => {
+  it("el mapa conserva el barrio elegido manualmente", async () => {
     await setup();
-    type(/Título/, "Título");
-    type(/Descripción detallada/, "Descripción larga suficiente");
-    type(/^Calle/, "Corrientes");
-    type(/^Altura/, "100");
-    fireEvent.click(screen.getByText("Seleccionar..."));
-    fireEvent.click(screen.getByRole("button", { name: "Belgrano" }));
-    fireEvent.click(screen.getByText("map-click"));
+    fillBasics();
     fireEvent.click(screen.getByText("Palermo"));
     fireEvent.click(screen.getByRole("button", { name: "Belgrano" }));
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    fireEvent.click(screen.getByText("map-click"));
+    submitForm();
     await screen.findByText("¡Reclamo Registrado!");
-    expect(createTicket.mock.calls[0][0].location).toMatchObject({ neighborhoodId: null, reference: "Barrio: Belgrano" });
+    expect(createTicket.mock.calls[0][0].location.neighborhoodId).toBe("22222222-2222-4222-8222-222222222222");
   });
 
   it("adjunta archivos y permite quitarlos", async () => {

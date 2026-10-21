@@ -148,10 +148,9 @@ describe("apiClient endpoint contracts", () => {
     await api.cancelAnonymousTicket("ABC", payload);
     await api.sendAnonymousMessage("ABC", payload);
     await api.answerAnonymousInformation("ABC", payload);
-    await api.rateAnonymousTicketAttention("ABC", payload);
     await api.uploadAnonymousAttachment("ABC", "secret", new File(["x"], "x.txt"));
     await api.downloadAnonymousAttachment("ABC", "secret", 9);
-    expect(fetch).toHaveBeenCalledTimes(9);
+    expect(fetch).toHaveBeenCalledTimes(8);
   });
 
   it("covers staff workflow and message mutations", async () => {

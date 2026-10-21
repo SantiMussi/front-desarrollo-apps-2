@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchTicketMessages,
   createTicketMessage,
@@ -15,10 +15,15 @@ function messageForError(err) {
 
 export function useTicketMessages(ticketId) {
   const [messages, setMessages] = useState([]);
+  const [loadedId, setLoadedId] = useState(null);
+  const generation = useRef(0);
+  const request = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    const current = ++request.current;
+    const context = generation.current;
     if (!ticketId) {
       setLoading(false);
       return;
@@ -27,11 +32,16 @@ export function useTicketMessages(ticketId) {
     setError(null);
     try {
       const data = await fetchTicketMessages(ticketId);
+      if (context !== generation.current || current !== request.current) return;
+      setLoadedId(ticketId);
       setMessages(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (context !== generation.current || current !== request.current) return;
+      setLoadedId(ticketId);
+      setMessages([]);
       setError(messageForError(err));
     } finally {
-      setLoading(false);
+      if (context === generation.current && current === request.current) setLoading(false);
     }
   }, [ticketId]);
 
@@ -42,13 +52,16 @@ export function useTicketMessages(ticketId) {
     })();
     return () => {
       cancelled = true;
+      generation.current += 1;
     };
   }, [load]);
 
   const send = useCallback(
     async (visibility, text) => {
+      const context = generation.current;
       const created = await createTicketMessage(ticketId, { visibility, text });
-      setMessages((prev) => [...prev, created]);
+      if (context !== generation.current) return null;
+      setMessages((prev) => [...prev.filter((item) => item.id !== created.id), created]);
       return created;
     },
     [ticketId]
@@ -56,7 +69,9 @@ export function useTicketMessages(ticketId) {
 
   const edit = useCallback(
     async (messageId, text) => {
+      const context = generation.current;
       const updated = await updateTicketMessage(ticketId, messageId, { text });
+      if (context !== generation.current) return null;
       setMessages((prev) => prev.map((m) => (m.id === messageId ? updated : m)));
       return updated;
     },
@@ -65,11 +80,13 @@ export function useTicketMessages(ticketId) {
 
   const remove = useCallback(
     async (messageId) => {
+      const context = generation.current;
       await deleteTicketMessage(ticketId, messageId);
+      if (context !== generation.current) return;
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
     },
     [ticketId]
   );
 
-  return { messages, loading, error, reload: load, send, edit, remove, messageForError };
+  return { messages: loadedId === ticketId ? messages : [], loading: Boolean(ticketId) && (loadedId !== ticketId || loading), error: loadedId === ticketId ? error : null, reload: load, send, edit, remove, messageForError };
 }

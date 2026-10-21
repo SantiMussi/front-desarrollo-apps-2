@@ -1,9 +1,6 @@
 import { useRef, useState } from "react";
 import { AlertCircle, Download, File, FileText, Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
-
-// Debe reflejar exactamente attachment.allowed-content-types del back
-// (application.properties) — hoy no incluye .doc/.docx, el back los rechaza con 415.
-const DEFAULT_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf";
+import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes)) return "";
@@ -37,7 +34,7 @@ function messageForDownloadError(err) {
 export default function AttachmentGallery({
   title = "Adjuntos",
   canUpload = false,
-  accept = DEFAULT_ACCEPT,
+  accept = ATTACHMENT_ACCEPT,
   items,
   uploadFile,
   downloadFile,
@@ -49,6 +46,7 @@ export default function AttachmentGallery({
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState(null);
   const fileInputRef = useRef(null);
+  const uploadInFlight = useRef(false);
 
   if (items !== prevItems) {
     setPrevItems(items);
@@ -58,8 +56,11 @@ export default function AttachmentGallery({
   const handleFileSelected = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file || uploadInFlight.current) return;
+    const validation = attachmentError([file]);
+    if (validation) { setUploadError(validation); return; }
 
+    uploadInFlight.current = true;
     setUploading(true);
     setUploadError(null);
     try {
@@ -68,6 +69,7 @@ export default function AttachmentGallery({
     } catch (err) {
       setUploadError(messageForUploadError(err));
     } finally {
+      uploadInFlight.current = false;
       setUploading(false);
     }
   };

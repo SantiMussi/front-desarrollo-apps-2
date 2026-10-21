@@ -1,3 +1,4 @@
+import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 import { useState } from "react";
 import CancellationHistory from "./CancellationHistory";
 import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
@@ -241,6 +242,7 @@ export default function CitizenTicketView({
   const [deletingId, setDeletingId] = useState(null);
   const [infoResponse, setInfoResponse] = useState("");
   const [infoResponseFiles, setInfoResponseFiles] = useState([]);
+  const [infoFilesError, setInfoFilesError] = useState(null);
 
   const structuredRequest = ticket.pendingInformationRequest?.purpose === "RECLASSIFICATION";
   const isResolved = ticket.currentStatus === "RESOLVED";
@@ -275,6 +277,9 @@ export default function CitizenTicketView({
   const handleAnswerInformation = async () => {
     const text = infoResponse.trim();
     if (!text && infoResponseFiles.length === 0) return;
+    const validation = attachmentError(infoResponseFiles);
+    setInfoFilesError(validation);
+    if (validation) return;
     const ok = await actions?.answerInformation(text || null, infoResponseFiles);
     if (ok) {
       setInfoResponse("");
@@ -285,11 +290,14 @@ export default function CitizenTicketView({
   const handleInfoResponseFilesSelected = (event) => {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (files.length) setInfoResponseFiles((prev) => [...prev, ...files]);
+    const validation = attachmentError([...infoResponseFiles, ...files]);
+    setInfoFilesError(validation);
+    if (files.length && !validation) setInfoResponseFiles((prev) => [...prev, ...files]);
   };
 
   const removeInfoResponseFile = (index) => {
     setInfoResponseFiles((prev) => prev.filter((_, i) => i !== index));
+    setInfoFilesError(null);
   };
 
   const handleRate = (score, comment) => actions?.rateAttention(score, comment);
@@ -609,8 +617,9 @@ export default function CitizenTicketView({
               <label className="mt-2.5 inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#0F2C59] hover:underline">
                 <Plus className="h-3.5 w-3.5" />
                 Adjuntar archivo
-                <input type="file" onChange={handleInfoResponseFilesSelected} className="hidden" />
+                <input type="file" multiple accept={ATTACHMENT_ACCEPT} onChange={handleInfoResponseFilesSelected} className="hidden" />
               </label>
+              {infoFilesError && <p role="alert" className="text-xs text-red-600">{infoFilesError}</p>}
               {infoResponseFiles.length > 0 && (
                 <ul className="mt-1.5 space-y-1">
                   {infoResponseFiles.map((file, index) => (
@@ -829,7 +838,7 @@ export default function CitizenTicketView({
             )}
           </div>
 
-          {!readOnly && ticket.currentStatus === "CLOSED" && (
+          {!readOnly && typeof actions?.rateAttention === "function" && ticket.currentStatus === "CLOSED" && (
             <div className="mt-4">
               <AttentionRating value={ticket.rating} onRate={handleRate} loading={actionLoading} error={actionError} />
             </div>
