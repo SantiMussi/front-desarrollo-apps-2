@@ -86,28 +86,23 @@ describe("useAgentTickets", () => {
     expect(fetchAgentTickets).toHaveBeenCalledWith(expect.objectContaining({ page: 3, size: 5 }));
   });
 
-  it("recorre, filtra y pagina localmente los tickets sin ubicación", async () => {
-    fetchAgentTickets
-      .mockResolvedValueOnce({ content: [located, { id: 2 }, { id: 3 }], totalPages: 2 })
-      .mockResolvedValueOnce({ content: [{ id: 4 }], totalPages: 2 });
+  it("envía el filtro sin ubicación y conserva paginación y totales del servidor", async () => {
+    fetchAgentTickets.mockResolvedValueOnce({ content: [{ id: 4, hasLocation: false }], totalElements: 3, totalPages: 2, number: 1 });
     const { result } = renderHook(() => useAgentTickets({ withoutLocation: true, page: 1, size: 2 }));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current).toMatchObject({ tickets: [{ id: 4 }], totalElements: 3, totalPages: 2, pageNumber: 1 });
-    expect(fetchAgentTickets).toHaveBeenNthCalledWith(1, expect.objectContaining({ page: 0, size: 200 }));
-    expect(fetchAgentTickets).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: 1, size: 200 }));
+    expect(result.current).toMatchObject({ tickets: [{ id: 4, hasLocation: false }], totalElements: 3, totalPages: 2, pageNumber: 1 });
+    expect(fetchAgentTickets).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ withoutLocation: true, page: 1, size: 2 }));
   });
 
   it.each([
-    ["ausente", { content: [located] }],
-    ["igual a cero", { content: [located], totalPages: 0 }],
-  ])("usa una sola página con totalPages %s y queda vacío si no hay coincidencias", async (_case, response) => {
+    ["ausente", { content: [] }],
+    ["igual a cero", { content: [], totalPages: 0 }],
+  ])("normaliza la página vacía del filtro SQL con totalPages %s", async (_case, response) => {
     fetchAgentTickets.mockResolvedValueOnce(response);
     const { result } = renderHook(() => useAgentTickets({ withoutLocation: true }));
-
     await waitFor(() => expect(result.current.loading).toBe(false));
-
     expect(result.current).toMatchObject({ tickets: [], totalElements: 0, totalPages: 0, pageNumber: 0 });
-    expect(fetchAgentTickets).toHaveBeenCalledTimes(1);
+    expect(fetchAgentTickets).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ withoutLocation: true }));
   });
 
   it("vacía los datos al fallar y se puede reintentar", async () => {

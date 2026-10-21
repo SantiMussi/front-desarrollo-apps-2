@@ -397,3 +397,12 @@ describe("simulador de estados", () => {
     expect(body.eventId).toBe("11111111-1111-4111-8111-111111111111");
   });
 });
+
+it("H21 usa el listado de área y descarta el área manipulada por el cliente", async () => {
+  api.storeToken("area-token");
+  await api.fetchAreaTickets({ responsibleAreaId: "M9", page: 2, size: 10, withoutLocation: true, status: "ROUTED" });
+  const { url, options } = lastCall();
+  expect(url).toBe("/api/staff/tickets/area?page=2&size=10&withoutLocation=true&status=ROUTED");
+  expect(options.headers.Authorization).toBe("Bearer area-token");
+  expect(url).not.toContain("M9");
+});

@@ -320,3 +320,14 @@ describe("TicketsInboxPage - columnas y exportación", () => {
     click.mockRestore();
   });
 });
+
+it("AREA_RESPONSIBLE consulta su listado sin pedir el catálogo staff de etiquetas", async () => {
+  mockTickets();
+  renderWithProviders(<TicketsInboxPage />, { auth: authFor({ role: "AREA_RESPONSIBLE", areaId: "M6", citizenId: "area" }) });
+  await act(async () => {});
+  expect(lastArgs()).toMatchObject({ areaScoped: true });
+  expect(fetchStaffLabels).not.toHaveBeenCalled();
+  openFilters();
+  expect(filterSelect("Área responsable")).toBeDisabled();
+  expect(filterSelect("Área responsable")).toHaveValue("M6");
+});

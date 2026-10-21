@@ -133,3 +133,20 @@ describe("App - rutas del personal", () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 });
+
+// H21: the area role shares only the authorized staff routes.
+describe("AREA_RESPONSIBLE routes", () => {
+  it.each([
+    ["/agente/tickets", "Bandeja"],
+    ["/agente/tickets/5", "Detalle de ticket"],
+    ["/agente/tickets/5/vista-ciudadano", "Vista ciudadano"],
+    ["/mis-reclamos", "Mis reclamos"],
+  ])("permite %s", async (path, text) => {
+    await renderAt(path, authFor({ role: "AREA_RESPONSIBLE", citizenId: "area-user", areaId: "M6" }));
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+  it.each(["/agente/dashboard", "/agente/metricas", "/agente/agentes", "/agente/catalogo", "/agente/etiquetas"])("deniega %s", async (path) => {
+    await renderAt(path, authFor({ role: "AREA_RESPONSIBLE", areaId: "M6" }));
+    expect(screen.getByText("Acceso denegado")).toBeInTheDocument();
+  });
+});

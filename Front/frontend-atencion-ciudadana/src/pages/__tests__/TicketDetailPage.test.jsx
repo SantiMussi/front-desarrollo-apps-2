@@ -961,3 +961,37 @@ describe("TicketDetailPage - SLA", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("H21 area staff detail", () => {
+  it("permite PUBLIC/INTERNAL y bloquea gestión administrativa", async () => {
+    await renderPage(authFor({ role: "AREA_RESPONSIBLE", citizenId: "area", areaId: "M6" }));
+    expect(screen.getByLabelText("Prioridad")).toBeDisabled();
+    expect(screen.queryByText("Propuestas de clasificación")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancelaciones y revisión administrativa")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("labels")).not.toBeInTheDocument();
+    expect(api.fetchReclassificationProposals).not.toHaveBeenCalled();
+    const input = screen.getByPlaceholderText("Escribe un comentario o respuesta...");
+    fireEvent.change(input, { target: { value: "Público del área" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    await act(async () => {});
+    expect(chat.send).toHaveBeenLastCalledWith("PUBLIC", "Público del área");
+    fireEvent.click(screen.getByRole("button", { name: "Nota interna" }));
+    fireEvent.change(screen.getByPlaceholderText("Agrega una nota para el equipo..."), { target: { value: "Interno del área" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    await act(async () => {});
+    expect(chat.send).toHaveBeenLastCalledWith("INTERNAL", "Interno del área");
+  });
+  it("ticket propio conserva sólo lectura staff", async () => {
+    api.fetchMyTicketDetail.mockResolvedValueOnce({});
+    await renderPage(authFor({ role: "AREA_RESPONSIBLE", citizenId: "area", areaId: "M6" }));
+    expect(screen.getByText(/Este ticket es tuyo/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeInTheDocument();
+    expect(chat.send).not.toHaveBeenCalled();
+  });
+  it.each([401, 500, 409])("presenta el error %s sin confundirlo con inexistencia", async (status) => {
+    setTicket({}, { ticket: null, loading: false, error: httpError(status) });
+    await renderPage();
+    expect(screen.getByRole("alert")).toHaveTextContent(status === 401 ? /sesión no es válida/ : /No pudimos cargar el ticket/);
+    expect(screen.queryByText("Error 404")).not.toBeInTheDocument();
+  });
+});

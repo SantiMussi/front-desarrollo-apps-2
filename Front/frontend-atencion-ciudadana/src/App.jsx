@@ -61,13 +61,15 @@ export default function App() {
         <Route path="/ingresar" element={<LoginPage />} />
         <Route path="/registro" element={<RegisterPage />} />
 
-        <Route element={<ProtectedRoute roles={["AGENT", "ADMIN"]} />}>
+        <Route element={<ProtectedRoute roles={["AGENT", "ADMIN", "AREA_RESPONSIBLE"]} />}>
           <Route path="/agente" element={<AgentLayout />}>
             <Route path="tickets" element={<TicketsInboxPage />} />
             <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
             <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="metricas" element={<MetricsPage />} />
+            <Route element={<ProtectedRoute roles={["AGENT", "ADMIN"]} />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="metricas" element={<MetricsPage />} />
+            </Route>
 
             <Route element={<ProtectedRoute roles={["ADMIN"]} />}>
               <Route path="agentes" element={<AgentsPage />} />

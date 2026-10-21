@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import StaffTicketFacts from "../../components/ticket/StaffTicketFacts";
+import { hasTicketLocation } from "../../utils/ticketLocation";
 import { Link, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, Lock, MapPin, Paperclip, Pencil, Plus, Send, Smile, Trash2, TriangleAlert, Users } from "lucide-react";
 import DetailCard from "../../components/ui/DetailCard";
@@ -141,6 +143,12 @@ function Field({ label, children }) {
 export default function TicketDetailPage() {
   const { ticketId } = useParams();
   const { user } = useAuth();
+  return <TicketDetailContent key={`${ticketId}:${user?.citizenId}:${user?.role}:${user?.areaId}`} />;
+}
+
+function TicketDetailContent() {
+  const { ticketId } = useParams();
+  const { user } = useAuth();
   const { ticket, loading, error, reload } = useStaffTicketDetail(ticketId);
   const chatMessages = useTicketMessages(ticketId);
   const [status, setStatus] = useState(null);
@@ -273,6 +281,7 @@ export default function TicketDetailPage() {
   // "checking"/"error"/"own" se tratan igual (solo lectura) y únicamente
   // "not-own" habilita las acciones mutables.
   const isOwnTicket = ownershipStatus !== "not-own";
+  const staffReadOnly = isOwnTicket || !canManageClassification;
   const retryOwnershipCheck = () => {
     setOwnershipStatus("checking");
     setOwnershipRetryToken((n) => n + 1);
@@ -544,6 +553,14 @@ export default function TicketDetailPage() {
   }
 
   if (!ticket || !fields) {
+    if (error && ![403, 404].includes(error.status)) {
+      return <div className="p-8 text-center" role="alert">
+        <p>{error.status === 401 ? "Tu sesión no es válida. Volvé a iniciar sesión." : "No pudimos cargar el ticket. Intentá de nuevo."}</p>
+        <Link className="mt-4 block underline" to={error.status === 401 ? "/ingresar" : "/agente/tickets"}>
+          {error.status === 401 ? "Iniciar sesión" : "Volver a tickets"}
+        </Link>
+      </div>;
+    }
     const forbidden = error?.status === 403;
     return (
       <main className="flex h-full min-h-[70vh] items-center justify-center bg-slate-50 px-6 py-12">
@@ -602,7 +619,7 @@ export default function TicketDetailPage() {
         			<Eye className="h-3.5 w-3.5" />
         			Ver como ciudadano
         		</Link>
-        		{isOwnTicket ? (
+            {staffReadOnly ? (
         			<span className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-semibold text-slate-700">
         				{TICKET_STATUS_LABELS[status] || status}
         			</span>
@@ -651,10 +668,12 @@ export default function TicketDetailPage() {
                 {ticket.description || "Descripción no disponible desde este endpoint."}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><MapPin className="h-3.5 w-3.5" />{data.neighborhood || "Ubicación pendiente"}</span>
+                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><MapPin className="h-3.5 w-3.5" />{data.neighborhood || (hasTicketLocation(ticket) ? "Ubicación informada" : "Ubicación pendiente")}</span>
                 <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><Users className="h-3.5 w-3.5" />{fields.affectedCount} {Number(fields.affectedCount) === 1 ? "persona afectada" : "personas afectadas"}</span>
               </div>
             </section>
+
+            <StaffTicketFacts ticket={ticket} />
 
             <section className="pt-6">
               <div className="flex items-end justify-between border-b border-slate-200">
@@ -796,7 +815,7 @@ export default function TicketDetailPage() {
               </Field>
               <Field label="Responsable">{data.assignee.name}</Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen} size="sm" />{data.citizen.name}</span></Field>
-              <Field label="Prioridad"><Select size="xs" ariaLabel="Prioridad" disabled={isOwnTicket} value={fields.priority} onChange={(nextValue) => setFields((current) => ({ ...current, priority: nextValue }))} options={Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label }))} /></Field>
+              <Field label="Prioridad"><Select size="xs" ariaLabel="Prioridad" disabled={staffReadOnly} value={fields.priority} onChange={(nextValue) => setFields((current) => ({ ...current, priority: nextValue }))} options={Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label }))} /></Field>
               <Field label="Área responsable"><Select size="xs" ariaLabel="Área responsable" disabled value={fields.responsibleAreaId} options={Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => ({ value: id, label: `${id} · ${label}` }))} /></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
@@ -819,13 +838,13 @@ export default function TicketDetailPage() {
           <DetailCard title="Adjuntos" icon={Paperclip}>
             <AttachmentGallery
               title=""
-              canUpload={!isOwnTicket}
+              canUpload={!staffReadOnly}
               items={ticket.attachments}
               uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
               downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
             />
           </DetailCard>
-          <TicketLabelsCard ticket={ticket} readOnly={isOwnTicket} />
+          {canManageClassification && <TicketLabelsCard ticket={ticket} readOnly={isOwnTicket} />}
           {escalated && (
             <DetailCard title="Escalamiento" icon={TriangleAlert}>
               <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800">

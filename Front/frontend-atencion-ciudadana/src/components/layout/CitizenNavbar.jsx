@@ -34,7 +34,7 @@ export default function CitizenNavbar() {
 
   const closeUserMenu = () => setIsUserMenuOpen(false);
 
-  const isStaff = ["AGENT", "ADMIN"].includes(user?.role);
+  const isStaff = ["AGENT", "ADMIN", "AREA_RESPONSIBLE"].includes(user?.role);
 
   // Links inside the account dropdown (differ for logged-in vs guest)
   const menuLinks = user

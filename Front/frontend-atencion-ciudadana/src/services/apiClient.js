@@ -342,6 +342,16 @@ export async function createTicket(payload, attachments = [], { skipAuth = false
 }
 
 export async function fetchAgentTickets(params = {}) {
+  return fetchTicketList("/tickets", params);
+}
+
+export async function fetchAreaTickets(params = {}) {
+  const filters = { ...params };
+  delete filters.responsibleAreaId;
+  return fetchTicketList("/staff/tickets/area", filters);
+}
+
+async function fetchTicketList(path, params) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
@@ -352,7 +362,7 @@ export async function fetchAgentTickets(params = {}) {
     query.set(key, value);
   });
   const qs = query.toString();
-  return request(`/tickets${qs ? `?${qs}` : ""}`);
+  return request(`${path}${qs ? `?${qs}` : ""}`);
 }
 
 export async function fetchTicketsByLabel(labelId, params = {}) {

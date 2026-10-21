@@ -46,6 +46,12 @@ function mapTicket(ticket) {
 
 export default function TicketsInboxPage() {
   const { user } = useAuth();
+  return <TicketsInboxContent key={`${user?.citizenId}:${user?.role}:${user?.areaId}`} />;
+}
+
+function TicketsInboxContent() {
+  const { user } = useAuth();
+  const areaScoped = user?.role === "AREA_RESPONSIBLE";
   const [activeTab, setActiveTab] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -91,6 +97,7 @@ export default function TicketsInboxPage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (areaScoped) return undefined;
     fetchStaffLabels()
       .then((res) => {
         if (!cancelled) setLabels(Array.isArray(res) ? res.filter((label) => label.active !== false) : []);
@@ -101,11 +108,12 @@ export default function TicketsInboxPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [areaScoped]);
 
   const effectiveStatus = activeTab === "Resueltos" ? "RESOLVED" : filters.status;
 
   const { tickets: rawTickets, totalElements, totalPages, loading, error, refetch } = useAgentTickets({
+    areaScoped,
     categoryId: filters.categoryId || undefined,
     priority: filters.priority || undefined,
     neighborhoodId: filters.neighborhoodId && filters.neighborhoodId !== NO_LOCATION_FILTER ? filters.neighborhoodId : undefined,
@@ -347,7 +355,8 @@ export default function TicketsInboxPage() {
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Área responsable</label>
             <select
-              value={filters.responsibleAreaId}
+              disabled={areaScoped}
+              value={areaScoped ? user.areaId : filters.responsibleAreaId}
               onChange={(e) => handleFilterChange("responsibleAreaId", e.target.value)}
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
             >

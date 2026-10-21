@@ -23,7 +23,9 @@ export default function AgentSidebar() {
     "Usuario";
   const roleLabel = ROLE_LABELS[user?.role] || user?.role || "";
 
-  const navItems = [
+  const navItems = user?.role === "AREA_RESPONSIBLE" ? [
+    { name: "Tickets de mi área", path: "/agente/tickets", icon: Ticket },
+  ] : [
     { name: "Dashboard", path: "/agente/dashboard", icon: LayoutDashboard },
     { name: "Tickets", path: "/agente/tickets", icon: Ticket },
     { name: "Métricas", path: "/agente/metricas", icon: BarChart },
