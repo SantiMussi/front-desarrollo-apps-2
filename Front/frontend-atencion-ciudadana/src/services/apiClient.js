@@ -27,7 +27,7 @@ export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 export const storeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const removeStoredToken = () => localStorage.removeItem(TOKEN_KEY);
 
-async function request(endpoint, options = {}) {
+async function request(endpoint, options = {}, responseType = "json") {
   const url = `${BASE_URL}${endpoint}`;
 
   const token = getStoredToken();
@@ -53,7 +53,7 @@ async function request(endpoint, options = {}) {
   }
 
   if (response.status === 204) return null;
-  return response.json();
+  return responseType === "blob" ? response.blob() : response.json();
 }
 
 
@@ -711,4 +711,25 @@ export async function downloadAnonymousAttachment(trackingCode, ticketPassword, 
     trackingCode,
     anonymousAccessPassword: ticketPassword,
   });
+}
+
+// H24: the server applies the same filters to every aggregate and to CSV export.
+function indicatorQuery(params) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "" && value !== false) query.set(key, String(value));
+  });
+  return query.toString();
+}
+
+export async function fetchIndicatorOverview(params = {}) {
+  return request(`/indicators/overview?${indicatorQuery(params)}`);
+}
+
+export async function exportIndicatorTickets(params = {}) {
+  return request(`/indicators/export?${indicatorQuery(params)}`, {}, "blob");
+}
+
+export async function fetchIndicatorAreas() {
+  return request("/indicators/areas");
 }

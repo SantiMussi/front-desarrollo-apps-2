@@ -254,8 +254,8 @@ describe("ResolveTicketDialog", () => {
 
   it("en modo simulador precarga tipo y mensajes desde la respuesta del área", () => {
     const { onConfirm } = setup({ mode: "simulator" });
-    expect(screen.getByText("Registrar respuesta del área", { selector: "h2" })).toBeInTheDocument();
-    const confirm = screen.getByRole("button", { name: "Registrar respuesta del área" });
+    expect(screen.getByText("Simulación DEV de resolución", { selector: "h2" })).toBeInTheDocument();
+    const confirm = screen.getByRole("button", { name: "Confirmar simulación DEV" });
     expect(confirm).toBeDisabled();
     pick("Seleccioná la respuesta del área…", "El área ejecutó el trabajo solicitado");
     expect(screen.getByText(/Podés ajustar el resultado/)).toBeInTheDocument();

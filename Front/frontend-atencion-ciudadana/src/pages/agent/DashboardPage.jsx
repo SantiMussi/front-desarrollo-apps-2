@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -16,11 +15,12 @@ import {
   UserRoundX,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
+import { useIndicatorOverview } from "../../hooks/useIndicatorOverview";
+import { getStoredToken } from "../../services/apiClient";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
 
-const ACTIVE_STATUSES = new Set(["REGISTERED", "IN_REVIEW", "ROUTED", "IN_PROGRESS", "PENDING_INFORMATION"]);
 const STATUS_COLORS = {
   REGISTERED: "bg-blue-500",
   IN_REVIEW: "bg-violet-500",
@@ -87,22 +87,21 @@ function EmptyState() {
 }
 
 export default function DashboardPage() {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated || !["AGENT", "ADMIN"].includes(user?.role)) return <p role="alert">No tenés permiso para consultar indicadores.</p>;
+  return <DashboardContent key={JSON.stringify([user?.citizenId, user?.id, user?.role, getStoredToken()])} />;
+}
+
+function DashboardContent() {
   const { user } = useAuth();
-  const { tickets, totalElements, loading, error, refetch } = useAgentTickets({ page: 0, size: 100, sort: "updatedAt,desc" });
+  const overview = useIndicatorOverview();
+  const recent = useAgentTickets({ page: 0, size: 4, sort: "updatedAt,desc" });
+  const { data, loading, error } = overview;
+  const tickets = recent.tickets;
+  const refetch = () => { overview.refetch(); recent.refetch(); };
+  if (error) return <div role="alert" className="p-6 text-red-700">No pudimos actualizar los indicadores: {error} <button onClick={refetch}>Reintentar</button></div>;
 
-  const data = useMemo(() => {
-    const active = tickets.filter((ticket) => ACTIVE_STATUSES.has(ticket.currentStatus));
-    const unassigned = active.filter((ticket) => !ticket.assignedAgentId);
-    const breached = active.filter((ticket) => getSlaIndicator(ticket).status === "overdue");
-    const atRisk = active.filter((ticket) => getSlaIndicator(ticket).status === "at-risk");
-    const urgent = active
-      .filter((ticket) => ticket.currentPriority === "CRITICAL" || ticket.currentPriorityFactor === "CRITICAL" || ticket.escalated || getSlaIndicator(ticket).status !== "on-track")
-      .sort((a, b) => Number(Boolean(b.slaBreached)) - Number(Boolean(a.slaBreached)) || new Date(b.updatedAt) - new Date(a.updatedAt));
-    const statusCounts = tickets.reduce((counts, ticket) => ({ ...counts, [ticket.currentStatus]: (counts[ticket.currentStatus] || 0) + 1 }), {});
-    return { active, unassigned, breached, atRisk, urgent, statusCounts };
-  }, [tickets]);
-
-  if (loading) {
+  if (loading || !data) {
     return <div className="flex h-full items-center justify-center bg-slate-50"><Loader2 className="h-7 w-7 animate-spin text-[#0F2C59]" /><span className="ml-3 text-sm text-slate-600">Preparando tu dashboard…</span></div>;
   }
 
@@ -130,21 +129,21 @@ export default function DashboardPage() {
         {error && <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><span>No pudimos actualizar los datos: {error}</span><button onClick={refetch} className="font-semibold underline">Reintentar</button></div>}
 
         <section aria-label="Resumen operativo" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Tickets activos" value={data.active.length} detail={`${totalElements} tickets en total`} icon={Inbox} />
-          <StatCard label="Sin asignar" value={data.unassigned.length} detail="Requieren un responsable" icon={UserRoundX} tone="blue" />
-          <StatCard label="SLA vencido" value={data.breached.length} detail="Necesitan atención inmediata" icon={ShieldAlert} tone="red" />
-          <StatCard label="Próximos a vencer" value={data.atRisk.length} detail="Dentro de la ventana de alerta" icon={Clock3} tone="amber" />
+          <StatCard label="Tickets activos" value={data.counts.active} detail={`${data.counts.total} tickets en total`} icon={Inbox} />
+          <StatCard label="Sin agente M2" value={data.counts.unassigned} detail="Activos sin agente interno; pueden tener área" icon={UserRoundX} tone="blue" />
+          <StatCard label="SLA vencido" value={data.counts.overdue} detail="Necesitan atención inmediata" icon={ShieldAlert} tone="red" />
+          <StatCard label="Próximos a vencer" value={data.counts.nearDue} detail="Dentro de la ventana de alerta" icon={Clock3} tone="amber" />
         </section>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.8fr)]">
           <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <div><h2 className="font-bold text-slate-900">Requieren tu atención</h2><p className="mt-0.5 text-xs text-slate-500">Priorizados por SLA, escalamiento y criticidad</p></div>
+              <div><h2 className="font-bold text-slate-900">Requieren tu atención</h2><p className="mt-0.5 text-xs text-slate-500">{data.counts.urgent} activos por SLA, escalamiento o prioridad crítica · hasta 6 resultados</p></div>
               <Link to="/agente/tickets" className="flex items-center gap-1 text-sm font-semibold text-[#0F2C59] hover:underline">Ver todos <ChevronRight className="h-4 w-4" /></Link>
             </div>
-            {data.urgent.length === 0 ? <EmptyState /> : (
+            {data.counts.urgent === 0 ? <EmptyState /> : (
               <div className="divide-y divide-slate-100">
-                {data.urgent.slice(0, 6).map((ticket) => {
+                {data.attention.map((ticket) => {
                   const sla = getSlaIndicator(ticket);
                   const priority = ticket.currentPriority || ticket.currentPriorityFactor;
                   return (
@@ -164,14 +163,14 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Flujo de trabajo</h2><p className="mt-0.5 text-xs text-slate-500">Distribución de la bandeja actual</p></div><CircleDot className="h-5 w-5 text-slate-400" /></div>
+            <div className="flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Flujo de trabajo</h2><p className="mt-0.5 text-xs text-slate-500">Distribución global de tickets</p></div><CircleDot className="h-5 w-5 text-slate-400" /></div>
             <div className="mt-6 space-y-4">
-              {Object.entries(TICKET_STATUS_LABELS).filter(([status]) => (data.statusCounts[status] || 0) > 0).map(([status, label]) => {
-                const count = data.statusCounts[status] || 0;
-                const width = tickets.length ? Math.max(4, (count / tickets.length) * 100) : 0;
+              {Object.entries(TICKET_STATUS_LABELS).filter(([status]) => (data.statuses.find((item) => item.key === status)?.count || 0) > 0).map(([status, label]) => {
+                const count = data.statuses.find((item) => item.key === status)?.count || 0;
+                const width = data.counts.total ? (count / data.counts.total) * 100 : 0;
                 return <div key={status}><div className="mb-1.5 flex justify-between text-xs"><span className="font-medium text-slate-600">{label}</span><span className="font-bold text-slate-800">{count}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${STATUS_COLORS[status] || "bg-slate-400"}`} style={{ width: `${width}%` }} /></div></div>;
               })}
-              {tickets.length === 0 && <p className="py-12 text-center text-sm text-slate-500">No hay datos para mostrar.</p>}
+              {data.counts.total === 0 && <p className="py-12 text-center text-sm text-slate-500">No hay datos para mostrar.</p>}
             </div>
             <div className="mt-6 rounded-lg bg-[#f3f6fa] p-4"><div className="flex items-start gap-3"><TicketCheck className="mt-0.5 h-5 w-5 text-[#0F2C59]" /><div><p className="text-sm font-semibold text-slate-800">Vista operativa</p><p className="mt-1 text-xs leading-5 text-slate-500">Para tendencias históricas, tiempos promedio y comparaciones, consultá la sección Métricas.</p><Link to="/agente/metricas" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#0F2C59] hover:underline">Abrir Métricas <ArrowRight className="h-3 w-3" /></Link></div></div></div>
           </section>
@@ -180,8 +179,10 @@ export default function DashboardPage() {
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="font-bold text-slate-900">Actividad reciente</h2><p className="mt-0.5 text-xs text-slate-500">Últimas actualizaciones de tickets</p></div><AlertTriangle className="h-5 w-5 text-slate-400" /></div>
           <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
-            {tickets.slice(0, 4).map((ticket) => <Link key={ticket.id} to={`/agente/tickets/${ticket.id}`} className="flex items-start gap-3 px-5 py-4 hover:bg-slate-50"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_COLORS[ticket.currentStatus] || "bg-slate-400"}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-800">{ticket.summary || "Ticket sin resumen"}</p><p className="mt-1 text-xs text-slate-500"><span className="font-semibold text-[#0F2C59]">{ticket.publicId || ticket.id}</span> · {TICKET_STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus}</p></div><span className="shrink-0 text-xs text-slate-400">{formatRelativeDate(ticket.updatedAt || ticket.createdAt)}</span></Link>)}
-            {tickets.length === 0 && <p className="col-span-2 px-5 py-10 text-center text-sm text-slate-500">Todavía no hay actividad reciente.</p>}
+            {recent.loading && <p className="p-5">Cargando actividad reciente…</p>}
+            {recent.error && <p role="alert" className="p-5 text-red-700">No pudimos cargar la actividad reciente: {recent.error}</p>}
+            {!recent.loading && !recent.error && tickets.map((ticket) => <Link key={ticket.id} to={`/agente/tickets/${ticket.id}`} className="flex items-start gap-3 px-5 py-4 hover:bg-slate-50"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_COLORS[ticket.currentStatus] || "bg-slate-400"}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-slate-800">{ticket.summary || "Ticket sin resumen"}</p><p className="mt-1 text-xs text-slate-500"><span className="font-semibold text-[#0F2C59]">{ticket.publicId || ticket.id}</span> · {TICKET_STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus}</p></div><span className="shrink-0 text-xs text-slate-400">{formatRelativeDate(ticket.updatedAt || ticket.createdAt)}</span></Link>)}
+            {!recent.loading && !recent.error && tickets.length === 0 && <p className="col-span-2 px-5 py-10 text-center text-sm text-slate-500">Todavía no hay actividad reciente.</p>}
           </div>
         </section>
       </main>

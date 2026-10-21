@@ -53,7 +53,9 @@ export function useResolveTicket() {
       setResolution(data);
       return data;
     } catch (err) {
-      setError(messageForError(err));
+      setError(err?.status === 403 ? "No tenés permiso para usar la simulación DEV en este servidor. No se aplicó ningún cambio."
+        : err?.status === 404 ? "La simulación DEV no está disponible en este servidor o el ticket no existe. No se aplicó ningún cambio."
+          : messageForError(err));
       setErrorCode(err?.code || err?.status || null);
       return null;
     } finally {

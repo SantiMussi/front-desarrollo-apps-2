@@ -189,11 +189,11 @@ describe("AgentsPage", () => {
   it("invita a un agente y muestra el aviso", () => {
     renderWithProviders(<AgentsPage />);
     fireEvent.click(screen.getByRole("button", { name: /Invitar agente/ }));
-    const dialog = screen.getByText("Recibirá un correo para configurar su cuenta.").closest("form");
+    const dialog = screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.").closest("form");
     fireEvent.change(within(dialog).getByPlaceholderText(/nombre@ciudaduade/), { target: { value: "nuevo@ciudaduade.gob.ar" } });
     fireEvent.change(within(dialog).getByDisplayValue("Atención General"), { target: { value: "Tránsito" } });
-    fireEvent.click(screen.getByRole("button", { name: /Enviar invitación/ }));
-    expect(screen.getByText("Invitación enviada a nuevo@ciudaduade.gob.ar.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Probar invitación/ }));
+    expect(screen.getByText("Demostración para nuevo@ciudaduade.gob.ar: no se envió ninguna invitación.")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Cerrar aviso"));
     expect(screen.queryByText(/Invitación enviada/)).not.toBeInTheDocument();
   });
@@ -203,16 +203,16 @@ describe("AgentsPage", () => {
     const open = () => fireEvent.click(screen.getByRole("button", { name: /Invitar agente/ }));
     open();
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    expect(screen.queryByText("Recibirá un correo para configurar su cuenta.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
     open();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(screen.queryByText("Recibirá un correo para configurar su cuenta.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
     open();
-    const form = screen.getByText("Recibirá un correo para configurar su cuenta.").closest("form");
+    const form = screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.").closest("form");
     fireEvent.mouseDown(form);
-    expect(screen.getByText("Recibirá un correo para configurar su cuenta.")).toBeInTheDocument();
+    expect(screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.")).toBeInTheDocument();
     fireEvent.mouseDown(form.parentElement);
-    expect(screen.queryByText("Recibirá un correo para configurar su cuenta.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
   });
 });
 

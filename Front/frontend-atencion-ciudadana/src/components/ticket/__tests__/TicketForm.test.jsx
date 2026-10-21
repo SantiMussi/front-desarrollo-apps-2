@@ -259,7 +259,13 @@ describe("TicketForm - envío con sesión", () => {
     fillBasics();
     fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
     expect(await screen.findByText("Información adicional requerida")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Guardar como borrador"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    expect(screen.queryByText("Guardar como borrador")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Salir sin guardar"));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("se descartarán"));
+    expect(screen.getByText("Información adicional requerida")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Salir sin guardar"));
+    confirm.mockRestore();
     expect(screen.getByTestId("location")).toHaveTextContent("/");
     fireEvent.click(screen.getByText("Completar información"));
     expect(await screen.findByRole("button", { name: /Enviar solicitud/ })).toBeInTheDocument();

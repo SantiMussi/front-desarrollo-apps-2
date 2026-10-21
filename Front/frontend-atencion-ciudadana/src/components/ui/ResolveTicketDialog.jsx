@@ -72,11 +72,11 @@ export default function ResolveTicketDialog({
               Resolución · {ticketPublicId}
             </p>
             <h2 id={titleId} className="mt-0.5 text-lg font-semibold text-slate-900">
-              {isSimulator ? "Registrar respuesta del área" : "Marcar como resuelto"}
+              {isSimulator ? "Simulación DEV de resolución" : "Marcar como resuelto"}
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
               {isSimulator
-                ? "Registrá el resultado que informa el área responsable (simulado en esta entrega). El ticket pasa a "
+                ? "Simula un evento externo; requiere el simulador habilitado en el servidor. No contacta al módulo externo. Si se acepta, el ticket pasa a "
                 : "Registrá el resultado de la solicitud. El ticket pasa a "}
               <strong>Resuelto</strong>.
             </p>
@@ -202,7 +202,7 @@ export default function ResolveTicketDialog({
               className="inline-flex items-center gap-2 rounded-md bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#173d73] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" />
-              {loading ? "Registrando…" : isSimulator ? "Registrar respuesta del área" : "Confirmar resolución"}
+              {loading ? "Registrando…" : isSimulator ? "Confirmar simulación DEV" : "Confirmar resolución"}
             </button>
           )}
         </footer>

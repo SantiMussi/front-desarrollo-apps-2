@@ -387,12 +387,12 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           <button
             type="button"
             onClick={() => {
-              navigate("/");
+              if (window.confirm("¿Salir sin guardar? Los datos de esta solicitud se descartarán.")) navigate("/");
             }}
             className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-[#0F2C59]
                        transition-all duration-300 hover:bg-neutral-50 active:scale-95"
           >
-            Guardar como borrador
+            Salir sin guardar
           </button>
         </div>
 

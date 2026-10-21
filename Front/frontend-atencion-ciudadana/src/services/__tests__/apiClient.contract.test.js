@@ -28,6 +28,26 @@ const lastCall = () => {
   return { url, options, body: typeof options?.body === "string" ? JSON.parse(options.body) : options?.body };
 };
 
+describe("indicadores globales y CSV server-side", () => {
+  it("serializa los mismos filtros sin paginación y conserva autorización", async () => {
+    api.storeToken("staff-token");
+    const filters = { days: 30, categoryId: 1, neighborhoodId: "n1", priority: "HIGH", responsibleAreaId: "M6", status: "IN_PROGRESS", sla: "breached", withoutLocation: true, omitted: undefined };
+    await api.fetchIndicatorOverview(filters);
+    const overview = lastCall();
+    expect(overview.url).toContain("/indicators/overview?");
+    expect(overview.options.headers.Authorization).toBe("Bearer staff-token");
+    expect(overview.url).not.toContain("page");
+    const blob = await api.exportIndicatorTickets(filters);
+    expect(blob).toBeInstanceOf(Blob);
+    expect(lastCall().url.replace("/export?", "/overview?")).toBe(overview.url);
+    await api.fetchIndicatorAreas(); expect(lastCall().url).toBe("/api/indicators/areas");
+  });
+  it.each([401,403,404,409,500])("la exportación %s conserva el error HTTP y no devuelve un archivo", async (status) => {
+    fetch.mockResolvedValue(failResponse(status, { message: "No disponible", code: "CODE" }));
+    await expect(api.exportIndicatorTickets()).rejects.toMatchObject({ status, message: "No disponible", code: "CODE" });
+  });
+});
+
 beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(okResponse()));

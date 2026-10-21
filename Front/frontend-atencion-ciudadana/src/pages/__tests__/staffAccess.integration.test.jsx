@@ -61,7 +61,7 @@ it("area flow reads confirmed facts and creates PUBLIC/INTERNAL with no admin re
   fireEvent.click(screen.getByRole("button",{name:"Enviar"}));
   await waitFor(() => expect(sent).toEqual([{visibility:"PUBLIC",text:"Público"},{visibility:"INTERNAL",text:"Interno"}]));
   expect(screen.getByText("25%")).toBeInTheDocument();expect(screen.getByText("Dirección sin mapa")).toBeInTheDocument();
-  expect(screen.getByLabelText("Prioridad")).toBeDisabled();
+  expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Calculada por el sistema");
   expect(requests.some(([url]) => /reclassification|cancellation|staff\/labels|simulate/.test(url))).toBe(false);
 });
 it("clears drafts and private facts on ticket change and ignores late detail/messages", async () => {

@@ -281,7 +281,7 @@ describe("TicketDetailPage - propiedad del ticket (solo lectura)", () => {
     expect(await screen.findByText(/Este ticket es tuyo/)).toBeInTheDocument();
     expect(screen.getByText("Registrado", { selector: "span.rounded-md" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Nuevo tipo propuesto")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Prioridad")).toBeDisabled();
+    expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Calculada por el sistema");
     expect(screen.getByTestId("labels")).toHaveAttribute("data-readonly", "true");
     expect(screen.queryByText("Adjuntar archivo")).not.toBeInTheDocument();
   });
@@ -691,6 +691,17 @@ describe("TicketDetailPage - transiciones de estado", () => {
     await act(async () => finish({ currentStatus: "IN_PROGRESS" }));
   });
 
+  it.each([401, 403, 404, 409, undefined])("STARTED DEV fallido %s conserva el estado real", async (status) => {
+    setTicket({ currentStatus: "ROUTED", responsibleAreaId: "M3" });
+    api.startTicketWork.mockRejectedValueOnce(Object.assign(new Error("Falla de red o servidor"), { status }));
+    await renderPage();
+    await pickTransition("Derivado", "Iniciar trabajo del área");
+    expect(screen.getByRole("button", { name: "Derivado" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "En gestión" })).not.toBeInTheDocument();
+    expect(screen.getByText(/las acciones marcadas simulan eventos externos/)).toBeInTheDocument();
+    if ([403, 404].includes(status)) expect(screen.getByText(/No se aplicó ningún cambio/)).toBeInTheDocument();
+  });
+
   it("devuelve un ticket derivado al agente con un motivo", async () => {
     setTicket({ currentStatus: "ROUTED", responsibleAreaId: "M3" });
     api.returnTicketToAgent.mockResolvedValue({ currentStatus: "IN_REVIEW" });
@@ -699,7 +710,7 @@ describe("TicketDetailPage - transiciones de estado", () => {
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByPlaceholderText("Ej.: AREA_NOT_RESPONSIBLE"), { target: { value: "WRONG_AREA" } });
     fireEvent.change(within(dialog).getByPlaceholderText(/Explicá brevemente/), { target: { value: "Área equivocada" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar devolución" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar simulación DEV" }));
     await act(async () => {});
     expect(api.returnTicketToAgent).toHaveBeenCalledWith(5, "M3", { reasonCode: "WRONG_AREA", publicMessage: "Área equivocada", internalMessage: "" });
   });
@@ -713,7 +724,7 @@ describe("TicketDetailPage - transiciones de estado", () => {
     fireEvent.click(within(dialog).getByText("Seleccioná un motivo…"));
     fireEvent.click(screen.getByRole("option", { name: "Fuera de alcance del área" }));
     fireEvent.change(within(dialog).getByPlaceholderText(/Explicá brevemente/), { target: { value: "Fuera de alcance" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar cancelación" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar simulación DEV" }));
     await act(async () => {});
     expect(api.rejectTicket).toHaveBeenCalledWith(5, "M3", { reasonCode: "OUT_OF_SCOPE", publicMessage: "Fuera de alcance", internalMessage: "" });
   });
@@ -790,7 +801,7 @@ describe("TicketDetailPage - resolución", () => {
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByText("Seleccioná la respuesta del área…"));
     fireEvent.click(screen.getByRole("option", { name: "El área ejecutó el trabajo solicitado" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Registrar respuesta del área" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar simulación DEV" }));
     await act(async () => {});
     expect(resolveHook.resolveSimulated).toHaveBeenCalledWith(5, expect.objectContaining({ moduleId: "M3", type: "ACTION_COMPLETED" }));
     expect(screen.getByRole("button", { name: /Resuelto/ })).toBeInTheDocument();
@@ -804,7 +815,7 @@ describe("TicketDetailPage - resolución", () => {
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByText("Seleccioná la respuesta del área…"));
     fireEvent.click(screen.getByRole("option", { name: "El área ejecutó el trabajo solicitado" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Registrar respuesta del área" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar simulación DEV" }));
     await act(async () => {});
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
@@ -862,11 +873,11 @@ describe("TicketDetailPage - clasificación, prioridad y adjuntos", () => {
     expect(api.routeTicket).not.toHaveBeenCalled();
   });
 
-  it("cambia la prioridad localmente", async () => {
+  it("muestra la prioridad real sin ofrecer una edición local", async () => {
     await renderPage();
-    fireEvent.click(screen.getByLabelText("Prioridad"));
-    fireEvent.click(screen.getByRole("option", { name: "Crítica" }));
-    expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Crítica");
+    expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Calculada por el sistema");
+    expect(screen.getByLabelText("Prioridad").tagName).toBe("SPAN");
+    expect(screen.queryByRole("option", { name: "Crítica" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Área responsable")).toBeDisabled();
   });
 
@@ -965,7 +976,7 @@ describe("TicketDetailPage - SLA", () => {
 describe("H21 area staff detail", () => {
   it("permite PUBLIC/INTERNAL y bloquea gestión administrativa", async () => {
     await renderPage(authFor({ role: "AREA_RESPONSIBLE", citizenId: "area", areaId: "M6" }));
-    expect(screen.getByLabelText("Prioridad")).toBeDisabled();
+    expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Calculada por el sistema");
     expect(screen.queryByText("Propuestas de clasificación")).not.toBeInTheDocument();
     expect(screen.queryByText("Cancelaciones y revisión administrativa")).not.toBeInTheDocument();
     expect(screen.queryByTestId("labels")).not.toBeInTheDocument();

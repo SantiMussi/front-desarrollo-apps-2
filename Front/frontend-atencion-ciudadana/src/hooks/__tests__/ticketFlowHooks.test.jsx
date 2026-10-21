@@ -239,8 +239,9 @@ describe("useResolveTicket", () => {
         data = await result.current[method](1, {});
       });
       expect(data).toBeNull();
-      if (expected instanceof RegExp) expect(result.current.error).toMatch(expected);
-      else expect(result.current.error).toBe(expected);
+      const message = method === "resolveSimulated" && [403, 404].includes(error.status) ? /simulación DEV/ : expected;
+      if (message instanceof RegExp) expect(result.current.error).toMatch(message);
+      else expect(result.current.error).toBe(message);
     }
     expect(result.current.errorCode ?? null).toBe(error.code || error.status || null);
     act(() => result.current.reset());

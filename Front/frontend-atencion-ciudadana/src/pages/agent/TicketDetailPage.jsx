@@ -40,7 +40,9 @@ function reviewErrorMessage(err) {
   return err?.message || "No pudimos iniciar el análisis. Intentá de nuevo.";
 }
 
-function reasonConfirmErrorMessage(err) {
+function reasonConfirmErrorMessage(err, simulated = false) {
+  if (simulated && err?.status === 403) return "No tenés permiso para usar la simulación DEV en este servidor. No se aplicó ningún cambio.";
+  if (simulated && err?.status === 404) return "La simulación DEV no está disponible en este servidor o el ticket no existe. No se aplicó ningún cambio.";
   if (err?.status === 409) return err?.message || "El ticket ya no permite esta acción.";
   if (err?.status === 400) return err?.message || "Faltan datos obligatorios.";
   if (err?.status === 403) return "No tenés permiso para realizar esta acción.";
@@ -376,7 +378,8 @@ function TicketDetailContent() {
       setStatus(updated.currentStatus);
       reload();
     } catch (err) {
-      setTransitionError(err?.message || "No pudimos iniciar el trabajo sobre este ticket.");
+      setTransitionError([403, 404].includes(err?.status) ? reasonConfirmErrorMessage(err, true)
+        : err?.message || "No pudimos iniciar el trabajo sobre este ticket.");
     } finally {
       setStartWorkLoading(false);
     }
@@ -452,7 +455,7 @@ function TicketDetailContent() {
       reload();
       setReasonDialog(null);
     } catch (err) {
-      setReasonError(reasonConfirmErrorMessage(err));
+      setReasonError(reasonConfirmErrorMessage(err, reasonDialog.kind !== "cancel"));
       if (reasonDialog.kind === "cancel" && err.status === 400 && err.message === "Un principal con duplicados exige cancellationScope y decisionReason") {
         setReasonDialog((prev) => ({ ...prev, cancellationScopeRequired: true }));
       }
@@ -479,6 +482,9 @@ function TicketDetailContent() {
   };
 
   const areaIsM2 = fields?.responsibleAreaId === "M2";
+  const simulatedStatuses = ["ROUTED", "IN_PROGRESS"].includes(status)
+    ? ["IN_REVIEW", "CANCELLED", ...(status === "ROUTED" ? ["IN_PROGRESS"] : []), ...(!areaIsM2 ? ["RESOLVED"] : [])]
+    : [];
   const resolveMode =
     areaIsM2 && status === "IN_PROGRESS"
       ? "manual"
@@ -491,6 +497,7 @@ function TicketDetailContent() {
 
   const handleResolveConfirm = async ({ type, publicMessage, internalMessage }) => {
     let when = new Date().toISOString();
+    if (!resolveMode) return;
     if (resolveMode === "manual") {
       const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
       if (!result) return;
@@ -624,10 +631,11 @@ function TicketDetailContent() {
         				{TICKET_STATUS_LABELS[status] || status}
         			</span>
         		) : (
-        			<StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} />
+              <StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} />
         		)}
         	</div>
         </div>
+        {!staffReadOnly && ["ROUTED", "IN_PROGRESS"].includes(status) && <p className="mt-3 text-xs text-amber-800">Simulación DEV: las acciones marcadas simulan eventos externos y requieren el simulador habilitado en el servidor. No contactan al módulo externo.</p>}
         {ownershipStatus === "checking" && (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -815,7 +823,7 @@ function TicketDetailContent() {
               </Field>
               <Field label="Responsable">{data.assignee.name}</Field>
               <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen} size="sm" />{data.citizen.name}</span></Field>
-              <Field label="Prioridad"><Select size="xs" ariaLabel="Prioridad" disabled={staffReadOnly} value={fields.priority} onChange={(nextValue) => setFields((current) => ({ ...current, priority: nextValue }))} options={Object.entries(PRIORITY).map(([id, label]) => ({ value: id, label }))} /></Field>
+              <Field label="Prioridad"><span aria-label="Prioridad" className="text-xs text-slate-700">{PRIORITY[ticket.currentPriority] || ticket.currentPriority || "Sin prioridad"}<span className="block text-[10px] text-slate-500">Calculada por el sistema</span></span></Field>
               <Field label="Área responsable"><Select size="xs" ariaLabel="Área responsable" disabled value={fields.responsibleAreaId} options={Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => ({ value: id, label: `${id} · ${label}` }))} /></Field>
               <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
@@ -893,6 +901,7 @@ function TicketDetailContent() {
         <TicketReasonDialog
           ticketPublicId={ticket.publicId}
           {...REASON_DIALOG_CONFIG[reasonDialog.kind]}
+          {...(reasonDialog.kind !== "cancel" ? { eyebrow: "Simulación DEV", description: `${REASON_DIALOG_CONFIG[reasonDialog.kind].description} Simula un evento externo; requiere el simulador habilitado en el servidor. No contacta al módulo externo.`, confirmLabel: "Confirmar simulación DEV" } : {})}
           cancellationScopeRequired={reasonDialog.cancellationScopeRequired}
           loading={reasonLoading}
           error={reasonError}

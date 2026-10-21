@@ -51,7 +51,7 @@ const STATUS_TONES = {
   CANCELLED: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
-export default function StatusTransitionMenu({ status, onChange, onTransitionRequest, align = "right" }) {
+export default function StatusTransitionMenu({ status, onChange, onTransitionRequest, align = "right", simulatedStatuses = [] }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = useId();
@@ -104,7 +104,7 @@ export default function StatusTransitionMenu({ status, onChange, onTransitionReq
               onClick={() => selectTransition(transition.status)}
               className="group flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
             >
-              <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">{transition.action}</span>
+              <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">{transition.action}{simulatedStatuses.includes(transition.status) && <span className="block text-xs text-amber-700">Simulación DEV</span>}</span>
               <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5" />
               <span className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${STATUS_TONES[transition.status]}`}>
                 {TICKET_STATUS_LABELS[transition.status]}
