@@ -5,6 +5,7 @@ import HomePage from "./pages/citizen/HomePage";
 import HelpPortalPage from "./pages/citizen/HelpPortalPage";
 import Footer from "./components/layout/Footer";
 import AccessibilityBar from "./components/layout/AccessibilityBar";
+import SupportChat from "./components/support/SupportChat";
 import { useAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
 import SplashScreen from "./components/ui/SplashScreen";
 import AgentLayout from "./components/layout/AgentLayout";
@@ -30,6 +31,7 @@ function CitizenLayout() {
   return (
     <>
       <AccessibilityBar size={size} contrast={contrast} onSizeChange={setSize} onToggleContrast={toggleContrast} />
+      <SupportChat zoom={zoom} />
       <div
         data-contrast={contrast ? "high" : undefined}
         style={zoom === 1 ? undefined : { zoom }}
