@@ -87,7 +87,6 @@ describe("App - rutas del ciudadano", () => {
   it.each([
     ["/mis-reclamos", "Mis reclamos"],
     ["/mis-reclamos/TK-1", "Detalle de mi reclamo"],
-    ["/cuenta", "Cuenta — próximamente"],
   ])("con sesión resuelve %s", async (path, text) => {
     await renderAt(path, authFor(CITIZEN));
     expect(screen.getByText(text)).toBeInTheDocument();

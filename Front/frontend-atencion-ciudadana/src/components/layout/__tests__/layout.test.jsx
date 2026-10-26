@@ -40,7 +40,7 @@ describe("CitizenNavbar", () => {
     openMenu(/Vecina Uno/);
     expect(screen.getByText("sub-123")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Mis reclamos" })).toHaveAttribute("href", "/mis-reclamos");
-    expect(screen.getByRole("menuitem", { name: "Cuenta" })).toHaveAttribute("href", "/cuenta");
+    expect(screen.queryByRole("menuitem", { name: "Cuenta" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Vista agente" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("menuitem", { name: "Cerrar sesión" }));
     expect(auth.logout).toHaveBeenCalledOnce();

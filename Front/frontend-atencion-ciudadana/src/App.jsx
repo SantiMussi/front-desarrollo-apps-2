@@ -50,11 +50,6 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/mis-reclamos" element={<MisReclamosPage />} />
             <Route path="/mis-reclamos/:publicId" element={<MisReclamoDetailPage />} />
-            {/* TODO: reemplazar por la página real */}
-            <Route
-              path="/cuenta"
-              element={<div className="mx-auto max-w-3xl p-10 text-neutral-500">Cuenta — próximamente</div>}
-            />
           </Route>
         </Route>
 

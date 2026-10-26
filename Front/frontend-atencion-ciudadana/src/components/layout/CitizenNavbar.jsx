@@ -42,7 +42,6 @@ export default function CitizenNavbar() {
         ...(isStaff ? [{ icon: Headset, label: "Vista agente", to: "/agente/tickets" }] : []),
         { icon: Ticket, label: "Mis reclamos", to: "/mis-reclamos" },
         { icon: KeyRound, label: "Ingresar un código de seguimiento", to: "/seguimiento" },
-        { icon: UserCircle, label: "Cuenta", to: "/cuenta" },
       ]
     : [
         { icon: User, label: "Ingresar", to: "/ingresar" },
