@@ -1,20 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { LifeBuoy, Send, TriangleAlert, X } from "lucide-react";
+import { ArrowLeft, LifeBuoy, Send, TriangleAlert, X } from "lucide-react";
 import { useCategories } from "../../hooks/useCategories";
-import { EMERGENCY_MESSAGE, QUICK_QUESTIONS, SUPPORT_EMAIL, SUPPORT_FAQ } from "../../data/supportFaq";
-import { answerQuestion, claimPath } from "../../utils/supportAssistant";
+import {
+  EMERGENCY_MESSAGE,
+  PRIVACY_NOTE,
+  SUPPORT_EMAIL,
+  SUPPORT_TOPICS,
+  TICKET_SCOPE_ANSWER,
+  faqById,
+  faqsForTopic,
+} from "../../data/supportFaq";
+import { answerQuestion, claimPath, redactPersonalData } from "../../utils/supportAssistant";
 
 const MAX_LENGTH = 300;
 
 const WELCOME = {
   id: "welcome",
   from: "bot",
-  text: "Hola, soy el asistente de ayuda de Ciudad UADE. No soy una persona ni una inteligencia artificial: te oriento con respuestas preparadas. Por favor, no escribas contraseñas ni datos personales.",
+  text: "Hola, soy el asistente de ayuda de Ciudad UADE. No soy una persona ni una inteligencia artificial: te oriento con respuestas preparadas sobre cómo usar el sitio. Tu reclamo siempre lo atiende una persona del equipo. Por favor, no escribas contraseñas ni datos personales.",
 };
 
 const NOT_FOUND =
-  `No encontré una respuesta para eso. Probá con otras palabras (por ejemplo «luz apagada» o «bache»), mirá las preguntas de abajo o escribinos a ${SUPPORT_EMAIL}.`;
+  `No encontré una respuesta para eso. Probá con otras palabras (por ejemplo «luz apagada» o «seguir mi reclamo»), elegí un tema de abajo o escribinos a ${SUPPORT_EMAIL}.`;
+
+const CHIP = "rounded-full border border-neutral-300 px-2.5 py-1 text-[12px] font-medium text-[#0F2C59] hover:bg-neutral-50";
 
 function Bubble({ message, onNavigate }) {
   const mine = message.from === "user";
@@ -67,6 +77,7 @@ function SupportChatPanel({ open, onClose, zoom }) {
   const { categories, loading } = useCategories();
   const [messages, setMessages] = useState([WELCOME]);
   const [draft, setDraft] = useState("");
+  const [chips, setChips] = useState({ mode: "topics" });
   const listRef = useRef(null);
   const counter = useRef(0);
 
@@ -77,9 +88,19 @@ function SupportChatPanel({ open, onClose, zoom }) {
 
   const push = (...items) => setMessages((current) => [...current, ...items.map((item) => ({ ...item, id: `m${counter.current++}` }))]);
 
+  const showFaq = (faq, emergency = false) => {
+    push({ from: "bot", text: faq.answer, action: faq.action, emergency });
+    setChips(faq.related?.length ? { mode: "related", ids: faq.related } : { mode: "topics" });
+  };
+
   const reply = (result) => {
     if (result.type === "faq") {
-      push({ from: "bot", text: result.faq.answer, action: result.faq.action, emergency: result.emergency });
+      showFaq(result.faq, result.emergency);
+      return;
+    }
+    setChips({ mode: "topics" });
+    if (result.type === "ticketCode") {
+      push({ from: "bot", text: TICKET_SCOPE_ANSWER.text, action: TICKET_SCOPE_ANSWER.action, emergency: result.emergency });
     } else if (result.type === "requestTypes") {
       push({ from: "bot", text: "Esto parece ir con alguno de estos temas. Tocá el que más se parezca para empezar el reclamo:", suggestions: result.suggestions, emergency: result.emergency });
     } else {
@@ -88,15 +109,16 @@ function SupportChatPanel({ open, onClose, zoom }) {
   };
 
   const ask = (text) => {
-    const clean = text.trim().slice(0, MAX_LENGTH);
-    if (!clean) return;
-    push({ from: "user", text: clean });
-    reply(answerQuestion(clean, categories));
+    const { text: safe, redacted } = redactPersonalData(text.trim().slice(0, MAX_LENGTH));
+    if (!safe) return;
+    push({ from: "user", text: safe });
+    if (redacted) push({ from: "bot", text: PRIVACY_NOTE });
+    reply(answerQuestion(safe, categories));
   };
 
   const askFaq = (faq) => {
     push({ from: "user", text: faq.question });
-    reply({ type: "faq", faq });
+    showFaq(faq);
   };
 
   const submit = (event) => {
@@ -105,7 +127,8 @@ function SupportChatPanel({ open, onClose, zoom }) {
     setDraft("");
   };
 
-  const quick = QUICK_QUESTIONS.map((id) => SUPPORT_FAQ.find((faq) => faq.id === id)).filter(Boolean);
+  const chipFaqs =
+    chips.mode === "topic" ? faqsForTopic(chips.id) : chips.mode === "related" ? chips.ids.map(faqById).filter(Boolean) : [];
 
   return (
     <div
@@ -113,7 +136,7 @@ function SupportChatPanel({ open, onClose, zoom }) {
       aria-label="Asistente de ayuda"
       hidden={!open}
       style={zoom === 1 ? undefined : { zoom }}
-      className="mb-2 flex h-[min(32rem,70vh)] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl"
+      className="mb-2 flex h-[min(34rem,75vh)] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl"
     >
       <div className="flex items-center justify-between bg-[#0F2C59] px-4 py-3 text-white">
         <div>
@@ -129,17 +152,31 @@ function SupportChatPanel({ open, onClose, zoom }) {
           <Bubble key={message.id} message={message} onNavigate={onClose} />
         ))}
       </div>
-      <div className="flex flex-wrap gap-1.5 border-t border-neutral-100 px-3 pt-2.5">
-        {quick.map((faq) => (
-          <button
-            key={faq.id}
-            type="button"
-            onClick={() => askFaq(faq)}
-            className="rounded-full border border-neutral-300 px-2.5 py-1 text-[12px] font-medium text-[#0F2C59] hover:bg-neutral-50"
-          >
-            {faq.question}
-          </button>
-        ))}
+      <div className="max-h-36 overflow-y-auto border-t border-neutral-100 px-3 pt-2.5">
+        <p className="mb-1.5 text-[11.5px] font-medium text-neutral-500">
+          {chips.mode === "topics" ? "Elegí un tema:" : chips.mode === "topic" ? "Preguntas frecuentes:" : "Para seguir:"}
+        </p>
+        <div className="flex flex-wrap gap-1.5 pb-1">
+          {chips.mode === "topics"
+            ? SUPPORT_TOPICS.map((topic) => (
+                <button key={topic.id} type="button" onClick={() => setChips({ mode: "topic", id: topic.id })} className={CHIP}>
+                  {topic.label}
+                </button>
+              ))
+            : (
+              <>
+                {chipFaqs.map((faq) => (
+                  <button key={faq.id} type="button" onClick={() => askFaq(faq)} className={CHIP}>
+                    {faq.question}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setChips({ mode: "topics" })} className={`${CHIP} inline-flex items-center gap-1`}>
+                  <ArrowLeft className="h-3 w-3" aria-hidden />
+                  Todos los temas
+                </button>
+              </>
+            )}
+        </div>
       </div>
       <form onSubmit={submit} className="flex items-center gap-2 p-3">
         <label htmlFor="support-chat-input" className="sr-only">Escribí tu pregunta</label>
