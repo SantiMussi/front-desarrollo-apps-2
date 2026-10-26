@@ -30,7 +30,14 @@ async function setup(overrides = {}, anonymous = false) {
   fireEvent.change(screen.getByLabelText(/Descripción detallada/), { target: { value: "Descripción que debe conservarse" } });
   return view;
 }
-const send = () => fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+const confirmReview = () => {
+  const confirm = screen.queryByRole("button", { name: /Confirmar y enviar/ });
+  if (confirm) fireEvent.click(confirm);
+};
+const send = () => {
+  fireEvent.click(screen.getByRole("button", { name: /Revisar y enviar/ }));
+  confirmReview();
+};
 describe("H18 creation through React, hooks and HTTP client (mock HTTP)", () => {
   it("identified creation sends null optional location and Authorization", async () => {
     await setup(); send();
@@ -41,7 +48,7 @@ describe("H18 creation through React, hooks and HTTP client (mock HTTP)", () => 
   });
   it("manual address enables creation without map/geocoding, even with no neighborhood catalog", async () => {
     await setup({ requiresLocation: true });
-    expect(screen.getByRole("button", { name: /Enviar solicitud/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Revisar y enviar/ })).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/^Calle/), { target: { value: "Plaza central" } });
     send(); await screen.findByText("TRACK-OK");
     expect(JSON.parse(requests[0].body).location).toMatchObject({ addressLine: "Plaza central", neighborhoodId: null, latitude: null, longitude: null });
@@ -80,7 +87,7 @@ describe("H18 creation through React, hooks and HTTP client (mock HTTP)", () => 
   it("accepts decimal NUMBER without the browser's default integer step overriding the schema", async () => {
     await setup({ specificFields: [{ code: "COUNT", label: "Cantidad", type: "NUMBER", required: true, config: { min: 0, max: 1 } }] });
     fireEvent.change(screen.getByLabelText(/Cantidad/), { target: { value: "0.5" } });
-    const form = screen.getByRole("button", { name: /Enviar solicitud/ }).closest("form");
+    const form = screen.getByRole("button", { name: /Revisar y enviar/ }).closest("form");
     expect(form.noValidate).toBe(true);
     send(); await screen.findByText("TRACK-OK");
     expect(JSON.parse(requests[0].body).formData).toEqual({ COUNT: 0.5 });
@@ -91,6 +98,9 @@ describe("H18 creation through React, hooks and HTTP client (mock HTTP)", () => 
     await setup(); send();
     await screen.findByText(`Rechazo ${status}`);
     expect(screen.queryByText("¡Reclamo Registrado!")).not.toBeInTheDocument();
+    // El resumen sigue a la vista y, al volver, el borrador está intacto.
+    expect(screen.getByText("Reporte de prueba")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Volver y corregir/ }));
     expect(screen.getByLabelText(/Título/)).toHaveValue("Reporte de prueba");
     expect(screen.getByLabelText(/Descripción detallada/)).toHaveValue("Descripción que debe conservarse");
   });
@@ -109,8 +119,10 @@ describe("H18 creation through React, hooks and HTTP client (mock HTTP)", () => 
     let resolve;
     createResponse = () => new Promise((done) => { resolve = done; });
     await setup();
-    const form = screen.getByRole("button", { name: /Enviar solicitud/ }).closest("form");
-    fireEvent.submit(form); fireEvent.submit(form);
+    const form = screen.getByRole("button", { name: /Revisar y enviar/ }).closest("form");
+    fireEvent.submit(form);
+    const confirm = screen.getByRole("button", { name: /Confirmar y enviar/ });
+    fireEvent.click(confirm); fireEvent.click(confirm);
     expect(requests).toHaveLength(1);
     expect(screen.queryByText("¡Reclamo Registrado!")).not.toBeInTheDocument();
     await act(async () => resolve(response({ trackingCode: "TRACK-OK" }, 201)));

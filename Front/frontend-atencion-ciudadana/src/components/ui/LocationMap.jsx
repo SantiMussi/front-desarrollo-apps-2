@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Search, Loader2 } from "lucide-react";
+import { MapPin, Search, Loader2, LocateFixed } from "lucide-react";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -19,6 +19,15 @@ const redIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+const GEO_ERRORS = {
+  1: "No tenemos permiso para ver tu ubicación. Podés habilitarlo en el navegador o marcar el punto en el mapa.",
+  2: "No pudimos saber dónde estás. Marcá el punto en el mapa o escribí la dirección.",
+  3: "Tardó demasiado en responder. Probá de nuevo o marcá el punto en el mapa.",
+  default: "No pudimos obtener tu ubicación. Marcá el punto en el mapa o escribí la dirección.",
+};
+// Si el dispositivo informa un margen mayor, se sugiere ajustar el marcador a mano.
+const APPROXIMATE_ACCURACY_METERS = 200;
 
 const CABA_CENTER = [-34.6118, -58.4173];
 const CABA_ZOOM = 12;
@@ -119,6 +128,9 @@ function RecenterMap({ position }) {
 
 export default function LocationMap({ address, streetNumber, addressSource, latitude, longitude, onLocationSelect, disabled }) {
   const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState(null);
+  const [approximate, setApproximate] = useState(false);
   const markerRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -143,6 +155,29 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
     },
     [disabled, onLocationSelect]
   );
+
+  // Sólo se pide la ubicación al tocar el botón; se usa para ubicar el marcador y nada más.
+  const handleUseMyLocation = useCallback(() => {
+    if (disabled || locating || !navigator.geolocation) return;
+    setLocateError(null);
+    setApproximate(false);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          await handleMapClick({ lat: coords.latitude, lng: coords.longitude });
+          setApproximate(coords.accuracy > APPROXIMATE_ACCURACY_METERS);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (error) => {
+        setLocating(false);
+        setLocateError(GEO_ERRORS[error?.code] ?? GEO_ERRORS.default);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [disabled, locating, handleMapClick]);
 
   const handleMarkerDragEnd = useCallback(async () => {
     const marker = markerRef.current;
@@ -217,13 +252,30 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
           <MapPin className="h-3.5 w-3.5 text-[#D63031]" strokeWidth={2} />
           Ubicación en el mapa
         </label>
-        {geocoding && (
-          <span className="flex items-center gap-1 text-[11px] text-neutral-400">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Buscando...
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {geocoding && (
+            <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Buscando...
+            </span>
+          )}
+          {typeof navigator !== "undefined" && "geolocation" in navigator && (
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={disabled || locating}
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-[#0F2C59] transition-colors hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"
+            >
+              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <LocateFixed className="h-3.5 w-3.5" aria-hidden />}
+              {locating ? "Buscando tu ubicación…" : "Usar mi ubicación"}
+            </button>
+          )}
+        </div>
       </div>
+      {locateError && <p role="alert" className="text-[12px] text-red-600">{locateError}</p>}
+      {approximate && !locateError && (
+        <p className="text-[12px] text-amber-700">Tu ubicación es aproximada: arrastrá el marcador hasta el lugar exacto.</p>
+      )}
 
       <div
         className={`relative rounded-lg border border-neutral-200 overflow-hidden shadow-sm transition-shadow hover:shadow-md ${

@@ -78,7 +78,18 @@ const fillBasics = () => {
   fireEvent.click(screen.getByRole("button", { name: "Palermo" }));
 };
 
-const submitForm = () => fireEvent.submit(screen.getByRole("button", { name: /Enviar solicitud/ }).closest("form"));
+const confirmReview = () => {
+  const confirm = screen.queryByRole("button", { name: /Confirmar y enviar/ });
+  if (confirm) fireEvent.click(confirm);
+};
+const send = () => {
+  fireEvent.click(screen.getByRole("button", { name: /Revisar y enviar/ }));
+  confirmReview();
+};
+const submitForm = () => {
+  fireEvent.submit(screen.getByRole("button", { name: /Revisar y enviar/ }).closest("form"));
+  confirmReview();
+};
 
 describe("TicketForm - estructura", () => {
   it("muestra el tipo de solicitud y avisa que no admite anonimato a los visitantes", async () => {
@@ -95,7 +106,7 @@ describe("TicketForm - estructura", () => {
 
   it("acepta dirección manual sin exigir mapa ni barrio", async () => {
     await setup();
-    const submit = screen.getByRole("button", { name: /Enviar solicitud/ });
+    const submit = screen.getByRole("button", { name: /Revisar y enviar/ });
     expect(submit).toBeDisabled();
     type(/Título/, "Título");
     type(/Descripción detallada/, "Descripción larga suficiente");
@@ -179,7 +190,7 @@ describe("TicketForm - envío con sesión", () => {
   it("arma el payload completo y muestra el código de seguimiento", async () => {
     const { onStatusChange, onDirtyChange } = await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("¡Reclamo Registrado!")).toBeInTheDocument();
     expect(createTicket).toHaveBeenCalledWith(
       {
@@ -226,7 +237,7 @@ describe("TicketForm - envío con sesión", () => {
     expect(screen.getByText("a.png")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Eliminar b.pdf"));
     expect(screen.queryByText("b.pdf")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     expect(createTicket.mock.calls[0][1]).toEqual([expect.objectContaining({ name: "a.png", file: first })]);
   });
@@ -235,7 +246,7 @@ describe("TicketForm - envío con sesión", () => {
     createTicket.mockRejectedValueOnce(Object.assign(new Error("Datos inválidos"), { status: 422 }));
     const { onStatusChange } = await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("Datos inválidos")).toBeInTheDocument();
     expect(onStatusChange).toHaveBeenLastCalledWith("error");
     fireEvent.click(screen.getByText("Reintentar"));
@@ -247,7 +258,7 @@ describe("TicketForm - envío con sesión", () => {
     createTicket.mockRejectedValueOnce(Object.assign(new Error("Falla"), { status: 500 }));
     await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("Falla");
     fireEvent.click(screen.getByLabelText("Cerrar"));
     await waitFor(() => expect(screen.queryByText("Falla")).not.toBeInTheDocument());
@@ -257,7 +268,7 @@ describe("TicketForm - envío con sesión", () => {
     createTicket.mockRejectedValueOnce(Object.assign(new Error("Evidencia"), { code: "EVIDENCE_REQUIRED" }));
     await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("Información adicional requerida")).toBeInTheDocument();
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     expect(screen.queryByText("Guardar como borrador")).not.toBeInTheDocument();
@@ -268,7 +279,7 @@ describe("TicketForm - envío con sesión", () => {
     confirm.mockRestore();
     expect(screen.getByTestId("location")).toHaveTextContent("/");
     fireEvent.click(screen.getByText("Completar información"));
-    expect(await screen.findByRole("button", { name: /Enviar solicitud/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Revisar y enviar/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/Título/)).toHaveValue("Luminaria rota");
   });
 
@@ -276,7 +287,7 @@ describe("TicketForm - envío con sesión", () => {
     createTicket.mockRejectedValueOnce(Object.assign(new Error("Evidencia"), { code: "EVIDENCE_REQUIRED" }));
     await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("Ver políticas de seguridad y riesgo")).toBeInTheDocument();
   });
 
@@ -284,7 +295,7 @@ describe("TicketForm - envío con sesión", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { onNewTicket } = await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     fireEvent.click(screen.getByLabelText("Copiar código"));
     expect(clipboard.writeText).toHaveBeenCalledWith("ABC123");
@@ -297,7 +308,7 @@ describe("TicketForm - envío con sesión", () => {
   it("navega al seguimiento y al inicio desde la confirmación", async () => {
     await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     fireEvent.click(screen.getByText("Ver estado del reclamo"));
     expect(screen.getByTestId("location")).toHaveTextContent("/seguimiento");
@@ -311,7 +322,7 @@ describe("TicketForm - visitantes y anonimato", () => {
     const auth = makeAuth();
     await setup({}, { auth });
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("Iniciá sesión para enviar tu reclamo")).toBeInTheDocument();
     expect(createTicket).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText(/Correo electrónico/), { target: { name: "username", value: "a@b.c" } });
@@ -324,7 +335,7 @@ describe("TicketForm - visitantes y anonimato", () => {
   it("puede cerrar el aviso de inicio de sesión", async () => {
     await setup({}, { auth: makeAuth() });
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("Iniciá sesión para enviar tu reclamo");
     fireEvent.click(screen.getAllByLabelText("Cerrar")[0]);
     await waitFor(() => expect(screen.queryByText("Iniciá sesión para enviar tu reclamo")).not.toBeInTheDocument());
@@ -337,7 +348,7 @@ describe("TicketForm - visitantes y anonimato", () => {
     type("Canal de contacto", "vecina@example.test");
     fireEvent.change(screen.getByLabelText("Contraseña del ticket"), { target: { name: "ticketPassword", value: "  claveSegura1  " } });
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("¡Reclamo Registrado!")).toBeInTheDocument();
     const [payload, , options] = createTicket.mock.calls[0];
     expect(options).toEqual({ skipAuth: true });
@@ -358,7 +369,7 @@ describe("TicketForm - visitantes y anonimato", () => {
     fireEvent.click(screen.getByRole("switch"));
     type("Canal de contacto", "+54 11 5555-1234");
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     expect(createTicket.mock.calls[0][0]).toMatchObject({
       anonymousContact: { channel: "PHONE", value: "+54 11 5555-1234" },
@@ -372,7 +383,7 @@ describe("TicketForm - visitantes y anonimato", () => {
     await setup({ requestType: requestType({ allowsAnonymous: true }) }, { auth: makeAuth() });
     fireEvent.click(screen.getByRole("switch"));
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     expect(createTicket.mock.calls[0][0].anonymousContact).toBeNull();
   });
@@ -449,7 +460,7 @@ describe("TicketForm - campos específicos", () => {
     else fetchRequestTypeForm.mockResolvedValueOnce(response);
     await setup();
     expect(await screen.findByText("No se pudieron cargar los campos del formulario")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Enviar solicitud/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Revisar y enviar/ })).toBeDisabled();
     submitForm();
     expect(createTicket).not.toHaveBeenCalled();
     fetchRequestTypeForm.mockResolvedValueOnce({ fields: [{ code: "ok", label: "Campo OK", type: "TEXT" }] });
@@ -496,7 +507,7 @@ describe("TicketForm - campos específicos", () => {
     fireEvent.click(screen.getAllByLabelText(/No sé/)[0]);
     fireEvent.change(screen.getByLabelText(/^Opcional/), { target: { name: "specific_opcional", value: "" } });
     fireEvent.change(screen.getByLabelText(/^Ignorado/), { target: { name: "specific_ignorado", value: "algo" } });
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     expect(createTicket.mock.calls[0][0].formData).toEqual({ cantidad: 7, riesgo: true, tipo: "A", nosabe: null, ignorado: "algo" });
   });
@@ -513,7 +524,7 @@ describe("TicketForm - campos específicos", () => {
     fillBasics();
     fireEvent.change(screen.getByLabelText(/Cantidad/), { target: { name: "specific_cantidad", value: "abc" } });
     fireEvent.click(screen.getByRole("button", { name: "No" }));
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     await screen.findByText("¡Reclamo Registrado!");
     expect(createTicket.mock.calls[0][0].formData).toEqual({ riesgo: false });
   });
@@ -542,7 +553,7 @@ describe("TicketForm - callbacks de estado", () => {
     createTicket.mockReturnValue(new Promise((res) => (resolve = res)));
     await setup();
     fillBasics();
-    fireEvent.click(screen.getByRole("button", { name: /Enviar solicitud/ }));
+    send();
     expect(await screen.findByText("Enviando...")).toBeInTheDocument();
     expect(screen.getByLabelText(/Título/)).toBeDisabled();
     expect(screen.getByRole("button", { name: /Volver/ })).toBeDisabled();
@@ -560,5 +571,56 @@ describe("TicketForm - callbacks de estado", () => {
     const second = renderWithProviders(<TicketForm requestType={requestType({ id: 99, code: "99" })} onBack={() => {}} onNewTicket={() => {}} />, { auth: authFor(CITIZEN) });
     second.unmount();
     await act(async () => {});
+  });
+});
+
+describe("TicketForm - revisión antes de enviar", () => {
+  const review = () => fireEvent.click(screen.getByRole("button", { name: /Revisar y enviar/ }));
+
+  it("muestra un resumen primero y recién envía al confirmarlo", async () => {
+    await setup();
+    fillBasics();
+    review();
+    expect(screen.getByRole("heading", { name: "Revisá tu reclamo antes de enviarlo" })).toBeInTheDocument();
+    expect(screen.getByText("Luminaria rota")).toBeInTheDocument();
+    expect(screen.getByText("Av. Corrientes 1234")).toBeInTheDocument();
+    expect(screen.getByText("Barrio Palermo")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /Título/ })).not.toBeInTheDocument();
+    expect(createTicket).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar y enviar/ }));
+    await waitFor(() => expect(createTicket).toHaveBeenCalledOnce());
+    expect(await screen.findByText("ABC123")).toBeInTheDocument();
+  });
+
+  it("no pasa al resumen mientras haya errores de validación", async () => {
+    await setup();
+    type(/Título/, "Sólo título");
+    expect(screen.getByRole("button", { name: /Revisar y enviar/ })).toBeDisabled();
+    expect(screen.queryByRole("heading", { name: /Revisá tu reclamo/ })).not.toBeInTheDocument();
+  });
+
+  it("Corregir vuelve al campo exacto, conserva lo cargado y permite reenviar con el cambio", async () => {
+    await setup();
+    fillBasics();
+    review();
+    fireEvent.click(screen.getByRole("button", { name: "Corregir Título" }));
+    const title = screen.getByLabelText(/Título/);
+    expect(title).toHaveValue("Luminaria rota");
+    await waitFor(() => expect(title).toHaveFocus());
+    type(/Título/, "Luminaria rota en la esquina");
+    review();
+    expect(screen.getByText("Luminaria rota en la esquina")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar y enviar/ }));
+    await waitFor(() => expect(createTicket).toHaveBeenCalledOnce());
+    expect(createTicket.mock.calls[0][0].summary).toBe("Luminaria rota en la esquina");
+  });
+
+  it("Volver y corregir regresa al formulario sin enviar nada", async () => {
+    await setup();
+    fillBasics();
+    review();
+    fireEvent.click(screen.getByRole("button", { name: /Volver y corregir/ }));
+    expect(screen.getByLabelText(/Descripción detallada/)).toHaveValue("La luminaria lleva una semana apagada");
+    expect(createTicket).not.toHaveBeenCalled();
   });
 });

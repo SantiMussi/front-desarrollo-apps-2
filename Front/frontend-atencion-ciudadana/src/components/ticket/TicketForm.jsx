@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield, Search, KeyRound, Lock } from "lucide-react";
 import { motion } from "framer-motion";
@@ -7,12 +7,14 @@ import LocationMap from "../ui/LocationMap";
 import Spinner from "../ui/Spinner";
 import Alert from "../ui/Alert";
 import LoginPromptModal from "../ui/LoginPromptModal";
+import TicketReviewSummary from "./TicketReviewSummary";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { useAuth } from "../../context/useAuth";
 import { fetchRequestTypeForm } from "../../services/apiClient";
 
 import { UNKNOWN_VALUE, creationLocation, specificAnswers } from "../../utils/ticketFormValidation";
+import { buildReviewItems } from "../../utils/ticketReview";
 import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 
 const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,6 +112,8 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const [copied, setCopied] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const pendingFocus = useRef(null);
 
   const [specificFields, setSpecificFields] = useState(
     normalizeSpecificFields(requestType.specificFields || [])
@@ -293,6 +297,12 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       return;
     }
 
+    // Primero se muestra el resumen; recién al confirmarlo se envía.
+    if (!reviewing) {
+      setReviewing(true);
+      return;
+    }
+
     if (!isAuthenticated && !submittingAnonymously) {
       setLoginPromptOpen(true);
       return;
@@ -300,6 +310,20 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
     await submitTicket();
   };
+
+  const handleEditFromReview = (selector) => {
+    pendingFocus.current = selector;
+    setReviewing(false);
+  };
+
+  // Al volver desde el resumen, lleva al campo que se quiere corregir.
+  useEffect(() => {
+    if (reviewing || !pendingFocus.current) return;
+    const target = document.querySelector(pendingFocus.current);
+    pendingFocus.current = null;
+    target?.scrollIntoView?.({ block: "center" });
+    target?.focus?.({ preventScroll: true });
+  }, [reviewing]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(trackingCode);
@@ -377,6 +401,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
             onClick={() => {
               setErrorCode(null);
               setError(null);
+              setReviewing(false);
             }}
             className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-[#ff6b6b] px-6 py-3.5 text-[14px] font-semibold text-white
                        transition-all duration-300 hover:bg-[#fa5252] shadow-sm active:scale-95"
@@ -546,18 +571,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     );
   }
 
-  return (
-    <>
-    <LoginPromptModal
-      isOpen={loginPromptOpen}
-      onClose={() => setLoginPromptOpen(false)}
-      onAuthenticated={() => {
-        setLoginPromptOpen(false);
-        submitTicket();
-      }}
-    />
-    <form noValidate onSubmit={handleSubmit} className="space-y-6">
-      {error && (
+  const errorAlert = error ? (
         <Alert
           variant="error"
           title="Error al enviar"
@@ -575,7 +589,34 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
             Reintentar
           </button>
         </Alert>
-      )}
+  ) : null;
+
+  const reviewItems = reviewing
+    ? buildReviewItems({ requestType, formData, specificFields, neighborhoods, attachments, anonymous: submittingAnonymously })
+    : [];
+
+  return (
+    <>
+    <LoginPromptModal
+      isOpen={loginPromptOpen}
+      onClose={() => setLoginPromptOpen(false)}
+      onAuthenticated={() => {
+        setLoginPromptOpen(false);
+        submitTicket();
+      }}
+    />
+    {reviewing ? (
+      <TicketReviewSummary
+        items={reviewItems}
+        loading={loading}
+        notice={errorAlert}
+        onEdit={handleEditFromReview}
+        onBack={() => setReviewing(false)}
+        onConfirm={handleSubmit}
+      />
+    ) : (
+    <form noValidate onSubmit={handleSubmit} className="space-y-6">
+      {errorAlert}
 
       <div className="rounded-lg border border-[#0F2C59]/10 bg-[#0F2C59]/[0.02] p-4">
         <p className="text-[13px] font-medium text-[#0F2C59]">{requestType.name}</p>
@@ -607,6 +648,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
             </div>
             <button
               type="button"
+              id="ticket-anonymous"
               onClick={() => setFormData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
               className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
                 }`}
@@ -818,7 +860,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         </div>
       )}
 
-      <div className="space-y-3">
+      <div id="ticket-attachments" className="space-y-3">
         <div className="flex items-center gap-2 mb-1">
           <div className="h-px w-4 bg-[#D63031]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
@@ -897,12 +939,13 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           ) : (
             <>
               <Send className="h-3.5 w-3.5" />
-              Enviar solicitud
+              Revisar y enviar
             </>
           )}
         </button>
       </div>
     </form>
+    )}
     </>
   );
 }

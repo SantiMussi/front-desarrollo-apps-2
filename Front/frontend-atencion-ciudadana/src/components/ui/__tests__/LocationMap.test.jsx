@@ -246,3 +246,64 @@ describe("LocationMap", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("LocationMap - usar mi ubicación", () => {
+  const stubGeolocation = (getCurrentPosition) => {
+    Object.defineProperty(navigator, "geolocation", { value: { getCurrentPosition }, configurable: true });
+  };
+
+  afterEach(() => {
+    delete navigator.geolocation;
+  });
+
+  it("no ofrece el botón si el navegador no tiene geolocalización", () => {
+    renderMap();
+    expect(screen.queryByRole("button", { name: /Usar mi ubicación/ })).not.toBeInTheDocument();
+  });
+
+  it("ubica el marcador con la posición del dispositivo y completa la dirección", async () => {
+    stubGeolocation(vi.fn((success) => success({ coords: { latitude: -34.6, longitude: -58.4, accuracy: 15 } })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(geocodeResponse(reverseData)));
+    renderMap();
+    await act(async () => screen.getByRole("button", { name: /Usar mi ubicación/ }).click());
+    expect(onLocationSelect).toHaveBeenCalledWith(expect.objectContaining({ lat: -34.6, lng: -58.4, street: "Av. Corrientes", streetNumber: "1234", source: "map" }));
+    expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalledWith(expect.any(Function), expect.any(Function), expect.objectContaining({ timeout: 10000 }));
+    expect(screen.queryByText(/aproximada/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Usar mi ubicación/ })).toBeEnabled();
+  });
+
+  it("avisa cuando la ubicación es aproximada", async () => {
+    stubGeolocation(vi.fn((success) => success({ coords: { latitude: 1, longitude: 2, accuracy: 900 } })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(geocodeResponse(reverseData)));
+    renderMap();
+    await act(async () => screen.getByRole("button", { name: /Usar mi ubicación/ }).click());
+    expect(screen.getByText(/Tu ubicación es aproximada/)).toBeInTheDocument();
+  });
+
+  it.each([
+    [1, /No tenemos permiso/],
+    [2, /No pudimos saber dónde estás/],
+    [3, /Tardó demasiado/],
+    [99, /No pudimos obtener tu ubicación/],
+  ])("explica el error %s y no toca el formulario", async (code, message) => {
+    stubGeolocation(vi.fn((_success, failure) => failure({ code })));
+    renderMap();
+    await act(async () => screen.getByRole("button", { name: /Usar mi ubicación/ }).click());
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(onLocationSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Usar mi ubicación/ })).toBeEnabled();
+  });
+
+  it("queda deshabilitado cuando el mapa está deshabilitado", () => {
+    stubGeolocation(vi.fn());
+    renderMap({ disabled: true });
+    expect(screen.getByRole("button", { name: /Usar mi ubicación/ })).toBeDisabled();
+  });
+
+  it("muestra el estado de búsqueda mientras espera al dispositivo", async () => {
+    stubGeolocation(vi.fn());
+    renderMap();
+    await act(async () => screen.getByRole("button", { name: /Usar mi ubicación/ }).click());
+    expect(screen.getByRole("button", { name: /Buscando tu ubicación/ })).toBeDisabled();
+  });
+});
