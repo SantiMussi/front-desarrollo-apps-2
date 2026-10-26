@@ -126,6 +126,9 @@ function RecenterMap({ position }) {
   return null;
 }
 
+// Los navegadores sólo permiten la geolocalización en páginas seguras (HTTPS o localhost).
+const canLocate = () => typeof navigator !== "undefined" && "geolocation" in navigator && window.isSecureContext !== false;
+
 export default function LocationMap({ address, streetNumber, addressSource, latitude, longitude, onLocationSelect, disabled }) {
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -259,7 +262,7 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
               Buscando...
             </span>
           )}
-          {typeof navigator !== "undefined" && "geolocation" in navigator && (
+          {canLocate() && (
             <button
               type="button"
               onClick={handleUseMyLocation}

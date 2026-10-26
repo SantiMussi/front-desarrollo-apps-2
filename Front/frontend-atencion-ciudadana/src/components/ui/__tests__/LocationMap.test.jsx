@@ -261,6 +261,14 @@ describe("LocationMap - usar mi ubicación", () => {
     expect(screen.queryByRole("button", { name: /Usar mi ubicación/ })).not.toBeInTheDocument();
   });
 
+  it("oculta el botón en páginas no seguras (HTTP), donde el navegador la bloquea", () => {
+    stubGeolocation(vi.fn());
+    Object.defineProperty(window, "isSecureContext", { value: false, configurable: true });
+    renderMap();
+    expect(screen.queryByRole("button", { name: /Usar mi ubicación/ })).not.toBeInTheDocument();
+    delete window.isSecureContext;
+  });
+
   it("ubica el marcador con la posición del dispositivo y completa la dirección", async () => {
     stubGeolocation(vi.fn((success) => success({ coords: { latitude: -34.6, longitude: -58.4, accuracy: 15 } })));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(geocodeResponse(reverseData)));
