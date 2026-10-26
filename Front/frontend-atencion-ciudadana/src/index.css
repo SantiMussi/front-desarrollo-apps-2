@@ -32,6 +32,21 @@ body {
   flex-direction: column;
 }
 
+/* Alto contraste para la parte ciudadana: oscurece grises claros y refuerza bordes y foco. */
+[data-contrast="high"] {
+  background: #ffffff;
+}
+[data-contrast="high"] :is(.text-neutral-300, .text-neutral-400, .text-neutral-500, .text-neutral-600) {
+  color: #111827 !important;
+}
+[data-contrast="high"] :is(.border-neutral-100, .border-neutral-200, .border-neutral-200\/60) {
+  border-color: #4b5563 !important;
+}
+[data-contrast="high"] :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #0F2C59;
+  outline-offset: 2px;
+}
+
 ::selection {
   background: #D63031;
   color: white;

@@ -4,6 +4,8 @@ import CitizenNavbar from "./components/layout/CitizenNavbar";
 import HomePage from "./pages/citizen/HomePage";
 import HelpPortalPage from "./pages/citizen/HelpPortalPage";
 import Footer from "./components/layout/Footer";
+import AccessibilityBar from "./components/layout/AccessibilityBar";
+import { useAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
 import SplashScreen from "./components/ui/SplashScreen";
 import AgentLayout from "./components/layout/AgentLayout";
 import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
@@ -24,11 +26,19 @@ import MetricsPage from "./pages/agent/MetricsPage";
 import AgentsPage from "./pages/agent/AgentsPage";
 
 function CitizenLayout() {
+  const { size, contrast, zoom, setSize, toggleContrast } = useAccessibilityPrefs();
   return (
     <>
-      <CitizenNavbar />
-      <Outlet />
-      <Footer areaName="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar" />
+      <AccessibilityBar size={size} contrast={contrast} onSizeChange={setSize} onToggleContrast={toggleContrast} />
+      <div
+        data-contrast={contrast ? "high" : undefined}
+        style={zoom === 1 ? undefined : { zoom }}
+        className="flex flex-1 flex-col"
+      >
+        <CitizenNavbar />
+        <Outlet />
+        <Footer areaName="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar" />
+      </div>
     </>
   );
 }

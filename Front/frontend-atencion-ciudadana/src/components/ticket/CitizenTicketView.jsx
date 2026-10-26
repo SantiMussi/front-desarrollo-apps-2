@@ -32,6 +32,7 @@ import {
 } from "../../constants/ticketStatuses";
 import AttachmentGallery from "../ui/AttachmentGallery";
 import ReclassificationResponseForm from "./ReclassificationResponseForm";
+import TicketProgress from "./TicketProgress";
 
 const dateTime = (v) =>
   v
@@ -396,6 +397,8 @@ export default function CitizenTicketView({
         </div>
         <StatusPill status={ticket.currentStatus} />
       </div>
+
+      <TicketProgress status={ticket.currentStatus} history={ticket.history ?? []} />
 
       {!readOnly && actionError && ["IN_REVIEW", "IN_PROGRESS", "ROUTED", "CANCELLED", "DUPLICATE"].includes(ticket.currentStatus) && (
         <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</p>
