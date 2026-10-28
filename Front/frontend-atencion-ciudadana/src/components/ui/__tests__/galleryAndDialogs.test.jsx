@@ -122,6 +122,44 @@ describe("AttachmentGallery", () => {
     click.mockRestore();
   });
 
+  it("previsualiza imágenes y PDF en un visor y libera la URL al cerrar", async () => {
+    const downloadFile = vi.fn().mockResolvedValue(new Blob(["x"]));
+    URL.createObjectURL = vi.fn(() => "blob:prev");
+    URL.revokeObjectURL = vi.fn();
+    const pdf = { id: 9, fileName: "acta.pdf", contentType: "application/pdf", sizeBytes: 10 };
+    render(<AttachmentGallery items={[pdf]} downloadFile={downloadFile} />);
+    fireEvent.click(screen.getByLabelText("Ver acta.pdf"));
+    expect(await screen.findByRole("dialog", { name: "Vista previa de acta.pdf" })).toBeInTheDocument();
+    expect(screen.getByTitle("PDF acta.pdf")).toHaveAttribute("src", "blob:prev");
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:prev");
+  });
+
+  it("muestra una imagen en la vista previa y no ofrece ver formatos no soportados", async () => {
+    const downloadFile = vi.fn().mockResolvedValue(new Blob(["x"]));
+    URL.createObjectURL = vi.fn(() => "blob:img");
+    URL.revokeObjectURL = vi.fn();
+    const list = [
+      { id: 1, fileName: "foto.png", contentType: "image/png", sizeBytes: 1 },
+      { id: 2, fileName: "cel.heic", contentType: "image/heic", sizeBytes: 1 },
+    ];
+    render(<AttachmentGallery items={list} downloadFile={downloadFile} />);
+    expect(screen.queryByLabelText("Ver cel.heic")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Ver foto.png"));
+    expect(await screen.findByAltText("foto.png")).toHaveAttribute("src", "blob:img");
+    fireEvent.click(screen.getByLabelText("Cerrar vista previa"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("muestra el error si falla la carga de la vista previa", async () => {
+    const downloadFile = vi.fn().mockRejectedValue({ status: 404 });
+    const list = [{ id: 1, fileName: "foto.png", contentType: "image/png", sizeBytes: 1 }];
+    render(<AttachmentGallery items={list} downloadFile={downloadFile} />);
+    fireEvent.click(screen.getByLabelText("Ver foto.png"));
+    expect(await screen.findByText(/No encontramos ese adjunto/)).toBeInTheDocument();
+  });
+
   it("usa un nombre por defecto si el adjunto no tiene nombre", async () => {
     const downloadFile = vi.fn().mockResolvedValue(new Blob(["x"]));
     URL.createObjectURL = vi.fn(() => "blob:2");

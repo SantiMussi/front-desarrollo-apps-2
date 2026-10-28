@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { AlertCircle, Download, File, FileText, Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle, Download, Eye, File, FileText, Image as ImageIcon, Loader2, Paperclip, X } from "lucide-react";
 import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 
 function formatBytes(bytes) {
@@ -13,6 +13,79 @@ function iconForContentType(contentType) {
   if (contentType?.startsWith("image/")) return ImageIcon;
   if (contentType === "application/pdf") return FileText;
   return File;
+}
+
+// HEIC/HEIF no se renderizan en la mayoría de los navegadores: sólo se descargan.
+const PREVIEWABLE_IMAGES = ["image/jpeg", "image/png", "image/webp"];
+
+function previewKind(contentType) {
+  const type = contentType?.toLowerCase();
+  if (PREVIEWABLE_IMAGES.includes(type)) return "image";
+  if (type === "application/pdf") return "pdf";
+  return null;
+}
+
+function saveBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName || "adjunto";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function AttachmentPreview({ attachment, url, onClose, onDownload }) {
+  const kind = previewKind(attachment.contentType);
+
+  useEffect(() => {
+    const handleKey = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Vista previa de ${attachment.fileName}`}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 border-b border-neutral-200 px-4 py-2.5">
+          <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-neutral-700">{attachment.fileName}</p>
+          <button
+            type="button"
+            onClick={onDownload}
+            aria-label={`Descargar ${attachment.fileName} desde la vista previa`}
+            className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0F2C59]"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar vista previa"
+            className="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0F2C59]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-neutral-50">
+          {kind === "pdf" ? (
+            <iframe title={`PDF ${attachment.fileName}`} src={url} className="h-[75vh] w-full border-0" />
+          ) : (
+            <img src={url} alt={attachment.fileName} className="max-h-[75vh] max-w-full object-contain" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function messageForUploadError(err) {
@@ -45,6 +118,8 @@ export default function AttachmentGallery({
   const [uploadError, setUploadError] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState(null);
+  const [previewingId, setPreviewingId] = useState(null);
+  const [preview, setPreview] = useState(null);
   const fileInputRef = useRef(null);
   const uploadInFlight = useRef(false);
 
@@ -78,18 +153,34 @@ export default function AttachmentGallery({
     setDownloadingId(attachment.id);
     setDownloadError(null);
     try {
-      const blob = await downloadFile(attachment);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = attachment.fileName || "adjunto";
-      link.click();
-      URL.revokeObjectURL(url);
+      saveBlob(await downloadFile(attachment), attachment.fileName);
     } catch (err) {
       setDownloadError(messageForDownloadError(err));
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handlePreview = async (attachment) => {
+    setPreviewingId(attachment.id);
+    setDownloadError(null);
+    try {
+      const blob = await downloadFile(attachment);
+      // El tipo se fuerza al declarado: el visor no debe confiar en el que informe el servidor.
+      const typed = new Blob([blob], { type: attachment.contentType });
+      setPreview({ attachment, blob: typed, url: URL.createObjectURL(typed) });
+    } catch (err) {
+      setDownloadError(messageForDownloadError(err));
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
+  const closePreview = () => {
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return null;
+    });
   };
 
   return (
@@ -124,6 +215,21 @@ export default function AttachmentGallery({
                     <p className="truncate text-[12.5px] font-medium text-neutral-700">{attachment.fileName}</p>
                     <p className="text-[11px] text-neutral-400">{formatBytes(attachment.sizeBytes)}</p>
                   </div>
+                  {previewKind(attachment.contentType) && (
+                    <button
+                      type="button"
+                      onClick={() => handlePreview(attachment)}
+                      disabled={previewingId === attachment.id}
+                      aria-label={`Ver ${attachment.fileName}`}
+                      className="shrink-0 rounded p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-[#0F2C59] disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {previewingId === attachment.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleDownload(attachment)}
@@ -143,6 +249,15 @@ export default function AttachmentGallery({
           </ul>
         )}
       </div>
+
+      {preview && (
+        <AttachmentPreview
+          attachment={preview.attachment}
+          url={preview.url}
+          onClose={closePreview}
+          onDownload={() => saveBlob(preview.blob, preview.attachment.fileName)}
+        />
+      )}
 
       {uploadError && (
         <p className="mt-2 flex items-start gap-1.5 text-[12px] text-red-600">
