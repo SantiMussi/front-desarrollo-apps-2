@@ -376,7 +376,7 @@ describe("simulador de estados", () => {
         publicMessage: "p",
         internalMessage: "i",
         details: { a: 1 },
-        updatedBy: { type: "EXTERNAL_USER", id: "obras-simulator" },
+        updatedBy: { type: "EXTERNAL_USER", id: null },
       },
     });
     expect(body.eventId).toMatch(/^[0-9a-f-]{36}$/);

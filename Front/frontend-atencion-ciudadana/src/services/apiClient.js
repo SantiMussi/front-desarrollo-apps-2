@@ -498,7 +498,8 @@ export async function simulateStatusUpdate(ticketId, { moduleId, updateType, pub
         publicMessage: publicMessage || null,
         internalMessage: internalMessage || null,
         details: details || null,
-        updatedBy: { type: "EXTERNAL_USER", id: `${moduleId}-simulator` },
+        // El schema de eventos admite un UUID o null; el simulador no representa a un usuario real.
+        updatedBy: { type: "EXTERNAL_USER", id: null },
         updateOccurredAt: now,
       },
     }),
