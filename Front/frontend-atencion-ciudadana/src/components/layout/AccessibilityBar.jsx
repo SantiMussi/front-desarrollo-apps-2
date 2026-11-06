@@ -11,6 +11,7 @@ const ACTIVE = "border-[#0F2C59] bg-[#0F2C59] text-white";
 const IDLE = "border-neutral-300 bg-white text-[#0F2C59] hover:bg-neutral-100";
 
 // Botón flotante discreto: la interfaz queda igual hasta que alguien abre el panel.
+//GitHub Actions test
 export default function AccessibilityBar({ size, contrast, onSizeChange, onToggleContrast }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
