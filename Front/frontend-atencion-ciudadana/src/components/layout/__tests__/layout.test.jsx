@@ -157,6 +157,15 @@ describe("AgentSidebar", () => {
     fireEvent.click(toggle);
     expect(container.querySelector(".fixed.inset-0")).not.toBeInTheDocument();
   });
+
+  it("nombra el botón del menú móvil y expone si está abierto", () => {
+    renderWithProviders(<AgentSidebar />, { auth: authFor(AGENT), route: "/agente/tickets" });
+    const closed = screen.getByRole("button", { name: "Abrir menú" });
+    expect(closed).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(closed);
+    const open = screen.getByRole("button", { name: "Cerrar menú" });
+    expect(open).toHaveAttribute("aria-expanded", "true");
+  });
 });
 
 describe("AgentLayout", () => {

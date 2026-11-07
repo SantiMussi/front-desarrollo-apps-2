@@ -94,6 +94,8 @@ export default function AgentSidebar() {
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={isMobileMenuOpen}
           className="p-2 text-slate-600"
         >
           {isMobileMenuOpen ? <X /> : <Menu />}
