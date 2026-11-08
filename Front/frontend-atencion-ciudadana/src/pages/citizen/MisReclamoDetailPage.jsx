@@ -3,12 +3,22 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMyTicketDetail } from "../../hooks/useMyTicketDetail";
 import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useAuth } from "../../context/useAuth";
+import { useSessionToken } from "../../hooks/useSessionToken";
 import CitizenTicketView from "../../components/ticket/CitizenTicketView";
+import OwnTrackingCode from "../../components/ticket/OwnTrackingCode";
 import { uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
 
 export default function MisReclamoDetailPage() {
   const { publicId } = useParams();
   const { user } = useAuth();
+  const token = useSessionToken();
+  if (!user || !token) return null;
+
+  return <MyTicketDetail key={JSON.stringify([publicId, user.id, user.citizenId, token])} publicId={publicId} user={user} />;
+}
+
+// Reset the complete detail (including chat, drafts and tracking code) together.
+function MyTicketDetail({ publicId, user }) {
   const { ticket, loading, error, actions, actionLoading, actionError, cancellation } =
     useMyTicketDetail(publicId);
   const chatMessages = useTicketMessages(ticket?.id);
@@ -41,6 +51,7 @@ export default function MisReclamoDetailPage() {
   return (
     <CitizenTicketView
       ticket={ticket}
+      trackingCodeControl={<OwnTrackingCode key={publicId} ticketId={ticket.id} />}
       backTo="/mis-reclamos"
       backLabel="Mis Reclamos"
       actions={actions}

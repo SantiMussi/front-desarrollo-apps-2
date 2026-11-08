@@ -19,6 +19,7 @@ vi.mock("../../hooks/useMyTicketDetail", async (importOriginal) => ({
 vi.mock("../../hooks/useTicketMessages", () => ({ useTicketMessages: vi.fn() }));
 vi.mock("../../hooks/useTicketCitizenView", () => ({ useTicketCitizenView: vi.fn() }));
 vi.mock("../../services/apiClient", () => ({
+  getStoredToken: () => "test-session",
   uploadTicketAttachment: vi.fn(),
   downloadTicketAttachment: vi.fn(),
 }));
@@ -268,11 +269,12 @@ describe("MisReclamoDetailPage", () => {
     expect(chat.send).toHaveBeenCalledWith("PUBLIC", "hola");
   });
 
-  it("funciona sin usuario cargado", () => {
+  it("no monta el detalle sin usuario cargado", () => {
     useMyTicketDetail.mockReturnValue({ ticket: { id: 5, summary: "S" }, loading: false });
     useTicketMessages.mockReturnValue(messages());
     renderPage(makeAuth());
-    expect(lastViewProps.chat.currentAuthorId).toBeUndefined();
+    expect(lastViewProps).toBeUndefined();
+    expect(useMyTicketDetail).not.toHaveBeenCalled();
   });
 });
 

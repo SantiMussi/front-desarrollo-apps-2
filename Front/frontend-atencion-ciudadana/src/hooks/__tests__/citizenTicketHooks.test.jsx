@@ -5,6 +5,7 @@ import { useAnonymousTicketAccess } from "../useAnonymousTicketAccess";
 import * as api from "../../services/apiClient";
 
 vi.mock("../../services/apiClient", () => ({
+  getStoredToken: () => "test-session",
   fetchCancellationRequests: vi.fn().mockResolvedValue([]),
   fetchAnonymousCancellationRequests: vi.fn().mockResolvedValue([]),
   answerTicketInformation: vi.fn(),
@@ -146,8 +147,8 @@ describe("useMyTicketDetail", () => {
 
   it("busca el ticket entre los propios y carga su detalle", async () => {
     const { result } = await setup();
-    expect(api.fetchMyTickets).toHaveBeenCalledWith({ size: 200 });
-    expect(api.fetchMyTicketDetail).toHaveBeenCalledWith(10);
+    expect(api.fetchMyTickets).toHaveBeenCalledWith({ size: 200 }, { signal: expect.any(AbortSignal) });
+    expect(api.fetchMyTicketDetail).toHaveBeenCalledWith(10, { signal: expect.any(AbortSignal) });
     expect(result.current.ticket.publicId).toBe("TK-10");
     expect(result.current.error).toBeNull();
   });

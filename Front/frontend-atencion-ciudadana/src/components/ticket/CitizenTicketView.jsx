@@ -227,6 +227,7 @@ export default function CitizenTicketView({
   attachments: attachmentsAdapter,
   chat,
   cancellation,
+  trackingCodeControl,
 }) {
   const [reopenMode, setReopenMode] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
@@ -670,6 +671,7 @@ export default function CitizenTicketView({
       )}
 
       {/* Contenido */}
+      {!readOnly && trackingCodeControl}
       <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           <Card title="Descripción del problema">

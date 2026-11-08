@@ -5,7 +5,7 @@ import { normalizeTicketDetail, useMyTicketDetail } from "../useMyTicketDetail";
 import { useAnonymousTicketAccess } from "../useAnonymousTicketAccess";
 import * as api from "../../services/apiClient";
 
-vi.mock("../../services/apiClient", () => ({ fetchCancellationRequests: vi.fn().mockResolvedValue([]), fetchAnonymousCancellationRequests: vi.fn().mockResolvedValue([]), fetchReclassificationProposals: vi.fn(), fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), answerTicketInformation: vi.fn(), trackTicket: vi.fn(), answerAnonymousInformation: vi.fn() }));
+vi.mock("../../services/apiClient", () => ({ getStoredToken: () => "test-session", fetchCancellationRequests: vi.fn().mockResolvedValue([]), fetchAnonymousCancellationRequests: vi.fn().mockResolvedValue([]), fetchReclassificationProposals: vi.fn(), fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), answerTicketInformation: vi.fn(), trackTicket: vi.fn(), answerAnonymousInformation: vi.fn() }));
 beforeEach(() => {
   vi.resetAllMocks();
   api.fetchCancellationRequests.mockResolvedValue([]);

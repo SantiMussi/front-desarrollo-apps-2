@@ -163,18 +163,25 @@ export async function saveAdminRequestTypeForm(requestTypeId, payload) {
   return request(`/admin/catalog/request-types/${requestTypeId}/form`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
-export async function fetchMyTickets(params = {}) {
+export async function fetchMyTickets(params = {}, { signal } = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
     query.set(key, value);
   });
   const qs = query.toString();
-  return request(`/me/tickets${qs ? `?${qs}` : ""}`);
+  return request(`/me/tickets${qs ? `?${qs}` : ""}`, { signal });
 }
 
-export async function fetchMyTicketDetail(ticketId) {
-  return request(`/tickets/${encodeURIComponent(ticketId)}`);
+export async function fetchMyTicketDetail(ticketId, { signal } = {}) {
+  return request(`/tickets/${encodeURIComponent(ticketId)}`, { signal });
+}
+
+export async function fetchOwnTrackingCode(ticketId, { signal } = {}) {
+  return request(`/me/tickets/${encodeURIComponent(ticketId)}/tracking-code`, {
+    signal,
+    cache: "no-store",
+  });
 }
 
 export async function confirmTicketResolution(ticketId) {

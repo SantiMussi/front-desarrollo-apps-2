@@ -6,6 +6,7 @@ import * as api from "../../services/apiClient";
 import { cancellationErrorMessage, cancellationReviewRequired } from "../../utils/cancellation";
 
 vi.mock("../../services/apiClient", () => ({
+  getStoredToken: () => "test-session",
   fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), trackTicket: vi.fn(),
   fetchCancellationRequests: vi.fn(), fetchAnonymousCancellationRequests: vi.fn(),
   cancelTicket: vi.fn(), cancelAnonymousTicket: vi.fn(),

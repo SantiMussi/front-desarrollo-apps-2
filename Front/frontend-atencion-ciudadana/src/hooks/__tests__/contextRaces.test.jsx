@@ -8,6 +8,7 @@ import { useMyTicketDetail } from "../useMyTicketDetail";
 import { useReclassificationProposals } from "../useReclassificationProposals";
 
 vi.mock("../../services/apiClient", () => ({
+  getStoredToken: () => "test-session",
   fetchStaffTicketDetail: vi.fn(), fetchTicketCitizenView: vi.fn(), fetchTicketMessages: vi.fn(),
   createTicketMessage: vi.fn(), updateTicketMessage: vi.fn(), deleteTicketMessage: vi.fn(),
   fetchMyTickets: vi.fn(), fetchMyTicketDetail: vi.fn(), fetchCancellationRequests: vi.fn(),
@@ -105,7 +106,7 @@ describe("H28 identified ticket mutation races", () => {
     const pending = deferred(); api.fetchMyTickets.mockResolvedValue({ content: [a, b] });
     api.fetchMyTicketDetail.mockImplementation((id) => id === "a" ? pending.promise : Promise.resolve(b));
     const { result, rerender } = renderHook(({ id }) => useMyTicketDetail(id), { initialProps: { id: "A" } });
-    await waitFor(() => expect(api.fetchMyTicketDetail).toHaveBeenCalledWith("a")); rerender({ id: "B" });
+    await waitFor(() => expect(api.fetchMyTicketDetail).toHaveBeenCalledWith("a", { signal: expect.any(AbortSignal) })); rerender({ id: "B" });
     await waitFor(() => expect(result.current.ticket?.id).toBe("b"));
     await act(async () => pending.resolve(a)); expect(result.current.ticket.id).toBe("b");
   });

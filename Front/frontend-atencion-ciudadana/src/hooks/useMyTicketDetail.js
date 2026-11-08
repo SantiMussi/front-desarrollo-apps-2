@@ -4,6 +4,7 @@ import {
   confirmTicketResolution,
   fetchMyTicketDetail,
   fetchMyTickets,
+  getStoredToken,
   submitSatisfactionSurvey,
   reopenTicket,
 } from "../services/apiClient";
@@ -11,6 +12,7 @@ import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticket
 import { reclassificationErrorMessage } from "../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../constants/ticketActivities";
 import { useCitizenCancellation } from "./useCitizenCancellation";
+import { useSessionToken } from "./useSessionToken";
 
 function buildFallbackHistory(t) {
   if (!t.createdAt) return [];
@@ -118,6 +120,8 @@ function messageForRatingError(err) {
 }
 
 export function useMyTicketDetail(publicId) {
+  const token = useSessionToken();
+  const contextKey = JSON.stringify([publicId, token]);
   const [storedTicket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -126,40 +130,60 @@ export function useMyTicketDetail(publicId) {
   const actionInFlight = useRef(false);
   const generation = useRef(0);
   const request = useRef(0);
+  const loadController = useRef(null);
   const [loadedId, setLoadedId] = useState(null);
-  const ticket = loadedId === publicId ? storedTicket : null;
+  const ticket = loadedId === contextKey ? storedTicket : null;
   const [actionError, setActionError] = useState(null);
 
   const load = useCallback(async ({ resetActions = false } = {}) => {
+    if (token !== getStoredToken()) return;
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     const current = ++request.current;
     const context = generation.current;
+    const active = () => !controller.signal.aborted && current === request.current && context === generation.current && token === getStoredToken();
+    if (!token) {
+      setLoadedId(contextKey);
+      setTicket(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     if (resetActions) { setActionLoading(false); setActionError(null); }
     setLoading(true);
     setError(null);
     try {
-      const page = await fetchMyTickets({ size: 200 });
-      const list = Array.isArray(page?.content) ? page.content : [];
-      const match = list.find((t) => String(t.publicId) === String(publicId));
+      let match;
+      let pageNumber = 0;
+      do {
+        const page = await fetchMyTickets({ size: 200, ...(pageNumber ? { page: pageNumber } : {}) }, { signal: controller.signal });
+        if (!active()) return;
+        const list = Array.isArray(page?.content) ? page.content : [];
+        match = list.find((t) => String(t.publicId) === String(publicId));
+        if (match || !list.length || (page?.last !== false && !(pageNumber + 1 < page?.totalPages))) break;
+        pageNumber += 1;
+      } while (!match);
       if (!match) {
         const notFound = new Error("No encontramos ese reclamo.");
         notFound.status = 404;
         throw notFound;
       }
-      if (current !== request.current || context !== generation.current) return;
-      const raw = await fetchMyTicketDetail(match.id);
-      if (current !== request.current || context !== generation.current) return;
+      if (!active()) return;
+      const raw = await fetchMyTicketDetail(match.id, { signal: controller.signal });
+      if (!active()) return;
       const data = normalizeTicketDetail(raw, publicId);
-      setLoadedId(publicId);
+      setLoadedId(contextKey);
       setTicket(data);
     } catch (err) {
-      if (current !== request.current || context !== generation.current) return;
-      setLoadedId(publicId);
+      if (!active()) return;
+      setLoadedId(contextKey);
       setTicket(null);
       setError(messageForLoadError(err));
     } finally {
-      if (current === request.current && context === generation.current) setLoading(false);
+      if (active()) setLoading(false);
     }
-  }, [publicId]);
+  }, [publicId, token, contextKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,6 +195,7 @@ export function useMyTicketDetail(publicId) {
     return () => {
       cancelled = true;
       generation.current += 1;
+      loadController.current?.abort();
     };
   }, [load]);
 
@@ -319,5 +344,5 @@ export function useMyTicketDetail(publicId) {
     [confirmResolution, requestReopen, requestCancel, rateAttention, answerInformation]
   );
 
-  return { ticket: loadedId === publicId ? ticket : null, loading: loadedId !== publicId || loading, error, actions, cancellation, actionLoading: actionLoading || cancellation.busy, actionError: cancellation.error || actionError, reload: load };
+  return { ticket, loading: loadedId !== contextKey || loading, error: loadedId === contextKey ? error : null, actions, cancellation, actionLoading: actionLoading || cancellation.busy, actionError: cancellation.error || actionError, reload: load };
 }
