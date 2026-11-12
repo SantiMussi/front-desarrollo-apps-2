@@ -1,0 +1,29 @@
+name: Frontend CI
+
+# Register manual dispatch on the default branch. Selecting dev in Run workflow
+# executes dev's complete CI/publish workflow at this same path, unchanged.
+on:
+  workflow_dispatch:
+    inputs:
+      identity_provider:
+        description: "Choose branch dev. MOCK validates only; M1 publishes without deployment."
+        type: choice
+        required: true
+        default: MOCK
+        options:
+          - MOCK
+          - M1
+
+permissions: {}
+
+jobs:
+  select-dev:
+    name: Select dev in Run workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Explain the required workflow branch
+        shell: bash
+        run: |
+          echo "::error::This branch only registers Frontend CI. Choose Run workflow, branch dev, then identity_provider=MOCK or M1."
+          exit 1
