@@ -10,6 +10,15 @@ on:
       - dev
       - main
   workflow_dispatch:
+    inputs:
+      identity_provider:
+        description: "MOCK validates only. M1 publishes a separate image from dev/main; never deploys."
+        type: choice
+        required: true
+        default: MOCK
+        options:
+          - MOCK
+          - M1
 
 permissions:
   contents: read
@@ -21,8 +30,9 @@ jobs:
     timeout-minutes: 20
     env:
       TZ: UTC
+      BUILD_IDENTITY_PROVIDER: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
     concurrency:
-      group: ${{ github.workflow }}-validate-${{ github.event.pull_request.number || github.ref }}
+      group: ${{ github.workflow }}-validate-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
       cancel-in-progress: true
 
     defaults:
@@ -32,6 +42,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Check explicit M1 publication branch
+        if: github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1'
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/dev && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "M1 publication requires dev or main." >&2
+            exit 1
+          fi
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v6
@@ -53,6 +71,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: /api
+          VITE_IDENTITY_PROVIDER: ${{ env.BUILD_IDENTITY_PROVIDER }}
 
       - name: Validate Nginx proxy configuration
         run: |
@@ -62,16 +81,25 @@ jobs:
 
       - name: Build Frontend container image
         if: github.event_name != 'push' || github.ref != 'refs/heads/dev'
-        run: docker build --build-arg VITE_API_BASE_URL=/api --tag frontend-ci:${{ github.sha }} .
+        run: docker build --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-ci:${{ github.sha }} .
 
   publish:
     name: Publish Frontend image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'))
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      BUILD_IDENTITY_PROVIDER: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
+      IMAGE_REPOSITORY: ghcr.io/santimussi/front-desarrollo-apps-2
+    outputs:
+      image: ${{ steps.image.outputs.reference }}
+      digest: ${{ steps.build.outputs.digest }}
     concurrency:
-      group: frontend-dev-publish
+      group: ${{ github.event_name == 'workflow_dispatch' && 'frontend-m1-publish' || 'frontend-dev-publish' }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -88,18 +116,52 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Select image tags
+        id: image
+        shell: bash
+        run: |
+          if [[ "$BUILD_IDENTITY_PROVIDER" == M1 ]]; then
+            # A dispatch/rerun never replaces MOCK tags or an earlier M1 build.
+            reference="$IMAGE_REPOSITORY:m1-sha-$GITHUB_SHA-run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            printf 'tags=%s\n' "$reference" >> "$GITHUB_OUTPUT"
+          else
+            reference="$IMAGE_REPOSITORY:sha-$GITHUB_SHA"
+            printf 'tags<<FRONTEND_TAGS\n%s:dev\n%s\nFRONTEND_TAGS\n' "$IMAGE_REPOSITORY" "$reference" >> "$GITHUB_OUTPUT"
+          fi
+          printf 'reference=%s\n' "$reference" >> "$GITHUB_OUTPUT"
+
       - name: Build and publish Frontend image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: Front/frontend-atencion-ciudadana
           push: true
-          build-args: VITE_API_BASE_URL=/api
-          tags: |
-            ghcr.io/santimussi/front-desarrollo-apps-2:dev
-            ghcr.io/santimussi/front-desarrollo-apps-2:sha-${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+            VITE_IDENTITY_PROVIDER=${{ env.BUILD_IDENTITY_PROVIDER }}
+          tags: ${{ steps.image.outputs.tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            ar.edu.uade.m2.identity-provider=${{ env.BUILD_IDENTITY_PROVIDER }}
+
+      - name: Record published image and digest
+        env:
+          IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Missing image digest." >&2; exit 1; }
+          {
+            printf '### Frontend %s\n\n' "$BUILD_IDENTITY_PROVIDER"
+            printf -- '- Source commit: `%s`\n' "$GITHUB_SHA"
+            printf -- '- Image tag: `%s`\n' "$IMAGE_REFERENCE"
+            printf -- '- Digest: `%s`\n' "$IMAGE_DIGEST"
+            printf -- '- Immutable reference for Infra: `%s@%s`\n' "$IMAGE_REPOSITORY" "$IMAGE_DIGEST"
+            if [[ "$BUILD_IDENTITY_PROVIDER" == M1 ]]; then
+              printf '\nM1 was published without deployment. Infra Compose accepts this digest; deploy-service.sh currently only accepts legacy sha-COMMIT tags and needs a separate selector update before deploying M1.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy Frontend to Lightsail
