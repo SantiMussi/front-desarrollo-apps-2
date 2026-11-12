@@ -25,6 +25,17 @@ const renderProtected = (auth, roles, route = "/privado") =>
   });
 
 describe("ProtectedRoute", () => {
+  it("admite empleado sin citizenId con rol local permitido", () => {
+    renderProtected(authFor({ actorId: "employee-actor", actorType: "EMPLEADO", citizenId: null, role: "AGENT" }), ["AGENT", "ADMIN"]);
+    expect(screen.getByText("Contenido privado")).toBeInTheDocument();
+  });
+
+  it("no monta contenido ni redirige durante una restauración temporalmente fallida", () => {
+    renderProtected(makeAuth({ sessionError: "Servicio temporalmente indisponible" }));
+    expect(screen.queryByText("Contenido privado")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pantalla de ingreso")).not.toBeInTheDocument();
+  });
+
   it("muestra un indicador mientras se valida la sesión", () => {
     renderProtected(makeAuth({ isLoading: true }));
     expect(screen.getByRole("status")).toBeInTheDocument();

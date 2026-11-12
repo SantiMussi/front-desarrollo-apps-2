@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Copy, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
-import { fetchOwnTrackingCode, getStoredToken } from "../../services/apiClient";
-import { useSessionToken } from "../../hooks/useSessionToken";
+import { fetchOwnTrackingCode } from "../../services/apiClient";
+import { getCurrentSessionKey, useSessionToken } from "../../hooks/useSessionToken";
 
 function errorMessage(status) {
   if (status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
@@ -13,12 +13,12 @@ function errorMessage(status) {
   return "No pudimos recuperar el código. Intentá de nuevo.";
 }
 
-// A new ticket, identity or token unmounts the sensitive state synchronously.
+// A new ticket or login unmounts sensitive state; renewal retains the session.
 export default function OwnTrackingCode({ ticketId }) {
   const { user } = useAuth();
   const token = useSessionToken();
   if (!ticketId || !user || !token || user.role !== "CITIZEN") return null;
-  return <TrackingCode key={JSON.stringify([ticketId, user.id, user.citizenId, token])} ticketId={ticketId} token={token} />;
+  return <TrackingCode key={JSON.stringify([ticketId, user.id, user.actorId ?? user.citizenId, token])} ticketId={ticketId} token={token} />;
 }
 
 function TrackingCode({ ticketId, token }) {
@@ -50,11 +50,11 @@ function TrackingCode({ ticketId, token }) {
   }
 
   async function show() {
-    if (pending.current || getStoredToken() !== token) return;
+    if (pending.current || getCurrentSessionKey() !== token) return;
     const controller = new AbortController();
     pending.current = controller;
     const current = ++generation.current;
-    const active = () => current === generation.current && !controller.signal.aborted && getStoredToken() === token;
+    const active = () => current === generation.current && !controller.signal.aborted && getCurrentSessionKey() === token;
     setLoading(true);
     setError(null);
     setCopyStatus("");
@@ -77,18 +77,18 @@ function TrackingCode({ ticketId, token }) {
   }
 
   async function copy() {
-    if (!code || copyInFlight.current || getStoredToken() !== token) return;
+    if (!code || copyInFlight.current || getCurrentSessionKey() !== token) return;
     const current = generation.current;
     copyInFlight.current = true;
     setCopying(true);
     setCopyStatus("");
     try {
       await navigator.clipboard.writeText(code);
-      if (current === generation.current && getStoredToken() === token) setCopyStatus("Código copiado.");
+      if (current === generation.current && getCurrentSessionKey() === token) setCopyStatus("Código copiado.");
     } catch {
-      if (current === generation.current && getStoredToken() === token) setCopyStatus("No pudimos copiar el código. Podés seleccionarlo y copiarlo manualmente.");
+      if (current === generation.current && getCurrentSessionKey() === token) setCopyStatus("No pudimos copiar el código. Podés seleccionarlo y copiarlo manualmente.");
     } finally {
-      if (current === generation.current && getStoredToken() === token) {
+      if (current === generation.current && getCurrentSessionKey() === token) {
         copyInFlight.current = false;
         setCopying(false);
       }

@@ -447,7 +447,17 @@ describe("TicketDetailPage - comentarios", () => {
     expect(screen.queryByText("¿Borrar este comentario?")).not.toBeInTheDocument();
   });
 
-  it("no ofrece editar mensajes ajenos ni si el usuario no tiene citizenId", async () => {
+  it("permite editar mensajes propios de empleado usando actorId sin citizenId", async () => {
+    chat.messages = [messages()[5]];
+    await renderPage(authFor({ ...AGENT, actorId: "agent-citizen", actorType: "EMPLEADO", citizenId: null }));
+    fireEvent.click(screen.getByLabelText("Editar comentario"));
+    fireEvent.change(screen.getByDisplayValue("Mi comentario"), { target: { value: "Empleado editó" } });
+    fireEvent.click(screen.getByText("Guardar"));
+    await act(async () => {});
+    expect(chat.edit).toHaveBeenCalledWith(6, "Empleado editó");
+  });
+
+  it("no ofrece editar mensajes ajenos ni si el usuario carece de identidad de autor", async () => {
     chat.messages = [messages()[0]];
     await renderPage(authFor({ ...AGENT }));
     expect(screen.queryByLabelText("Editar comentario")).not.toBeInTheDocument();

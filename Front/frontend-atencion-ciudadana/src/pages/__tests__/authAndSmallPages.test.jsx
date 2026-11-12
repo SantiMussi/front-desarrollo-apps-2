@@ -81,7 +81,7 @@ describe("LoginPage", () => {
   it("alterna la visibilidad de la contraseña", () => {
     renderLogin();
     expect(screen.getByText("Bienvenido de nuevo")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Registrate" })).toHaveAttribute("href", "/registro");
+    expect(screen.getByRole("link", { name: "Volver al portal de ayuda" })).toHaveAttribute("href", "/portal-ayuda");
     const password = screen.getByLabelText(/^Contraseña/);
     fireEvent.click(screen.getByLabelText("Mostrar contraseña"));
     expect(password).toHaveAttribute("type", "text");
@@ -115,36 +115,12 @@ describe("LoginPage", () => {
 });
 
 describe("RegisterPage", () => {
-  const fill = () => {
-    fireEvent.change(screen.getByLabelText("Nombre"), { target: { name: "firstName", value: "Ana" } });
-    fireEvent.change(screen.getByLabelText("Apellido"), { target: { name: "lastName", value: "Pérez" } });
-    fireEvent.change(screen.getByLabelText(/Correo electrónico/), { target: { name: "email", value: "ana@x.com" } });
-    fireEvent.change(screen.getByLabelText(/^Contraseña/), { target: { name: "password", value: "claveSegura1" } });
-  };
-
-  const renderRegister = (auth = makeAuth()) =>
-    renderWithProviders(<RegisterPage />, { auth, route: "/registro", path: "/registro", extraRoutes: <Route path="/ingresar" element={<p>Ingresar</p>} /> });
-
-  it("registra y lleva a ingresar", async () => {
-    const { auth } = renderRegister();
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
-    await waitFor(() => expect(auth.register).toHaveBeenCalledWith({ firstName: "Ana", lastName: "Pérez", email: "ana@x.com", password: "claveSegura1" }));
-    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/ingresar"));
-  });
-
-  it("muestra errores y alterna la contraseña", async () => {
-    const auth = makeAuth({ register: vi.fn().mockRejectedValueOnce(new Error("Correo en uso")).mockRejectedValueOnce({}) });
-    renderRegister(auth);
-    fill();
-    fireEvent.click(screen.getByLabelText("Mostrar contraseña"));
-    expect(screen.getByLabelText(/^Contraseña/)).toHaveAttribute("type", "text");
-    fireEvent.click(screen.getByLabelText("Ocultar contraseña"));
-    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Correo en uso");
-    fireEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("No pudimos completar la solicitud."));
-    expect(screen.getByRole("link", { name: "Ingresá" })).toHaveAttribute("href", "/ingresar");
+  it("informa que no hay registro y permite volver al login sin enviar credenciales", () => {
+    const { auth } = renderWithProviders(<RegisterPage />, { route: "/registro", path: "/registro" });
+    expect(screen.getByRole("heading", { name: "Registro no disponible" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a ingresar" })).toHaveAttribute("href", "/ingresar");
+    expect(auth.register).not.toHaveBeenCalled();
   });
 
   it("redirige si ya hay sesión", () => {

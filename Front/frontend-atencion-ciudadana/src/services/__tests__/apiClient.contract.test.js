@@ -74,7 +74,6 @@ describe("cabeceras de autenticación", () => {
 // [función, argumentos, método, URL esperada, cuerpo esperado]
 const REQUESTS = [
   ["login", [{ username: "a", password: "b" }], "POST", "/api/auth/login", { username: "a", password: "b" }],
-  ["register", [{ email: "a@b.c" }], "POST", "/api/auth/register", { email: "a@b.c" }],
   ["fetchCurrentUser", [], undefined, "/api/auth/me"],
   ["fetchCategories", [], undefined, "/api/catalog/categories"],
   ["fetchSubcategories", [3], undefined, "/api/catalog/categories/3/subcategories"],

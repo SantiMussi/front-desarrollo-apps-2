@@ -74,7 +74,7 @@ describe("apiClient token and response handling", () => {
 
 describe("apiClient endpoint contracts", () => {
   const noArguments = ["fetchCurrentUser", "fetchCategories", "fetchAdminCategories", "fetchNeighborhoods", "fetchStaffLabels"];
-  const objectArgument = ["login", "register", "createCategory", "createSubcategory", "createRequestType"];
+  const objectArgument = ["login", "createCategory", "createSubcategory", "createRequestType"];
   const idArgument = [
     "fetchSubcategories", "fetchRequestTypes", "fetchRequestTypeForm", "activateCategory", "deactivateCategory",
     "fetchAdminSubcategories", "activateSubcategory", "deactivateSubcategory", "fetchAdminRequestTypes",

@@ -71,7 +71,7 @@ function wasMessageEdited(message) {
 }
 
 function messageAuthor(message, data, currentUser) {
-  if (currentUser?.citizenId && message.authorId === currentUser.citizenId) {
+  if ((currentUser?.actorId ?? currentUser?.citizenId) && message.authorId === (currentUser.actorId ?? currentUser.citizenId)) {
     return { name: currentUser.displayName || "Vos", initials: "YO" };
   }
   if (message.authorType === "CITIZEN") return data.citizen;
@@ -145,7 +145,7 @@ function Field({ label, children }) {
 export default function TicketDetailPage() {
   const { ticketId } = useParams();
   const { user } = useAuth();
-  return <TicketDetailContent key={`${ticketId}:${user?.citizenId}:${user?.role}:${user?.areaId}`} />;
+  return <TicketDetailContent key={`${ticketId}:${user?.actorId ?? user?.citizenId}:${user?.role}:${user?.areaId}`} />;
 }
 
 function TicketDetailContent() {
@@ -719,7 +719,7 @@ function TicketDetailContent() {
                       );
                     }
                     const author = messageAuthor(message, data, user);
-                    const isMine = !isOwnTicket && user?.citizenId && message.authorId === user.citizenId;
+                    const isMine = !isOwnTicket && (user?.actorId ?? user?.citizenId) && message.authorId === (user.actorId ?? user.citizenId);
                     const isEditing = editingMessageId === message.id;
                     const isConfirmingDelete = confirmDeleteMessageId === message.id;
                     return (

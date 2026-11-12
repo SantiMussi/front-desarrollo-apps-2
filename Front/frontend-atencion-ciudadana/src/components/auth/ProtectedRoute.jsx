@@ -4,10 +4,11 @@ import Spinner from "../ui/Spinner";
 import AccessDenied from "../ui/AccessDenied";
 
 export default function ProtectedRoute({ roles }) {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, sessionError } = useAuth();
   const location = useLocation();
 
   if (isLoading) return <div className="grid min-h-screen place-items-center"><Spinner /></div>;
+  if (!isAuthenticated && sessionError) return null;
   if (!isAuthenticated) return <Navigate to="/ingresar" replace state={{ from: location }} />;
 
   if (roles?.length) {

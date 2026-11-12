@@ -3,12 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../AuthContext.jsx";
 import { useAuth } from "../useAuth";
 import * as api from "../../services/apiClient";
+import * as session from "../../services/authSession";
+vi.mock("../../services/authSession", () => ({ isM1Auth: false, SESSION_EVENT: "m2:session", getSessionIdentity: vi.fn(), logoutSession: vi.fn(), restoreSession: vi.fn() }));
 
 vi.mock("../../services/apiClient", () => ({
   fetchCurrentUser: vi.fn(),
   getStoredToken: vi.fn(),
   login: vi.fn(),
-  register: vi.fn(),
   removeStoredToken: vi.fn(),
   storeToken: vi.fn(),
 }));
@@ -31,6 +32,7 @@ beforeEach(() => {
   api.removeStoredToken.mockImplementation(() => {
     token = null;
   });
+  session.logoutSession.mockImplementation(async () => { api.removeStoredToken(); });
   vi.stubGlobal("location", { ...window.location, assign });
 });
 
@@ -74,14 +76,14 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(result.current.user).toEqual({ id: 5 }));
   });
 
-  it.each([401, 403])("cierra la sesión cuando /me responde %s", async (status) => {
+  it.each([401])("cierra la sesión cuando /me responde %s", async (status) => {
     token = "jwt";
     localStorage.setItem(USER_KEY, JSON.stringify({ id: 1 }));
     api.fetchCurrentUser.mockRejectedValue(Object.assign(new Error("no"), { status }));
     const { result } = setup();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(api.removeStoredToken).toHaveBeenCalled();
-    expect(assign).toHaveBeenCalledWith("/portal-ayuda");
+    expect(assign).not.toHaveBeenCalled();
     expect(result.current.user).toBeNull();
     expect(localStorage.getItem(USER_KEY)).toBeNull();
   });
@@ -152,37 +154,14 @@ describe("AuthProvider", () => {
     });
   });
 
-  describe("register", () => {
-    it("inicia sesión automáticamente si el registro devuelve token", async () => {
-      api.register.mockResolvedValue({ token: "t", identity: { id: 7 } });
-      const { result } = setup();
-      let response;
-      await act(async () => {
-        response = await result.current.register({ email: "a@b.c" });
-      });
-      expect(response).toEqual({ token: "t", identity: { id: 7 } });
-      expect(result.current.user).toEqual({ id: 7 });
-    });
-
-    it("recupera el usuario si el registro devuelve token sin identidad", async () => {
-      api.register.mockResolvedValue({ token: "t" });
-      api.fetchCurrentUser.mockResolvedValue({ id: 8 });
-      const { result } = setup();
-      await act(async () => {
-        await result.current.register({});
-      });
-      expect(result.current.user).toEqual({ id: 8 });
-    });
-
-    it("no inicia sesión si el registro no devuelve token", async () => {
-      api.register.mockResolvedValue({ id: 1 });
-      const { result } = setup();
-      await act(async () => {
-        await result.current.register({});
-      });
-      expect(api.storeToken).not.toHaveBeenCalled();
-      expect(result.current.user).toBeNull();
-    });
+  it("un 403 no cierra la sesión", async () => {
+    token = "jwt";
+    localStorage.setItem(USER_KEY, JSON.stringify({ id: 1 }));
+    api.fetchCurrentUser.mockRejectedValue(Object.assign(new Error("permission"), { status: 403 }));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(api.removeStoredToken).not.toHaveBeenCalled();
   });
 
   it("logout limpia token y usuario y redirige al portal", async () => {
@@ -191,7 +170,7 @@ describe("AuthProvider", () => {
     await act(async () => {
       await result.current.login({});
     });
-    act(() => result.current.logout());
+    await act(async () => result.current.logout());
     expect(api.removeStoredToken).toHaveBeenCalled();
     expect(result.current.user).toBeNull();
     expect(assign).toHaveBeenCalledWith("/portal-ayuda");
@@ -200,7 +179,7 @@ describe("AuthProvider", () => {
   it("isAuthenticated exige usuario y token", async () => {
     localStorage.setItem(USER_KEY, JSON.stringify({ id: 1 }));
     const { result } = setup();
-    expect(result.current.user).toEqual({ id: 1 });
+    expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });
 });

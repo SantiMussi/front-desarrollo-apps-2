@@ -1,3 +1,4 @@
+import { getCurrentSessionKey } from "../../hooks/useSessionToken";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity, AlertCircle, ArrowDown, ArrowUp, BarChart3, CheckCircle2,
@@ -8,7 +9,6 @@ import { Link } from "react-router-dom";
 import { useIndicatorOverview } from "../../hooks/useIndicatorOverview";
 import TicketMetricsExportButton from "../../components/ticket/TicketMetricsExportButton";
 import { useAuth } from "../../context/useAuth";
-import { getStoredToken } from "../../services/apiClient";
 import { fetchCategories, fetchNeighborhoods, fetchIndicatorAreas } from "../../services/apiClient";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { NO_LOCATION_FILTER } from "../../utils/ticketLocation";
@@ -73,7 +73,7 @@ function TrendChart({ rows }) {
 export default function MetricsPage() {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated || !["AGENT", "ADMIN"].includes(user?.role)) return <p role="alert">No tenés permiso para consultar indicadores.</p>;
-  return <MetricsContent key={JSON.stringify([user?.citizenId, user?.id, user?.role, getStoredToken()])} />;
+  return <MetricsContent key={JSON.stringify([user?.actorId ?? user?.citizenId, user?.id, user?.role, getCurrentSessionKey()])} />;
 }
 
 function MetricsContent() {

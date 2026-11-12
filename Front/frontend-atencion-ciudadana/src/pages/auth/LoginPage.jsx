@@ -35,7 +35,7 @@ export default function LoginPage() {
       title="Bienvenido de nuevo"
       description="Ingresá con los datos de tu cuenta."
       error={error}
-      footer={<>¿Todavía no tenés cuenta? <Link className="font-semibold text-[#0F2C59] hover:underline" to="/registro">Registrate</Link></>}
+      footer={<Link className="font-semibold text-[#0F2C59] hover:underline" to="/portal-ayuda">Volver al portal de ayuda</Link>}
     >
       {location.state?.message && <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{location.state.message}</div>}
       <form onSubmit={submit} className="mt-8 space-y-5">

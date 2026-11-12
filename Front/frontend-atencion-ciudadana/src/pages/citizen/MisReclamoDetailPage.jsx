@@ -14,7 +14,7 @@ export default function MisReclamoDetailPage() {
   const token = useSessionToken();
   if (!user || !token) return null;
 
-  return <MyTicketDetail key={JSON.stringify([publicId, user.id, user.citizenId, token])} publicId={publicId} user={user} />;
+  return <MyTicketDetail key={JSON.stringify([publicId, user.id, user.actorId ?? user.citizenId, token])} publicId={publicId} user={user} />;
 }
 
 // Reset the complete detail (including chat, drafts and tracking code) together.
@@ -68,7 +68,7 @@ function MyTicketDetail({ publicId, user }) {
         loading: chatMessages.loading,
         error: chatMessages.error,
         canSend: true,
-        currentAuthorId: user?.citizenId,
+        currentAuthorId: user?.actorId ?? user?.citizenId,
         onSend: (text) => chatMessages.send("PUBLIC", text),
         onEdit: chatMessages.edit,
         onDelete: chatMessages.remove,

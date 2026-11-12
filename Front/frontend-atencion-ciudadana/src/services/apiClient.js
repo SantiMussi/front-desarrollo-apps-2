@@ -1,5 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const TOKEN_KEY = "ciudad-uade.auth-token";
+import { API_BASE, fetchWithSession, getStoredToken, isM1Auth, loginSession } from "./authSession";
+export { getStoredToken, storeToken, removeStoredToken } from "./authSession";
+const BASE_URL = API_BASE;
 
 // crypto.randomUUID() sólo existe en contextos seguros (HTTPS o localhost) —
 // explota con "crypto.randomUUID is not a function" al abrir la app por HTTP
@@ -23,10 +24,6 @@ function generateUUID() {
   });
 }
 
-export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
-export const storeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const removeStoredToken = () => localStorage.removeItem(TOKEN_KEY);
-
 async function request(endpoint, options = {}, responseType = "json") {
   const url = `${BASE_URL}${endpoint}`;
 
@@ -41,7 +38,7 @@ async function request(endpoint, options = {}, responseType = "json") {
     ...options,
   };
 
-  const response = await fetch(url, config);
+  const response = await fetchWithSession(url, config, { anonymous: endpoint.startsWith("/tracking/") });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -59,16 +56,10 @@ async function request(endpoint, options = {}, responseType = "json") {
 
 // auth endpoints
 export async function login(credentials) {
+  if (isM1Auth) return loginSession(credentials);
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify(credentials),
-  });
-}
-
-export async function register(user) {
-  return request("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(user),
   });
 }
 
@@ -322,11 +313,11 @@ export async function createTicket(payload, attachments = [], { skipAuth = false
     body = JSON.stringify(payload);
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     method: "POST",
     headers,
     body,
-  });
+  }, { anonymous: skipAuth });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -634,11 +625,11 @@ export async function deleteTicketMessage(ticketId, messageId) {
 }
 
 async function postMultipart(url, formData, token) {
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     method: "POST",
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: formData,
-  });
+  }, { anonymous: !token });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -653,9 +644,9 @@ async function postMultipart(url, formData, token) {
 }
 
 async function getBlob(url, token) {
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  }, { anonymous: !token });
 
   if (!response.ok) {
     const error = new Error(`Error ${response.status}: ${response.statusText}`);

@@ -1,11 +1,12 @@
+import { getCurrentSessionKey } from "./useSessionToken";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
-import { fetchIndicatorOverview, getStoredToken } from "../services/apiClient";
+import { fetchIndicatorOverview } from "../services/apiClient";
 
 export function useIndicatorOverview(filters = {}) {
   const { user, isAuthenticated } = useAuth();
   const allowed = isAuthenticated && ["AGENT", "ADMIN"].includes(user?.role);
-  const contextKey = JSON.stringify([user?.citizenId, user?.id, user?.role, user?.responsibleAreaId, getStoredToken()]);
+  const contextKey = JSON.stringify([user?.actorId ?? user?.citizenId, user?.id, user?.role, user?.responsibleAreaId, getCurrentSessionKey()]);
   const filterKey = JSON.stringify(filters);
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState({ key: null, data: null, error: null });

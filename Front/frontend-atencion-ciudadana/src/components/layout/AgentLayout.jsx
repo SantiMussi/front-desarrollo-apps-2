@@ -10,7 +10,7 @@ export default function AgentLayout() {
 
       {/* Main Content Area */}
       <main className="min-w-0 flex-1 flex flex-col h-full relative overflow-hidden pt-[60px] md:pt-0">
-        <div key={`${user?.citizenId}:${user?.role}:${user?.areaId}`} className="contents"><Outlet /></div>
+        <div key={`${user?.actorId ?? user?.citizenId}:${user?.role}:${user?.areaId}`} className="contents"><Outlet /></div>
       </main>
     </div>
   );

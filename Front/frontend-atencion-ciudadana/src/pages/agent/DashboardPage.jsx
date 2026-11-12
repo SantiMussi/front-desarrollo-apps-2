@@ -1,3 +1,4 @@
+import { getCurrentSessionKey } from "../../hooks/useSessionToken";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { useIndicatorOverview } from "../../hooks/useIndicatorOverview";
-import { getStoredToken } from "../../services/apiClient";
 import { useAgentTickets } from "../../hooks/useAgentTickets";
 import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
@@ -89,7 +89,7 @@ function EmptyState() {
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated || !["AGENT", "ADMIN"].includes(user?.role)) return <p role="alert">No tenés permiso para consultar indicadores.</p>;
-  return <DashboardContent key={JSON.stringify([user?.citizenId, user?.id, user?.role, getStoredToken()])} />;
+  return <DashboardContent key={JSON.stringify([user?.actorId ?? user?.citizenId, user?.id, user?.role, getCurrentSessionKey()])} />;
 }
 
 function DashboardContent() {

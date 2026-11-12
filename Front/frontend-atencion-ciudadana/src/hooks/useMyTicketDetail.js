@@ -4,7 +4,6 @@ import {
   confirmTicketResolution,
   fetchMyTicketDetail,
   fetchMyTickets,
-  getStoredToken,
   submitSatisfactionSurvey,
   reopenTicket,
 } from "../services/apiClient";
@@ -12,7 +11,7 @@ import { CONFIRM_TARGET_STATUS, REOPEN_TARGET_STATUS } from "../constants/ticket
 import { reclassificationErrorMessage } from "../utils/reclassification";
 import { ACTIVITY_TYPE_LABELS } from "../constants/ticketActivities";
 import { useCitizenCancellation } from "./useCitizenCancellation";
-import { useSessionToken } from "./useSessionToken";
+import { getCurrentSessionKey, useSessionToken } from "./useSessionToken";
 
 function buildFallbackHistory(t) {
   if (!t.createdAt) return [];
@@ -136,13 +135,13 @@ export function useMyTicketDetail(publicId) {
   const [actionError, setActionError] = useState(null);
 
   const load = useCallback(async ({ resetActions = false } = {}) => {
-    if (token !== getStoredToken()) return;
+    if (token !== getCurrentSessionKey()) return;
     loadController.current?.abort();
     const controller = new AbortController();
     loadController.current = controller;
     const current = ++request.current;
     const context = generation.current;
-    const active = () => !controller.signal.aborted && current === request.current && context === generation.current && token === getStoredToken();
+    const active = () => !controller.signal.aborted && current === request.current && context === generation.current && token === getCurrentSessionKey();
     if (!token) {
       setLoadedId(contextKey);
       setTicket(null);

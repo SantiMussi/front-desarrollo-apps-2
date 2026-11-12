@@ -46,7 +46,7 @@ function mapTicket(ticket) {
 
 export default function TicketsInboxPage() {
   const { user } = useAuth();
-  return <TicketsInboxContent key={`${user?.citizenId}:${user?.role}:${user?.areaId}`} />;
+  return <TicketsInboxContent key={`${user?.actorId ?? user?.citizenId}:${user?.role}:${user?.areaId}`} />;
 }
 
 function TicketsInboxContent() {
