@@ -122,17 +122,25 @@ describe("AttachmentGallery", () => {
     click.mockRestore();
   });
 
-  it("previsualiza imágenes y PDF en un visor y libera la URL al cerrar", async () => {
+  it.each(["Escape", "botón"])("previsualiza imágenes y PDF en un visor y libera la URL al cerrar con %s", async (closeWith) => {
     const downloadFile = vi.fn().mockResolvedValue(new Blob(["x"]));
     URL.createObjectURL = vi.fn(() => "blob:prev");
     URL.revokeObjectURL = vi.fn();
     const pdf = { id: 9, fileName: "acta.pdf", contentType: "application/pdf", sizeBytes: 10 };
     render(<AttachmentGallery items={[pdf]} downloadFile={downloadFile} />);
-    fireEvent.click(screen.getByLabelText("Ver acta.pdf"));
+    // La descarga es asíncrona: esperar también los efectos que registran Escape.
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Ver acta.pdf"));
+    });
     expect(await screen.findByRole("dialog", { name: "Vista previa de acta.pdf" })).toBeInTheDocument();
     expect(screen.getByTitle("PDF acta.pdf")).toHaveAttribute("src", "blob:prev");
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByRole("dialog", { name: "Vista previa de acta.pdf" })).toBeInTheDocument();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    if (closeWith === "Escape") fireEvent.keyDown(window, { key: "Escape" });
+    else fireEvent.click(screen.getByLabelText("Cerrar vista previa"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:prev");
   });
 
@@ -146,10 +154,15 @@ describe("AttachmentGallery", () => {
     ];
     render(<AttachmentGallery items={list} downloadFile={downloadFile} />);
     expect(screen.queryByLabelText("Ver cel.heic")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Ver foto.png"));
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Ver foto.png"));
+    });
     expect(await screen.findByAltText("foto.png")).toHaveAttribute("src", "blob:img");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Cerrar vista previa"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:img");
   });
 
   it("muestra el error si falla la carga de la vista previa", async () => {
