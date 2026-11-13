@@ -192,7 +192,7 @@ export default function FieldCard({ field, index, total, open, errors, onToggleO
           {meta?.placeholder && (
             <label className="block text-xs font-semibold text-slate-700">
               {field.type === "SELECT" ? "Texto del selector vacío" : "Texto de ayuda dentro del campo"}{" "}
-              <span className="font-normal text-slate-400">(opcional)</span>
+              <span className="font-normal text-slate-500">(opcional)</span>
               <input
                 value={field.placeholder}
                 onChange={(e) => onChange({ placeholder: e.target.value })}

@@ -37,12 +37,13 @@ export default function Select({
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={ariaLabel}
+        // El nombre accesible incluye el texto visible (WCAG 2.5.3 «etiqueta en el nombre»).
+        aria-label={ariaLabel ? `${ariaLabel}: ${selected ? selected.label : placeholder}` : undefined}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         className={`flex w-full items-center justify-between gap-2 rounded-md border bg-white text-left font-medium text-slate-700 outline-none transition focus:border-[#0F2C59] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 ${sizeClasses.control}`}
       >
-        <span className={`truncate ${selected ? "" : "font-normal text-slate-400"}`}>
+        <span className={`truncate ${selected ? "" : "font-normal text-slate-500"}`}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />

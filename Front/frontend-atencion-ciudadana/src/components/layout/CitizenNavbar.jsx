@@ -61,7 +61,7 @@ export default function CitizenNavbar() {
             <span className="text-[14px] font-bold tracking-tight text-[#0F2C59]">
               Ciudad UADE
             </span>
-            <span className="text-[9px] font-medium tracking-[0.15em] uppercase text-neutral-400">
+            <span className="text-[9px] font-medium tracking-[0.15em] uppercase text-neutral-500">
               Atención Vecinal
             </span>
           </div>
@@ -94,7 +94,7 @@ export default function CitizenNavbar() {
                     <div className="px-3 py-2">
                       <p className="truncate text-[13px] font-semibold text-[#0F2C59]">{displayName}</p>
                       {secondaryLine && (
-                        <p className="truncate text-[11px] text-neutral-400">{secondaryLine}</p>
+                        <p className="truncate text-[11px] text-neutral-500">{secondaryLine}</p>
                       )}
                     </div>
                     <div className="my-1 h-px bg-neutral-100" />
@@ -150,7 +150,7 @@ export default function CitizenNavbar() {
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-[#0F2C59]">{displayName}</p>
                 {secondaryLine && (
-                  <p className="truncate text-[11px] text-neutral-400">{secondaryLine}</p>
+                  <p className="truncate text-[11px] text-neutral-500">{secondaryLine}</p>
                 )}
               </div>
             </div>

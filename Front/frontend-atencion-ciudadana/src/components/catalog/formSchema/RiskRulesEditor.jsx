@@ -123,7 +123,7 @@ export default function RiskRulesEditor({ field, onChange, errors }) {
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
           <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-          Reglas de riesgo <span className="font-normal text-slate-400">(opcional)</span>
+          Reglas de riesgo <span className="font-normal text-slate-500">(opcional)</span>
         </p>
         <button
           type="button"

@@ -45,6 +45,13 @@ describe("MetricsPage con agregación PostgreSQL",()=>{
   });
   it.each(["CITIZEN","AREA_RESPONSIBLE",null])("deniega %s sin consultar",async(role)=>{await page(role?{role}:null);expect(screen.getByRole("alert")).toHaveTextContent("permiso");expect(useIndicatorOverview).not.toHaveBeenCalled();expect(fetchCategories).not.toHaveBeenCalled();});
   it("refresca",async()=>{await page();fireEvent.click(screen.getByTitle("Actualizar"));expect(refetch).toHaveBeenCalledOnce();});
+  it("las zonas con desplazamiento horizontal se pueden recorrer con el teclado",async()=>{
+    await page();
+    for(const name of [/Gráfico de tickets creados y resueltos/,/Rendimiento por área/]){
+      const region=screen.getByRole("region",{name});
+      expect(region).toHaveAttribute("tabindex","0");expect(region.className).toContain("overflow-x-auto");
+    }
+  });
   it("tolera fallos de catálogos sin perder agregados",async()=>{
     fetchCategories.mockRejectedValue(new Error());fetchNeighborhoods.mockRejectedValue(new Error());fetchIndicatorAreas.mockRejectedValue(new Error());await page();expect(kpi("Tickets creados").getByText("125")).toBeInTheDocument();
   });

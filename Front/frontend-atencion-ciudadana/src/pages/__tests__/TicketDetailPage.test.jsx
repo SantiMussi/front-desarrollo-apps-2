@@ -888,7 +888,7 @@ describe("TicketDetailPage - clasificación, prioridad y adjuntos", () => {
     expect(screen.getByLabelText("Prioridad")).toHaveTextContent("Calculada por el sistema");
     expect(screen.getByLabelText("Prioridad").tagName).toBe("SPAN");
     expect(screen.queryByRole("option", { name: "Crítica" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Área responsable")).toBeDisabled();
+    expect(screen.getByLabelText(/^Área responsable/)).toBeDisabled();
   });
 
   it("sube y descarga adjuntos", async () => {

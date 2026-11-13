@@ -59,7 +59,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
             <button
               type="button"
               onClick={onCancel}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-all z-10"
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 transition-all z-10"
               aria-label="Cerrar"
             >
               <X className="h-4 w-4" strokeWidth={2.5} />

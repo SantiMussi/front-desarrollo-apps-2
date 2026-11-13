@@ -230,7 +230,7 @@ function TicketsInboxContent() {
               className="w-full pl-9 pr-4 py-2 bg-slate-100 border-none rounded-md text-sm focus:ring-2 focus:ring-[#0F2C59] focus:bg-white transition-all"
             />
           </div>
-          <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
+          <button type="button" aria-label="Notificaciones" className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-[#D63031] rounded-full border-2 border-white"></span>
           </button>

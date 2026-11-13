@@ -46,27 +46,27 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
           onClick={() => setIsOpen(!isOpen)}
           className={`${baseClasses} ${borderClass} flex items-center justify-between text-left h-[42px]`}
         >
-          <span className={`block truncate ${selectedOption ? "text-neutral-900" : "text-neutral-400"}`}>
+          <span className={`block truncate ${selectedOption ? "text-neutral-900" : "text-neutral-500"}`}>
             {selectedOption ? selectedOption.label : placeholder || "Seleccionar..."}
           </span>
-          <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-neutral-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </button>
         
         {isOpen && (
           <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-lg overflow-hidden">
             <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2">
-              <Search className="h-4 w-4 text-neutral-400 shrink-0" />
+              <Search className="h-4 w-4 text-neutral-500 shrink-0" />
               <input
                 type="text"
                 placeholder="Buscar..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full text-[13px] outline-none placeholder:text-neutral-400 bg-transparent border-none p-0 focus:ring-0"
+                className="w-full text-[13px] outline-none placeholder:text-neutral-500 bg-transparent border-none p-0 focus:ring-0"
                 autoFocus
               />
               {search && (
                 <button type="button" onClick={() => setSearch("")} className="shrink-0">
-                  <X className="h-3 w-3 text-neutral-400 hover:text-neutral-600 transition-colors" />
+                  <X className="h-3 w-3 text-neutral-500 hover:text-neutral-600 transition-colors" />
                 </button>
               )}
             </div>
@@ -85,7 +85,7 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-4 text-center text-[12px] text-neutral-400">
+                <div className="px-3 py-4 text-center text-[12px] text-neutral-500">
                   No se encontraron resultados
                 </div>
               )}

@@ -9,7 +9,7 @@ const TONES = {
   blue: { dot: "bg-blue-500", pill: "bg-blue-50 text-blue-700", bar: "bg-blue-400" },
   amber: { dot: "bg-amber-500", pill: "bg-amber-50 text-amber-700", bar: "bg-amber-400" },
   green: { dot: "bg-emerald-500", pill: "bg-emerald-50 text-emerald-700", bar: "bg-emerald-400" },
-  gray: { dot: "bg-neutral-400", pill: "bg-neutral-100 text-neutral-500", bar: "bg-neutral-300" },
+  gray: { dot: "bg-neutral-400", pill: "bg-neutral-100 text-neutral-600", bar: "bg-neutral-300" },
 };
 
 const STATUS_TONE = {
@@ -54,7 +54,7 @@ function TicketCard({ ticket }) {
 
       <div className="flex flex-1 flex-col p-5 pl-6">
         <div className="flex items-start justify-between gap-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             {area}
           </span>
           <span
@@ -73,7 +73,7 @@ function TicketCard({ ticket }) {
         </p>
 
         <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-3">
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-neutral-400">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-neutral-500">
             <CalendarDays className="h-3.5 w-3.5" />
             {formatDate(ticket.createdAt)}
           </span>
@@ -142,7 +142,7 @@ export default function MisReclamosPage() {
             }`}
           >
             {f.label}
-            <span className={`ml-1.5 ${filter === f.id ? "text-white/70" : "text-neutral-400"}`}>
+            <span className={`ml-1.5 ${filter === f.id ? "text-white/70" : "text-neutral-500"}`}>
               {counts[f.id]}
             </span>
           </button>
@@ -165,11 +165,11 @@ export default function MisReclamosPage() {
       {/* Contenido */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-neutral-300" />
+          <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
             <Inbox className="h-6 w-6" />
           </div>
           <p className="text-[14px] font-medium text-neutral-600">

@@ -74,6 +74,12 @@ describe("TicketsInboxPage - listado", () => {
     expect(screen.getByText("Página 1 de 3")).toBeInTheDocument();
   });
 
+  it("el botón de notificaciones tiene nombre accesible", async () => {
+    mockTickets();
+    await renderPage();
+    expect(screen.getByRole("button", { name: "Notificaciones" })).toBeInTheDocument();
+  });
+
   it("muestra el cargando, el error y el vacío", async () => {
     mockTickets({ loading: true, tickets: [] });
     const first = await renderPage();

@@ -187,7 +187,7 @@ export default function AttachmentGallery({
     <div>
       {(title || canUpload) && (
         <div className="flex items-center justify-between gap-2">
-          {title && <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">{title}</p>}
+          {title && <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">{title}</p>}
           {canUpload && (
             <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#0F2C59] hover:underline">
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
@@ -200,7 +200,7 @@ export default function AttachmentGallery({
 
       <div className="mt-2.5">
         {attachments.length === 0 ? (
-          <p className="text-[12.5px] text-neutral-400">No hay adjuntos en este ticket.</p>
+          <p className="text-[12.5px] text-neutral-500">No hay adjuntos en este ticket.</p>
         ) : (
           <ul className="space-y-1.5">
             {attachments.map((attachment) => {
@@ -210,10 +210,10 @@ export default function AttachmentGallery({
                   key={attachment.id}
                   className="flex items-center gap-2.5 rounded-md border border-neutral-200 bg-white px-2.5 py-2"
                 >
-                  <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <Icon className="h-4 w-4 shrink-0 text-neutral-500" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12.5px] font-medium text-neutral-700">{attachment.fileName}</p>
-                    <p className="text-[11px] text-neutral-400">{formatBytes(attachment.sizeBytes)}</p>
+                    <p className="text-[11px] text-neutral-500">{formatBytes(attachment.sizeBytes)}</p>
                   </div>
                   {previewKind(attachment.contentType) && (
                     <button
@@ -221,7 +221,7 @@ export default function AttachmentGallery({
                       onClick={() => handlePreview(attachment)}
                       disabled={previewingId === attachment.id}
                       aria-label={`Ver ${attachment.fileName}`}
-                      className="shrink-0 rounded p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-[#0F2C59] disabled:cursor-wait disabled:opacity-50"
+                      className="shrink-0 rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0F2C59] disabled:cursor-wait disabled:opacity-50"
                     >
                       {previewingId === attachment.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -235,7 +235,7 @@ export default function AttachmentGallery({
                     onClick={() => handleDownload(attachment)}
                     disabled={downloadingId === attachment.id}
                     aria-label={`Descargar ${attachment.fileName}`}
-                    className="shrink-0 rounded p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-[#0F2C59] disabled:cursor-wait disabled:opacity-50"
+                    className="shrink-0 rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-[#0F2C59] disabled:cursor-wait disabled:opacity-50"
                   >
                     {downloadingId === attachment.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

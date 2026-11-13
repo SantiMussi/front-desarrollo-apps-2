@@ -30,7 +30,7 @@ export default function CategoryCard({
       <div className="absolute top-0 left-3 right-3 h-0.5 bg-[#D63031] rounded-full scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100" />
 
       <div className="flex items-start justify-between">
-        <div className="text-neutral-400 transition-colors duration-300 group-hover:text-[#D63031]">
+        <div className="text-neutral-500 transition-colors duration-300 group-hover:text-[#D63031]">
           {IconComponent ? (
             <IconComponent className="h-5 w-5" strokeWidth={1.5} />
           ) : (
@@ -51,17 +51,17 @@ export default function CategoryCard({
         <h3 className="text-[15px] font-semibold text-neutral-900 leading-snug group-hover:text-[#0F2C59] transition-colors">
           {title}
         </h3>
-        <p className="text-[13px] text-neutral-400 leading-relaxed line-clamp-2">
+        <p className="text-[13px] text-neutral-500 leading-relaxed line-clamp-2">
           {description}
         </p>
       </div>
 
       <div className="mt-auto flex items-center justify-between pt-1">
-        <span className="text-[11px] text-neutral-300 tabular-nums">
+        <span className="text-[11px] text-neutral-500 tabular-nums">
           {itemCount} activos
         </span>
         <ArrowUpRight
-          className="h-4 w-4 text-neutral-300 transition-all duration-300
+          className="h-4 w-4 text-neutral-500 transition-all duration-300
                      group-hover:text-[#D63031] group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
           strokeWidth={1.5}
         />

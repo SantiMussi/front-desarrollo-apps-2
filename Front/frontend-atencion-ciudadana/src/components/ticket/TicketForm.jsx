@@ -634,7 +634,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
       {!isAuthenticated && !canBeAnonymous && (
         <div className="flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
-          <EyeOff className="h-4 w-4 shrink-0 text-neutral-400" strokeWidth={1.5} />
+          <EyeOff className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={1.5} />
           <p className="text-[12px] text-neutral-500">
             Este tipo de solicitud no admite presentación anónima — necesitás iniciar sesión para enviarla.
           </p>
@@ -645,10 +645,10 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <EyeOff className="h-4 w-4 text-neutral-400" strokeWidth={1.5} />
+              <EyeOff className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
               <div>
                 <p className="text-[13px] font-medium text-neutral-700">Presentación anónima</p>
-                <p className="text-[11px] text-neutral-400">
+                <p className="text-[11px] text-neutral-500">
                   {isAuthenticated
                     ? "Este ticket no quedará ligado a tu cuenta. Vas a conservar un código y una contraseña propios para gestionarlo."
                     : "Enviá sin crear una cuenta. Vas a conservar un código y una contraseña propios del ticket."}
@@ -688,7 +688,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                   Contraseña del ticket
                 </label>
                 <div className="relative mt-1.5">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={1.5} />
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" strokeWidth={1.5} />
                   <input
                     id="ticketPassword"
                     name="ticketPassword"
@@ -704,7 +704,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                 {fieldErrors.ticketPassword && (
                   <p className="mt-1.5 text-[12px] text-red-500">{fieldErrors.ticketPassword}</p>
                 )}
-                <p className="mt-1.5 text-[11px] text-neutral-400">
+                <p className="mt-1.5 text-[11px] text-neutral-500">
                   Si la definís, tiene que tener al menos 8 caracteres. La vas a necesitar junto con el código de seguimiento para gestionar el ticket. Si la dejás vacía, te generamos una automáticamente y te la mostramos al finalizar.
                 </p>
               </div>
@@ -885,12 +885,12 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
             Archivos adjuntos
           </span>
-          <span className="text-[10px] text-neutral-400">(opcional)</span>
+          <span className="text-[10px] text-neutral-500">(opcional)</span>
         </div>
 
         <label
           className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-neutral-200 bg-neutral-50
-                      px-4 py-6 text-[13px] text-neutral-400 transition-colors hover:border-[#D63031]/30 hover:text-[#D63031]/70
+                      px-4 py-6 text-[13px] text-neutral-500 transition-colors hover:border-[#D63031]/30 hover:text-[#D63031]/70
                       ${loading ? "pointer-events-none opacity-50" : ""}`}
         >
           <Paperclip className="h-4 w-4" strokeWidth={1.5} />
@@ -914,7 +914,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                 key={`${file.name}-${index}`}
                 className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-600"
               >
-                <Paperclip className="h-3 w-3 text-neutral-400" strokeWidth={1.5} />
+                <Paperclip className="h-3 w-3 text-neutral-500" strokeWidth={1.5} />
                 <span className="max-w-[150px] truncate">{file.name}</span>
                 <button
                   type="button"
@@ -922,7 +922,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
                   className="p-0.5 rounded hover:bg-neutral-100 transition-colors"
                   aria-label={`Eliminar ${file.name}`}
                 >
-                  <X className="h-3 w-3 text-neutral-400" />
+                  <X className="h-3 w-3 text-neutral-500" />
                 </button>
               </div>
             ))}

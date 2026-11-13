@@ -38,7 +38,9 @@ function CitizenLayout() {
         className="flex flex-1 flex-col"
       >
         <CitizenNavbar />
-        <Outlet />
+        <main className="flex flex-1 flex-col">
+          <Outlet />
+        </main>
         <Footer areaName="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar" />
       </div>
     </>

@@ -256,7 +256,8 @@ describe("Select", () => {
     const onChange = vi.fn();
     render(<Select value="" onChange={onChange} options={options} ariaLabel="Número" className="w-40" />);
     expect(screen.getByText("Seleccionar…")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Número"));
+    // El nombre accesible incluye el texto visible: «Número: Seleccionar…».
+    fireEvent.click(screen.getByLabelText(/^Número/));
     expect(screen.getByRole("listbox")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("option", { name: "Dos" }));
     expect(onChange).toHaveBeenCalledWith(2);

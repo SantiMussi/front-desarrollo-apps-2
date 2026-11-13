@@ -39,7 +39,7 @@ export default function StepIndicator({ currentStep = 0, status = 'idle' }) {
                       ? "bg-[#D63031] text-white" // rojo con cruz blanca
                       : isCurrent
                         ? "bg-[#0F2C59] text-white ring-2 ring-[#0F2C59]/20"
-                        : "bg-neutral-100 text-neutral-400"
+                        : "bg-neutral-100 text-neutral-600"
                   }`}
               >
                 {isCompleted || showSuccess ? (
@@ -56,7 +56,7 @@ export default function StepIndicator({ currentStep = 0, status = 'idle' }) {
                     ? "font-semibold text-neutral-800"
                     : isCompleted
                       ? "text-neutral-500"
-                      : "text-neutral-400"
+                      : "text-neutral-500"
                 }`}
               >
                 {step.label}

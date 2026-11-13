@@ -64,7 +64,7 @@ function Bubble({ message, onNavigate }) {
                     <span className="block text-[13px] font-semibold">{item.requestType.name}</span>
                     <span className="block text-[11.5px] text-neutral-500">{item.category.title} · {item.subcategory.name}</span>
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
                 </Link>
               </li>
             ))}
@@ -90,7 +90,7 @@ function QuickReplies({ chips, onTopic, onQuestion, onAllTopics, faqs }) {
   const label = chips.mode === "topics" ? "Elegí un tema:" : chips.mode === "topic" ? "Preguntas frecuentes:" : "Para seguir:";
   return (
     <div className="pl-9">
-      <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-neutral-400">{label}</p>
+      <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-neutral-500">{label}</p>
       {chips.mode === "topics" ? (
         <div className="grid grid-cols-2 gap-2">
           {SUPPORT_TOPICS.map((topic) => {
@@ -120,7 +120,7 @@ function QuickReplies({ chips, onTopic, onQuestion, onAllTopics, faqs }) {
               className="flex w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left text-[13px] font-medium text-[#0F2C59] transition-colors hover:border-blue-200 hover:bg-blue-50"
             >
               {faq.question}
-              <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
             </button>
           ))}
           <button
@@ -253,7 +253,7 @@ function SupportChatPanel({ open, onClose, zoom }) {
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <p className="mt-1.5 text-center text-[10.5px] text-neutral-400">No escribas contraseñas ni datos personales.</p>
+        <p className="mt-1.5 text-center text-[10.5px] text-neutral-500">No escribas contraseñas ni datos personales.</p>
       </form>
     </div>
   );

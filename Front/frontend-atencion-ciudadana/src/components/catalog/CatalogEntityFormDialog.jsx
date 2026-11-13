@@ -73,7 +73,7 @@ function FieldControl({ field, value, onChange, disabled }) {
           disabled={disabled}
           className={CONTROL}
         />
-        {field.hint && <span className="mt-1 block text-[11px] font-normal text-slate-400">{field.hint}</span>}
+        {field.hint && <span className="mt-1 block text-[11px] font-normal text-slate-500">{field.hint}</span>}
       </label>
     );
   }

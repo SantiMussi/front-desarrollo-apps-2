@@ -123,7 +123,7 @@ export default function AiTicketTextReview({ summary, description, requestType, 
         {noResult && <p className="text-xs text-neutral-600">No encontramos otro tema que se ajuste mejor a lo que escribiste.</p>}
 
         {review && (
-          <p className="text-[10px] text-neutral-400">
+          <p className="text-[10px] text-neutral-500">
             {review.mode === "ai"
               ? "Sugerencia automática con inteligencia artificial: puede equivocarse, la decisión es tuya."
               : "Sugerencia por palabras clave: puede equivocarse, la decisión es tuya."}

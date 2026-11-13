@@ -46,7 +46,7 @@ export default function AgentSidebar() {
           <img src={logo} alt="Logo" className="h-10 w-10 object-contain" />
           <div>
             <h1 className="font-bold text-slate-800 leading-tight">Atención Vecinal</h1>
-            <span className="text-xs text-slate-500">Panel de Gestión</span>
+            <span className="text-xs text-slate-600">Panel de Gestión</span>
           </div>
         </div>
         

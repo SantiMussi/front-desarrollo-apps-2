@@ -81,7 +81,7 @@ function messageAuthor(message, data, currentUser) {
 
 const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
 const TICKET_TYPE_CONFIG = {
-  COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
+  COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-700 bg-red-50" },
   REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
   INQUIRY: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
   SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }

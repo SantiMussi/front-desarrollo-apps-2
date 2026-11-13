@@ -62,14 +62,14 @@ function StatusStepper({ status }) {
                     ? "border-emerald-500 bg-emerald-500 text-white"
                     : active
                       ? "border-[#0F2C59] bg-[#0F2C59] text-white"
-                      : "border-neutral-200 bg-white text-neutral-300"
+                      : "border-neutral-200 bg-white text-neutral-500"
                 }`}
               >
                 {done ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
               </div>
               <span
                 className={`text-[11px] font-medium ${
-                  active ? "text-[#0F2C59]" : done ? "text-emerald-600" : "text-neutral-400"
+                  active ? "text-[#0F2C59]" : done ? "text-emerald-600" : "text-neutral-500"
                 }`}
               >
                 {label}
@@ -92,7 +92,7 @@ function StatusStepper({ status }) {
 function InfoRow({ label, value }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-neutral-100 py-2.5 last:border-0 sm:flex-row sm:justify-between sm:gap-4">
-      <span className="text-[12px] font-medium uppercase tracking-wide text-neutral-400">{label}</span>
+      <span className="text-[12px] font-medium uppercase tracking-wide text-neutral-500">{label}</span>
       <span className="text-[13px] text-neutral-700 sm:text-right">{value || "—"}</span>
     </div>
   );
@@ -113,7 +113,7 @@ export default function PublicTicketStatus({ ticket }) {
               <FileText className="h-4 w-4" strokeWidth={2} />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
                 N° de caso
               </p>
               <p className="font-mono text-[15px] font-bold text-[#0F2C59]">{ticket.publicId}</p>
@@ -143,7 +143,7 @@ export default function PublicTicketStatus({ ticket }) {
               label="Resolución estimada"
               value={
                 <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-neutral-400" />
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
                   {formatDate(resolutionDueAt)}
                 </span>
               }

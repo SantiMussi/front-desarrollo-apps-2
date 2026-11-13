@@ -89,7 +89,7 @@ export default function Spinner({ size = "md", className = "" }) {
         />
       </div>
 
-      <p className="text-[13px] text-neutral-400 font-medium">Cargando...</p>
+      <p className="text-[13px] text-neutral-500 font-medium">Cargando...</p>
 
       <style>{`
         @keyframes iconWheel {

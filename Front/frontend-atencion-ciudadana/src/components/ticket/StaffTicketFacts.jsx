@@ -21,7 +21,7 @@ export default function StaffTicketFacts({ ticket }) {
       <h2 className="mb-3 font-semibold">Respuestas del formulario</h2>
       {ticket.formTemplate && <p className="mb-2 text-xs text-slate-500">Formulario #{ticket.formTemplate.id} · Versión {ticket.formTemplate.version}</p>}
       {rows.length ? <dl className="space-y-3">{rows.map((field) => <div key={field.code}>
-        <dt className="font-medium">{field.label} <span className="text-xs text-slate-400">({field.code})</span></dt>
+        <dt className="font-medium">{field.label} <span className="text-xs text-slate-500">({field.code})</span></dt>
         <dd className="whitespace-pre-wrap text-slate-600">{Object.hasOwn(values, field.code) ? answer(values[field.code], field) : "Sin respuesta"}</dd>
       </div>)}</dl> : <p className="text-slate-500">Sin respuestas registradas.</p>}
     </div>

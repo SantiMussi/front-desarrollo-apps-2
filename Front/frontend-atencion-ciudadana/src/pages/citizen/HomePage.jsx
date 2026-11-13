@@ -73,7 +73,7 @@ export default function HomePage() {
                         <img src={logo} alt="Logo" className="w-6 h-6 object-contain opacity-50" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Hola, vecino</p>
+                        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Hola, vecino</p>
                         <p className="text-[13px] font-extrabold text-[#0F2C59]">Mi Ciudad UADE</p>
                       </div>
                     </div>
@@ -122,17 +122,17 @@ export default function HomePage() {
                           </div>
                           <div className="flex-1">
                             <p className="text-[12px] font-bold text-neutral-900 leading-tight">Licencia</p>
-                            <p className="text-[10px] text-neutral-400">Trámite aprobado</p>
+                            <p className="text-[10px] text-neutral-500">Trámite aprobado</p>
                           </div>
                           <CheckCircle className="w-4 h-4 text-emerald-500" />
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-neutral-100 flex items-center gap-3 opacity-50">
+                        <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-neutral-500" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-[12px] font-bold text-neutral-900 leading-tight">Pago ABL</p>
-                            <p className="text-[10px] text-neutral-400">Impactado</p>
+                            <p className="text-[12px] font-bold text-neutral-600 leading-tight">Pago ABL</p>
+                            <p className="text-[10px] text-neutral-500">Impactado</p>
                           </div>
                         </div>
                       </div>
@@ -213,7 +213,7 @@ export default function HomePage() {
                 ¿Sobre qué es tu consulta?
               </h2>
             </div>
-            <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
+            <span className="hidden sm:inline text-[11px] text-neutral-500 tabular-nums">
               {loading ? "..." : categories.length} categorías
             </span>
           </div>

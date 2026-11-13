@@ -257,7 +257,7 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
         </label>
         <div className="flex items-center gap-3">
           {geocoding && (
-            <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+            <span className="flex items-center gap-1 text-[11px] text-neutral-500">
               <Loader2 className="h-3 w-3 animate-spin" />
               Buscando...
             </span>
@@ -324,10 +324,10 @@ export default function LocationMap({ address, streetNumber, addressSource, lati
       </div>
 
       {markerPos && (
-        <p className="text-[11px] text-neutral-400 flex items-center gap-1">
+        <p className="text-[11px] text-neutral-500 flex items-center gap-1">
           <MapPin className="h-3 w-3" />
           Coordenadas: {markerPos[0].toFixed(6)}, {markerPos[1].toFixed(6)}
-          <span className="text-neutral-300 mx-1">•</span>
+          <span className="text-neutral-500 mx-1">•</span>
           Podés arrastrar el marcador para ajustar
         </p>
       )}

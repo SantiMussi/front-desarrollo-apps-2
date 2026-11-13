@@ -67,7 +67,7 @@ export default function Alert({
           className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
           aria-label="Cerrar"
         >
-          <X className="h-4 w-4 text-neutral-400" strokeWidth={2} />
+          <X className="h-4 w-4 text-neutral-500" strokeWidth={2} />
         </button>
       )}
       {autoDismissMs && onDismiss && (

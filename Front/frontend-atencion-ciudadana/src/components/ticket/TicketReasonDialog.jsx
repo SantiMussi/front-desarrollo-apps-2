@@ -101,7 +101,7 @@ export default function TicketReasonDialog({
           <label className="mt-3 block text-xs font-semibold text-slate-700">
             <span className="flex items-center gap-1.5">
               <MessageSquare className="h-3.5 w-3.5" />
-              Mensaje para el ciudadano <span className="font-normal text-slate-400">(uno de los dos es obligatorio)</span>
+              Mensaje para el ciudadano <span className="font-normal text-slate-500">(uno de los dos es obligatorio)</span>
             </span>
             <textarea
               value={publicMessage}
@@ -115,7 +115,7 @@ export default function TicketReasonDialog({
           <label className="mt-3 block text-xs font-semibold text-slate-700">
             <span className="flex items-center gap-1.5">
               <MessageSquare className="h-3.5 w-3.5" />
-              Nota interna <span className="font-normal text-slate-400">(opcional)</span>
+              Nota interna <span className="font-normal text-slate-500">(opcional)</span>
             </span>
             <textarea
               value={internalMessage}

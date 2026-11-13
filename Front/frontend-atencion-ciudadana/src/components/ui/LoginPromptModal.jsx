@@ -92,7 +92,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="absolute right-4 top-4 z-10 rounded-lg p-1.5 text-neutral-400 transition-all hover:bg-neutral-100 hover:text-neutral-600 disabled:opacity-40"
+              className="absolute right-4 top-4 z-10 rounded-lg p-1.5 text-neutral-500 transition-all hover:bg-neutral-100 hover:text-neutral-600 disabled:opacity-40"
               aria-label="Cerrar"
             >
               <X className="h-4 w-4" strokeWidth={2.5} />
@@ -125,7 +125,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                     Correo electrónico
                   </span>
                   <span className="relative block">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                     <input
                       name="username"
                       type="email"
@@ -143,7 +143,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                     Contraseña
                   </span>
                   <span className="relative block">
-                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                     <input
                       name="password"
                       type={showPassword ? "text" : "password"}
@@ -156,7 +156,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-neutral-600"
                       aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

@@ -67,7 +67,7 @@ const AUTHOR_TYPE_LABELS = {
 };
 
 const TICKET_TYPE_CONFIG = {
-  COMPLAINT: { label: "Reclamo", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
+  COMPLAINT: { label: "Reclamo", icon: TriangleAlert, className: "text-red-700 bg-red-50" },
   REQUEST: { label: "Solicitud", icon: Plus, className: "text-blue-600 bg-blue-50" },
   INQUIRY: { label: "Pregunta", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
   SUGGESTION: { label: "Sugerencia", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" },
@@ -76,7 +76,7 @@ const TICKET_TYPE_CONFIG = {
 function Row({ label, value }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-neutral-100 py-2.5 last:border-0">
-      <span className="text-[12px] font-medium uppercase tracking-wide text-neutral-400">{label}</span>
+      <span className="text-[12px] font-medium uppercase tracking-wide text-neutral-500">{label}</span>
       <span className="text-right text-[13px] font-medium text-neutral-700">{value || "—"}</span>
     </div>
   );
@@ -127,7 +127,7 @@ function StatusHistory({ history }) {
             <p className="text-[13px] font-semibold text-neutral-800">
               {TICKET_STATUS_LABELS[h.newStatus] ?? h.newStatus}
             </p>
-            <p className="text-[12px] text-neutral-400">{dateTime(h.occurredAt)}</p>
+            <p className="text-[12px] text-neutral-500">{dateTime(h.occurredAt)}</p>
             {h.message && <p className="mt-0.5 text-[12.5px] text-neutral-600">{h.message}</p>}
           </li>
         );
@@ -163,13 +163,13 @@ function AttentionRating({ value, onRate, loading, error }) {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="p-0.5 text-neutral-400 hover:text-neutral-600"
+          className="p-0.5 text-neutral-500 hover:text-neutral-600"
           aria-label="Cerrar"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-      <p className="mt-0.5 text-[11.5px] text-neutral-400">
+      <p className="mt-0.5 text-[11.5px] text-neutral-500">
         Tu opinión ayuda a mejorar los servicios de la ciudad.
       </p>
       <div className="mt-2 flex gap-1" onMouseLeave={() => setHover(0)}>
@@ -185,7 +185,7 @@ function AttentionRating({ value, onRate, loading, error }) {
           >
             <Star
               className={`h-6 w-6 ${
-                n <= (hover || selected) ? "fill-amber-400 text-amber-400" : "text-neutral-300"
+                n <= (hover || selected) ? "fill-amber-400 text-amber-400" : "text-neutral-500"
               }`}
             />
           </button>
@@ -390,7 +390,7 @@ export default function CitizenTicketView({
                 {typeConfig.label}
               </span>
             )}
-            <span className="font-mono text-[12px] text-neutral-400">Ticket {shortId(ticket.publicId)}</span>
+            <span className="font-mono text-[12px] text-neutral-500">Ticket {shortId(ticket.publicId)}</span>
           </div>
           <h1 className="text-[1.7rem] font-extrabold tracking-tight text-[#0F2C59]">
             {ticket.summary}
@@ -635,7 +635,7 @@ export default function CitizenTicketView({
                       <button
                         type="button"
                         onClick={() => removeInfoResponseFile(index)}
-                        className="shrink-0 text-neutral-400 hover:text-red-600"
+                        className="shrink-0 text-neutral-500 hover:text-red-600"
                         aria-label={`Quitar ${file.name}`}
                       >
                         <X className="h-3.5 w-3.5" />
@@ -690,7 +690,7 @@ export default function CitizenTicketView({
                 value={
                   ticket.location?.addressLine || ticket.neighborhoodName ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-neutral-400" />
+                      <MapPin className="h-3.5 w-3.5 text-neutral-500" />
                       {ticket.location?.addressLine || ticket.neighborhoodName}
                     </span>
                   ) : null
@@ -700,7 +700,7 @@ export default function CitizenTicketView({
                 label="Fecha de ingreso"
                 value={
                   <span className="inline-flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5 text-neutral-400" />
+                    <CalendarDays className="h-3.5 w-3.5 text-neutral-500" />
                     {dateOnly(ticket.createdAt)}
                   </span>
                 }
@@ -729,21 +729,21 @@ export default function CitizenTicketView({
           <div className="space-y-3">
             {chat?.loading ? (
               <div className="flex justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
+                <Loader2 className="h-4 w-4 animate-spin text-neutral-500" />
               </div>
             ) : chat?.error ? (
               <p className="py-4 text-center text-[12.5px] text-red-600">{chat.error}</p>
             ) : messages.length === 0 ? (
-              <p className="py-6 text-center text-[13px] text-neutral-400">
+              <p className="py-6 text-center text-[13px] text-neutral-500">
                 Todavía no hay mensajes en este reclamo.
               </p>
             ) : (
               messages.map((m) => {
                 if (m.authorType === "SYSTEM") {
                   return (
-                    <div key={m.id} className="flex items-center justify-center gap-2 py-1 text-center text-[11px] italic text-neutral-400">
+                    <div key={m.id} className="flex items-center justify-center gap-2 py-1 text-center text-[11px] italic text-neutral-500">
                       <span>{m.text}</span>
-                      <span className="text-neutral-300">·</span>
+                      <span className="text-neutral-500">·</span>
                       <span>{dateTime(m.createdAt)}</span>
                     </div>
                   );
@@ -795,7 +795,7 @@ export default function CitizenTicketView({
                         <p>{m.text}</p>
                       )}
                       <div className="mt-1 flex items-center gap-2">
-                        <p className={`text-[10px] ${mine ? "text-neutral-400" : "text-blue-200/80"}`}>
+                        <p className={`text-[10px] ${mine ? "text-neutral-500" : "text-blue-200/80"}`}>
                           {dateTime(m.createdAt)}
                           {wasMessageEdited(m) ? " (editado)" : ""}
                         </p>
@@ -804,7 +804,7 @@ export default function CitizenTicketView({
                             <button
                               type="button"
                               onClick={() => startEdit(m)}
-                              className="text-neutral-400 hover:text-[#0F2C59]"
+                              className="text-neutral-500 hover:text-[#0F2C59]"
                               aria-label="Editar mensaje"
                             >
                               <Pencil className="h-3 w-3" />
@@ -812,7 +812,7 @@ export default function CitizenTicketView({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(m.id)}
-                              className="text-neutral-400 hover:text-red-600"
+                              className="text-neutral-500 hover:text-red-600"
                               aria-label="Borrar mensaje"
                             >
                               <Trash2 className="h-3 w-3" />
@@ -851,15 +851,15 @@ export default function CitizenTicketView({
 
           <div className="mt-4 border-t border-neutral-100 pt-3">
             {readOnly ? (
-              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
+              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-500">
                 No podés enviar mensajes desde la vista de solo lectura.
               </p>
             ) : !chatAvailable ? (
-              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
+              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-500">
                 El chat todavía no está disponible para el seguimiento anónimo.
               </p>
             ) : chatDisabledByStatus ? (
-              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-400">
+              <p className="rounded-lg bg-neutral-50 px-3 py-2.5 text-center text-[11.5px] text-neutral-500">
                 El chat está deshabilitado porque el reclamo está{" "}
                 {(TICKET_STATUS_LABELS[ticket.currentStatus] ?? ticket.currentStatus).toLowerCase()}.
               </p>

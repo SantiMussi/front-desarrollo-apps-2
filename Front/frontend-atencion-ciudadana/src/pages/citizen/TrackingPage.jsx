@@ -20,7 +20,7 @@ function AccreditationPanel({ onAccredit, accrediting, accreditError }) {
   return (
     <form onSubmit={handleSubmit} className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/60 px-5 py-4">
       <p className="flex items-center gap-1.5 text-[13px] font-semibold text-neutral-700">
-        <KeyRound className="h-4 w-4 text-neutral-400" />
+        <KeyRound className="h-4 w-4 text-neutral-500" />
         ¿Sos el dueño de este ticket?
       </p>
       <p className="mt-0.5 text-[12px] text-neutral-500">
@@ -163,7 +163,7 @@ export default function TrackingPage() {
       <div className="mx-auto max-w-2xl px-5 py-10">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
               value={code}
@@ -229,7 +229,7 @@ export default function TrackingPage() {
         )}
 
         {status === "idle" && (
-          <p className="mt-6 text-center text-[13px] text-neutral-400">
+          <p className="mt-6 text-center text-[13px] text-neutral-500">
             La consulta es pública y de solo lectura: muestra el estado de la solicitud, sin datos internos.
           </p>
         )}

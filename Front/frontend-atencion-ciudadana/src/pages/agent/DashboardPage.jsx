@@ -150,7 +150,7 @@ function DashboardContent() {
                     <Link key={ticket.id} to={`/agente/tickets/${ticket.id}`} className="group flex items-center gap-3 px-5 py-4 transition hover:bg-slate-50">
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${sla.status === "overdue" ? "bg-red-500" : sla.status === "at-risk" ? "bg-amber-500" : "bg-violet-500"}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2"><span className="text-xs font-bold text-[#0F2C59]">{ticket.publicId || ticket.id}</span>{ticket.escalated && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-600">Escalado</span>}</div>
+                        <div className="flex items-center gap-2"><span className="text-xs font-bold text-[#0F2C59]">{ticket.publicId || ticket.id}</span>{ticket.escalated && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700">Escalado</span>}</div>
                         <p className="mt-1 truncate text-sm font-medium text-slate-800">{ticket.summary || "Ticket sin resumen"}</p>
                       </div>
                       <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-700">{PRIORITY_LABELS[priority] || priority || "Normal"}</p><p className={`mt-1 text-xs ${sla.status === "overdue" ? "text-red-600" : sla.status === "at-risk" ? "text-amber-600" : "text-slate-400"}`}>{sla.label}</p></div>
@@ -172,7 +172,7 @@ function DashboardContent() {
               })}
               {data.counts.total === 0 && <p className="py-12 text-center text-sm text-slate-500">No hay datos para mostrar.</p>}
             </div>
-            <div className="mt-6 rounded-lg bg-[#f3f6fa] p-4"><div className="flex items-start gap-3"><TicketCheck className="mt-0.5 h-5 w-5 text-[#0F2C59]" /><div><p className="text-sm font-semibold text-slate-800">Vista operativa</p><p className="mt-1 text-xs leading-5 text-slate-500">Para tendencias históricas, tiempos promedio y comparaciones, consultá la sección Métricas.</p><Link to="/agente/metricas" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#0F2C59] hover:underline">Abrir Métricas <ArrowRight className="h-3 w-3" /></Link></div></div></div>
+            <div className="mt-6 rounded-lg bg-[#f3f6fa] p-4"><div className="flex items-start gap-3"><TicketCheck className="mt-0.5 h-5 w-5 text-[#0F2C59]" /><div><p className="text-sm font-semibold text-slate-800">Vista operativa</p><p className="mt-1 text-xs leading-5 text-slate-600">Para tendencias históricas, tiempos promedio y comparaciones, consultá la sección Métricas.</p><Link to="/agente/metricas" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#0F2C59] hover:underline">Abrir Métricas <ArrowRight className="h-3 w-3" /></Link></div></div></div>
           </section>
         </div>
 

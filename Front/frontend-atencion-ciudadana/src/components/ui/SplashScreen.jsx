@@ -85,7 +85,7 @@ export default function SplashScreen({ onFinish }) {
         <h1 className="text-[#0F2C59] text-lg font-extrabold tracking-tight text-center">
           Atención Ciudadana
         </h1>
-        <p className="text-neutral-400 text-[12px] font-medium text-center mt-0.5">
+        <p className="text-neutral-500 text-[12px] font-medium text-center mt-0.5">
           Preparando tu portal...
         </p>
       </div>

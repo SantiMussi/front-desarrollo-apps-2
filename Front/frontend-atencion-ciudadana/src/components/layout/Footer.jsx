@@ -24,19 +24,19 @@ function Footer({areaName, areaEmail}){
 									<img src={logo} alt="Ciudad UADE Logo" className="h-5 w-auto object-contain" />
 									<span className="text-[13px] font-bold text-[#0F2C59]">Ciudad UADE</span>
 								</div>
-								<p className="text-[12px] text-neutral-400 leading-relaxed">
+								<p className="text-[12px] text-neutral-500 leading-relaxed">
 									{areaName}
 									<br />
 									Municipalidad de Ciudad UADE — Gestión 2026.
 								</p>
 								<div className="mt-4 flex flex-col gap-1.5">
-									<span className="flex items-center gap-2 text-[12px] text-neutral-400">
+									<span className="flex items-center gap-2 text-[12px] text-neutral-500">
 										<Phone className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> 147 — Línea Municipal
 									</span>
-									<span className="flex items-center gap-2 text-[12px] text-neutral-400">
+									<span className="flex items-center gap-2 text-[12px] text-neutral-500">
 										<Mail className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> {areaEmail}
 									</span>
-									<span className="flex items-center gap-2 text-[12px] text-neutral-400">
+									<span className="flex items-center gap-2 text-[12px] text-neutral-500">
 										<MapPin className="h-3 w-3 text-[#D63031]/50" strokeWidth={1.5} /> Av. Independencia 1100, CABA
 									</span>
 								</div>
@@ -45,7 +45,7 @@ function Footer({areaName, areaEmail}){
 							{/* Link columns */}
 							<div className="flex gap-14">
 								<div>
-									<p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-neutral-400 mb-3">
+									<p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-neutral-500 mb-3">
 										Trámites
 									</p>
 									<ul className="flex flex-col gap-2">
@@ -56,7 +56,7 @@ function Footer({areaName, areaEmail}){
 														{label}
 													</Link>
 												) : (
-													<span className="text-[12px] text-neutral-300">{label}</span>
+													<span className="text-[12px] text-neutral-500">{label}</span>
 												)}
 											</li>
 										))}
@@ -67,12 +67,12 @@ function Footer({areaName, areaEmail}){
 
 						{/* Bottom bar */}
 						<div className="mt-8 pt-5 border-t border-neutral-100 flex items-center justify-between">
-							<p className="text-[11px] text-neutral-300">
+							<p className="text-[11px] text-neutral-500">
 								© {new Date().getFullYear()} Municipalidad de Ciudad UADE. Todos los derechos reservados.
 							</p>
 							<div className="flex items-center gap-1">
 								<div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-								<span className="text-[10px] text-neutral-300">Todos los servicios operativos</span>
+								<span className="text-[10px] text-neutral-500">Todos los servicios operativos</span>
 							</div>
 						</div>
 					</div>

@@ -32,13 +32,13 @@ export default function TicketProgress({ status, history }) {
                       ? "border-emerald-500 bg-emerald-500 text-white"
                       : active
                         ? "border-[#0F2C59] bg-white text-[#0F2C59] ring-4 ring-blue-100"
-                        : "border-neutral-200 bg-white text-neutral-300"
+                        : "border-neutral-200 bg-white text-neutral-500"
                   }`}
                 >
                   {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : index + 1}
                 </span>
                 <span
-                  className={`mt-2 text-[11.5px] leading-tight ${active ? "font-bold text-[#0F2C59]" : done ? "font-medium text-neutral-600" : "text-neutral-400"}`}
+                  className={`mt-2 text-[11.5px] leading-tight ${active ? "font-bold text-[#0F2C59]" : done ? "font-medium text-neutral-600" : "text-neutral-500"}`}
                 >
                   {step.label}
                 </span>

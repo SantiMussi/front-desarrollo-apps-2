@@ -14,7 +14,7 @@ export default function TicketCitizenViewPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-300" />
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
       </div>
     );
   }

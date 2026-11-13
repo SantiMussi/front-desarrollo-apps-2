@@ -5,7 +5,7 @@ import { AlertOctagon, CircleHelp, Clock3, Lightbulb, Plus, TriangleAlert } from
 import { useNavigate } from "react-router-dom";
 
 const TICKET_TYPE_CONFIG = {
-  COMPLAINT: { label: "Reclamo", icon: TriangleAlert, className: "text-red-600 bg-red-50" },
+  COMPLAINT: { label: "Reclamo", icon: TriangleAlert, className: "text-red-700 bg-red-50" },
   REQUEST: { label: "Solicitud", icon: Plus, className: "text-blue-600 bg-blue-50" },
   INQUIRY: { label: "Pregunta", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
   SUGGESTION: { label: "Sugerencia", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }

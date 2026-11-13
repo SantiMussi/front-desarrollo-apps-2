@@ -279,11 +279,11 @@ export default function HelpPortalPage() {
                   </h3>
                 </div>
 
-                <p className="text-[13px] text-neutral-400 leading-relaxed">
+                <p className="text-[13px] text-neutral-500 leading-relaxed">
                   {rt.description}
                 </p>
 
-                <div className="flex items-center gap-1 mt-auto pt-1 text-[12px] text-neutral-300 group-hover:text-[#D63031] transition-colors">
+                <div className="flex items-center gap-1 mt-auto pt-1 text-[12px] text-neutral-500 group-hover:text-[#D63031] transition-colors">
                   <span>Iniciar solicitud</span>
                   <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2} />
                 </div>
@@ -335,9 +335,9 @@ export default function HelpPortalPage() {
 
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-50 transition-colors group-hover:bg-[#D63031]/5">
                     {IconComponent ? (
-                      <IconComponent className="h-5 w-5 text-neutral-400 group-hover:text-[#D63031] transition-colors" strokeWidth={1.5} />
+                      <IconComponent className="h-5 w-5 text-neutral-500 group-hover:text-[#D63031] transition-colors" strokeWidth={1.5} />
                     ) : (
-                      <span className="text-xs text-neutral-400">?</span>
+                      <span className="text-xs text-neutral-500">?</span>
                     )}
                   </div>
 
@@ -345,12 +345,12 @@ export default function HelpPortalPage() {
                     <h3 className="text-[14px] font-semibold text-neutral-900 group-hover:text-[#0F2C59] transition-colors">
                       {sub.name}
                     </h3>
-                    <p className="text-[12px] text-neutral-400 mt-0.5">
+                    <p className="text-[12px] text-neutral-500 mt-0.5">
                       {sub.requestTypes.map(rt => rt.name).join(", ")}
                     </p>
                   </div>
 
-                  <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-[#D63031] transition-all group-hover:translate-x-0.5" strokeWidth={1.5} />
+                  <ChevronRight className="h-4 w-4 text-neutral-500 group-hover:text-[#D63031] transition-all group-hover:translate-x-0.5" strokeWidth={1.5} />
                 </button>
               );
             })}
@@ -375,7 +375,7 @@ export default function HelpPortalPage() {
                 Trámites para "{searchParams.get("q")}"
               </h2>
             </div>
-            <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
+            <span className="hidden sm:inline text-[11px] text-neutral-500 tabular-nums">
               {searchResults.length} {searchResults.length === 1 ? 'resultado' : 'resultados'}
             </span>
           </div>
@@ -408,7 +408,7 @@ export default function HelpPortalPage() {
                     <span className="text-[10px] font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
                       {result.category.title}
                     </span>
-                    <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />
+                    <ChevronRight className="h-2.5 w-2.5 text-neutral-500" />
                     <span className="text-[10px] font-medium text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
                       {result.subcategory.name}
                     </span>
@@ -416,10 +416,10 @@ export default function HelpPortalPage() {
                   <h3 className="text-[14px] font-semibold text-neutral-900 group-hover:text-[#0F2C59] transition-colors leading-tight">
                     {result.requestType.name}
                   </h3>
-                  <p className="text-[12px] text-neutral-400 leading-relaxed line-clamp-2">
+                  <p className="text-[12px] text-neutral-500 leading-relaxed line-clamp-2">
                     {result.requestType.description}
                   </p>
-                  <div className="flex items-center gap-1 mt-auto pt-1 text-[12px] text-neutral-300 group-hover:text-[#D63031] transition-colors">
+                  <div className="flex items-center gap-1 mt-auto pt-1 text-[12px] text-neutral-500 group-hover:text-[#D63031] transition-colors">
                     <span>Iniciar solicitud</span>
                     <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2} />
                   </div>
@@ -445,7 +445,7 @@ export default function HelpPortalPage() {
               ¿Sobre qué es tu consulta?
             </h2>
           </div>
-          <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
+          <span className="hidden sm:inline text-[11px] text-neutral-500 tabular-nums">
             {categories.length} categorías
           </span>
         </div>
@@ -492,7 +492,7 @@ export default function HelpPortalPage() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-400
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500
                              transition-all hover:border-[#D63031]/20 hover:text-[#D63031]"
                   aria-label="Volver"
                 >
