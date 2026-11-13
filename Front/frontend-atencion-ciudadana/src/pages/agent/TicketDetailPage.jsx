@@ -11,6 +11,7 @@ import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
 import RequestInformationDialog from "../../components/ui/RequestInformationDialog";
 import TicketReasonDialog from "../../components/ticket/TicketReasonDialog";
 import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
+import AiTicketInsightsCard from "../../components/ticket/AiTicketInsightsCard";
 import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
 import AttachmentGallery from "../../components/ui/AttachmentGallery";
 import UserAvatar from "../../components/ui/UserAvatar";
@@ -680,6 +681,8 @@ function TicketDetailContent() {
                 <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><Users className="h-3.5 w-3.5" />{fields.affectedCount} {Number(fields.affectedCount) === 1 ? "persona afectada" : "personas afectadas"}</span>
               </div>
             </section>
+
+            <AiTicketInsightsCard ticketId={ticketId} />
 
             <StaffTicketFacts ticket={ticket} />
 

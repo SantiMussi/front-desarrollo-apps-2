@@ -12,6 +12,7 @@ import ConfirmExitModal from "../../components/ui/ConfirmExitModal";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import { findRequestTypeMatches } from "../../utils/requestTypeSearch";
+import { findRequestTypePath } from "../../utils/aiTicketReview";
 
 export default function HelpPortalPage() {
   const navigate = useNavigate();
@@ -91,6 +92,12 @@ export default function HelpPortalPage() {
 
       return prev;
     }, { replace: true });
+  };
+
+  // Cambio de tipo por una sugerencia de la revisión del reclamo.
+  const handleChangeRequestType = (requestTypeId) => {
+    const path = findRequestTypePath(categories, requestTypeId);
+    if (path) updateSelection(path.category, path.subcategory, path.requestType);
   };
 
   useEffect(() => {
@@ -220,6 +227,8 @@ export default function HelpPortalPage() {
             onNewTicket={handleNewTicket}
             onDirtyChange={handleFormDirtyChange}
             onStatusChange={setTicketStatus}
+            catalog={categories}
+            onChangeRequestType={handleChangeRequestType}
           />
         </div>
       );

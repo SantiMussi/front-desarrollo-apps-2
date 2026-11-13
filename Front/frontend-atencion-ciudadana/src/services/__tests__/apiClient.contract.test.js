@@ -425,3 +425,23 @@ it("H21 usa el listado de área y descarta el área manipulada por el cliente", 
   expect(options.headers.Authorization).toBe("Bearer area-token");
   expect(url).not.toContain("M9");
 });
+
+describe("ayuda con IA", () => {
+  beforeEach(() => fetch.mockResolvedValue(okResponse({ source: "UNAVAILABLE" })));
+
+  it("la clasificación envía sólo título, descripción y tipo elegido", async () => {
+    await api.classifyTicketText({ summary: "Luz", description: "La luz no prende", requestTypeId: 5, extra: "no" });
+    const call = lastCall();
+    expect(call.url).toBe("/api/ai/classify");
+    expect(call.options.method).toBe("POST");
+    expect(call.body).toEqual({ summary: "Luz", description: "La luz no prende", requestTypeId: 5 });
+  });
+
+  it("el análisis de un ticket es un POST con el id escapado y conserva el estado HTTP del error", async () => {
+    await api.fetchTicketAiInsights("a/b");
+    expect(lastCall().url).toBe("/api/staff/tickets/a%2Fb/ai-insights");
+    expect(lastCall().options.method).toBe("POST");
+    fetch.mockResolvedValue(failResponse(429, { code: "AI_RATE_LIMITED", message: "Demasiadas consultas" }));
+    await expect(api.fetchTicketAiInsights("t-1")).rejects.toMatchObject({ status: 429, code: "AI_RATE_LIMITED" });
+  });
+});

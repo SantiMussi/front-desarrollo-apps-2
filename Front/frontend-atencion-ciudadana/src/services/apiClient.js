@@ -600,6 +600,19 @@ export async function fetchDuplicateCandidates(ticketId) {
   return request(`/staff/tickets/${encodeURIComponent(ticketId)}/duplicate-candidates`);
 }
 
+// Ayuda con IA. Ambas son sugerencias: si la IA no está disponible el servidor responde 200
+// con source "UNAVAILABLE" y la pantalla usa su alternativa sin IA.
+export async function classifyTicketText({ summary, description, requestTypeId }) {
+  return request("/ai/classify", {
+    method: "POST",
+    body: JSON.stringify({ summary, description, requestTypeId }),
+  });
+}
+
+export async function fetchTicketAiInsights(ticketId) {
+  return request(`/staff/tickets/${encodeURIComponent(ticketId)}/ai-insights`, { method: "POST" });
+}
+
 export async function fetchTicketMessages(ticketId) {
   return request(`/tickets/${encodeURIComponent(ticketId)}/messages`);
 }

@@ -8,6 +8,7 @@ import Spinner from "../ui/Spinner";
 import Alert from "../ui/Alert";
 import LoginPromptModal from "../ui/LoginPromptModal";
 import TicketReviewSummary from "./TicketReviewSummary";
+import AiTicketTextReview from "./AiTicketTextReview";
 import { useCreateTicket } from "../../hooks/useCreateTicket";
 import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { useAuth } from "../../context/useAuth";
@@ -104,7 +105,7 @@ function normalizeSpecificFields(fields) {
   });
 }
 
-export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange }) {
+export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange, catalog, onChangeRequestType }) {
   const navigate = useNavigate();
   const { submit, loading, error, errorCode, trackingCode, ticketPassword: generatedTicketPassword, reset, setError, setErrorCode } = useCreateTicket();
   const { neighborhoods } = useNeighborhoods();
@@ -228,6 +229,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   };
 
   const handleReloadFields = () => setFieldsReloadKey((k) => k + 1);
+
+  // Al cambiar de tipo por una sugerencia se conserva lo escrito, pero las respuestas específicas
+  // pertenecían a los campos del tipo anterior y se descartan.
+  const handleSwitchRequestType = (requestTypeId) => {
+    setFormData((prev) => ({ ...prev, specificData: {} }));
+    setFieldErrors({});
+    onChangeRequestType?.(requestTypeId);
+  };
 
   const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, source }) => {
     setFormData((prev) => ({
@@ -733,6 +742,16 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
           required
           disabled={loading}
         />
+        {catalog && onChangeRequestType && (
+          <AiTicketTextReview
+            summary={formData.summary}
+            description={formData.description}
+            requestType={requestType}
+            catalog={catalog}
+            onChangeRequestType={handleSwitchRequestType}
+            disabled={loading}
+          />
+        )}
       </div>
 
       <div className="space-y-4">
