@@ -38,7 +38,8 @@ async function request(endpoint, options = {}, responseType = "json") {
     ...options,
   };
 
-  const response = await fetchWithSession(url, config, { anonymous: endpoint.startsWith("/tracking/") });
+  const publicRead = endpoint.startsWith("/catalog/") && ["GET", "HEAD"].includes((options.method || "GET").toUpperCase()) && options.body == null;
+  const response = await fetchWithSession(url, config, { anonymous: endpoint.startsWith("/tracking/"), publicRead });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);

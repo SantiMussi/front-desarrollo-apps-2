@@ -231,6 +231,45 @@ describe("renovación y operaciones", () => {
 });
 
 describe("cierre de sesión y carreras", () => {
+  it("carga el catálogo público aunque la restauración inicial termine en 401", async () => {
+    const refresh = deferred(); const categories = deferred();
+    fetch.mockImplementation((url) => url === "/api/auth/refresh" ? refresh.promise : categories.promise);
+    const restoring = expect(auth.restoreSession()).rejects.toMatchObject({ status: 401 });
+    const loading = api.fetchCategories();
+    refresh.resolve(fail(401, "INVALID_TOKEN"));
+    await restoring;
+    categories.resolve(ok([{ id: 1, name: "Público" }]));
+    await expect(loading).resolves.toEqual([{ id: 1, name: "Público" }]);
+  });
+
+  it("mantiene el catálogo anónimo en dos ciclos login/logout de ciudadanos distintos", async () => {
+    for (const id of ["citizen-one", "citizen-two"]) {
+      fetch.mockResolvedValueOnce(ok(session(`synthetic-${id}`, { ...employee, actorId: id, actorType: "CIUDADANO", citizenId: id, role: "CITIZEN" })));
+      await api.login({ username: `${id}@example.test`, password: "synthetic" });
+      const categories = deferred();
+      fetch.mockReturnValueOnce(categories.promise).mockResolvedValueOnce(ok(null, 204));
+      const loading = api.fetchCategories();
+      const catalogRequest = fetch.mock.calls.at(-1)[1];
+      await auth.logoutSession();
+      categories.resolve(ok([{ id: 1, name: "Público" }]));
+      await expect(loading).resolves.toEqual([{ id: 1, name: "Público" }]);
+      expect(catalogRequest.headers.Authorization).toBeUndefined();
+      expect(auth.getStoredToken()).toBeNull();
+    }
+  });
+
+  it("descarta una lectura protegida de la identidad anterior sin repetirla con el nuevo ciudadano", async () => {
+    await login(); const oldRead = deferred();
+    fetch.mockReturnValueOnce(oldRead.promise).mockResolvedValueOnce(ok(null, 204));
+    const checked = expect(api.fetchMyTickets()).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    await auth.logoutSession();
+    fetch.mockResolvedValueOnce(ok(session("new-citizen", { ...employee, actorId: "new-citizen" })));
+    await api.login({ username: "new@example.test", password: "synthetic" });
+    oldRead.resolve(ok({ content: [{ ticketId: "previous-identity" }] }));
+    await checked;
+    expect(fetch.mock.calls.filter(([url]) => url.startsWith("/api/me/tickets"))).toHaveLength(1);
+  });
+
   it("logout vacía memoria y pide borrar cookie sin enviar tokens en el body", async () => {
     await login(); fetch.mockResolvedValue(ok(null, 204));
     await auth.logoutSession();

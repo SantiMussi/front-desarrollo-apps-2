@@ -164,13 +164,16 @@ export function logoutSession() {
   return operation;
 }
 
-export async function fetchWithSession(url, options = {}, { anonymous = false } = {}) {
+export async function fetchWithSession(url, options = {}, { anonymous = false, publicRead = false } = {}) {
   if (!isM1Auth) return fetch(url, options);
+  // Public catalog reads carry no bearer and remain valid across login/logout and a missing-session restore.
+  // Writes and all identity-bound reads retain the generation guards below.
+  const independent = publicRead && ["GET", "HEAD"].includes((options.method || "GET").toUpperCase()) && options.body == null;
   const current = generation;
-  const authenticated = !anonymous && Boolean(getStoredToken());
+  const authenticated = !independent && !anonymous && Boolean(getStoredToken());
   if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
   if (authenticated && expiresAt <= Date.now()) await refreshSession();
-  if (current !== generation) throw sessionChanged();
+  if (!independent && current !== generation) throw sessionChanged();
   const send = () => {
     if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const headers = { ...options.headers };
@@ -183,7 +186,7 @@ export async function fetchWithSession(url, options = {}, { anonymous = false } 
   };
   const usedRevision = accessRevision;
   const response = await send();
-  if (current !== generation) throw sessionChanged();
+  if (!independent && current !== generation) throw sessionChanged();
   if (response.status !== 401 || !authenticated) return response;
   // A concurrent request may already have renewed this same session.
   if (usedRevision === accessRevision) await refreshSession();
