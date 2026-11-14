@@ -24,15 +24,35 @@ permissions:
   contents: read
 
 jobs:
+  configuration:
+    name: Resolve provider and validate CD contracts
+    runs-on: ubuntu-latest
+    outputs:
+      identity_provider: ${{ steps.mode.outputs.identity_provider }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test CD contracts without remote access
+        run: python3 -m unittest discover -s .github/tests -v
+      - name: Resolve identity provider
+        id: mode
+        env:
+          CD_IDENTITY_PROVIDER: ${{ vars.CD_IDENTITY_PROVIDER }}
+          INPUT_IDENTITY_PROVIDER: ${{ inputs.identity_provider }}
+        run: bash .github/scripts/resolve-provider.sh
+
   validate:
     name: Lint, tests, coverage and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: configuration
     env:
       TZ: UTC
-      BUILD_IDENTITY_PROVIDER: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
+      BUILD_IDENTITY_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
     concurrency:
-      group: ${{ github.workflow }}-validate-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
+      group: ${{ github.workflow }}-validate-${{ github.event.pull_request.number || github.ref }}-${{ needs.configuration.outputs.identity_provider }}
       cancel-in-progress: true
 
     defaults:
@@ -87,10 +107,14 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: configuration
     env:
       TZ: UTC
+      # Existing E2E emulate the MOCK API; validate builds the selected provider.
+      VITE_IDENTITY_PROVIDER: MOCK
+      VITE_API_BASE_URL: /api
     concurrency:
-      group: ${{ github.workflow }}-e2e-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
+      group: ${{ github.workflow }}-e2e-${{ github.event.pull_request.number || github.ref }}-${{ needs.configuration.outputs.identity_provider }}
       cancel-in-progress: true
 
     defaults:
@@ -130,14 +154,14 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' &&
       (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'))
-    needs: validate
+    needs: [configuration, validate, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      BUILD_IDENTITY_PROVIDER: ${{ github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' && 'M1' || 'MOCK' }}
+      BUILD_IDENTITY_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
       IMAGE_REPOSITORY: ghcr.io/santimussi/front-desarrollo-apps-2
     outputs:
-      image: ${{ steps.image.outputs.reference }}
+      image: ${{ steps.record.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
     concurrency:
       group: ${{ github.event_name == 'workflow_dispatch' && 'frontend-m1-publish' || 'frontend-dev-publish' }}
@@ -187,27 +211,31 @@ jobs:
             ar.edu.uade.m2.identity-provider=${{ env.BUILD_IDENTITY_PROVIDER }}
 
       - name: Record published image and digest
+        id: record
         env:
           IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         shell: bash
         run: |
           [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Missing image digest." >&2; exit 1; }
+          printf 'image=%s@%s\n' "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
           {
             printf '### Frontend %s\n\n' "$BUILD_IDENTITY_PROVIDER"
             printf -- '- Source commit: `%s`\n' "$GITHUB_SHA"
             printf -- '- Image tag: `%s`\n' "$IMAGE_REFERENCE"
             printf -- '- Digest: `%s`\n' "$IMAGE_DIGEST"
             printf -- '- Immutable reference for Infra: `%s@%s`\n' "$IMAGE_REPOSITORY" "$IMAGE_DIGEST"
-            if [[ "$BUILD_IDENTITY_PROVIDER" == M1 ]]; then
-              printf '\nM1 was published without deployment. Infra Compose accepts this digest; deploy-service.sh currently only accepts legacy sha-COMMIT tags and needs a separate selector update before deploying M1.\n'
+            if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+              printf '\nManual publication only; this run never deploys.\n'
+            else
+              printf '\nCD uses this digest only when CD_ENABLED=true; Infra verifies the live Backend provider.\n'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy Frontend to Lightsail
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && vars.CD_ENABLED == 'true'
-    needs: publish
+    needs: [configuration, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -215,6 +243,30 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: Checkout deployment guards
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Refuse stale dev runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/dev" --jq '.object.sha')"
+          [[ "$current_sha" == "$GITHUB_SHA" ]] || { echo 'Stale dev run; no deployment allowed.' >&2; exit 65; }
+
+      - name: Validate selected CD image and provider
+        env:
+          SELECTED_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
+          CONFIGURED_CD_PROVIDER: ${{ vars.CD_IDENTITY_PROVIDER }}
+          DEPLOY_IMAGE: ${{ needs.publish.outputs.image }}
+        shell: bash
+        run: |
+          [[ "$SELECTED_PROVIDER" == M1 || "$SELECTED_PROVIDER" == MOCK ]]
+          [[ "$SELECTED_PROVIDER" == "$CONFIGURED_CD_PROVIDER" ]] || { echo 'Selected provider differs from configured CD provider.' >&2; exit 65; }
+          [[ "$DEPLOY_IMAGE" =~ ^ghcr\.io/santimussi/front-desarrollo-apps-2@sha256:[0-9a-f]{64}$ ]]
+
       - name: Configure SSH
         env:
           LIGHTSAIL_SSH_PRIVATE_KEY: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
@@ -228,11 +280,13 @@ jobs:
           printf '%s\n' "$LIGHTSAIL_KNOWN_HOSTS" > "$RUNNER_TEMP/lightsail_known_hosts"
           chmod 600 "$RUNNER_TEMP/lightsail_cd" "$RUNNER_TEMP/lightsail_known_hosts"
 
-      - name: Deploy published Frontend SHA
+      - name: Deploy published Frontend digest
         env:
           LIGHTSAIL_HOST: ${{ vars.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ vars.LIGHTSAIL_USER }}
           LIGHTSAIL_DEPLOY_PATH: ${{ vars.LIGHTSAIL_DEPLOY_PATH }}
+          DEPLOY_IMAGE: ${{ needs.publish.outputs.image }}
+          CD_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
         shell: bash
         run: |
           : "${LIGHTSAIL_HOST:?LIGHTSAIL_HOST is required}"
@@ -248,7 +302,8 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$RUNNER_TEMP/lightsail_known_hosts" \
             "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" \
-            "bash $LIGHTSAIL_DEPLOY_PATH/scripts/deploy-service.sh frontend $GITHUB_SHA"
+            "bash -s -- '$LIGHTSAIL_DEPLOY_PATH' frontend '$DEPLOY_IMAGE' '$CD_PROVIDER'" \
+            < .github/scripts/deploy-cd.sh
 
       - name: Remove temporary SSH files
         if: always()
