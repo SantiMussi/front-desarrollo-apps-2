@@ -9,6 +9,8 @@ on:
     branches:
       - dev
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       identity_provider:
@@ -24,6 +26,25 @@ permissions:
   contents: read
 
 jobs:
+  secrets:
+    name: Scan full history and working tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan secrets (metadata only)
+        run: python3 .github/scripts/check-secrets.py --output "$RUNNER_TEMP/secrets-summary.json"
+      - name: Upload safe secret scan summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: secrets-summary
+          path: ${{ runner.temp }}/secrets-summary.json
+          if-no-files-found: error
+
   configuration:
     name: Resolve provider and validate CD contracts
     runs-on: ubuntu-latest
@@ -87,6 +108,14 @@ jobs:
       - name: Test with coverage thresholds
         run: npm run test:coverage
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: Front/frontend-atencion-ciudadana/coverage/
+          if-no-files-found: warn
+
       - name: Build application
         run: npm run build
         env:
@@ -102,6 +131,13 @@ jobs:
       - name: Build Frontend container image
         if: github.event_name != 'push' || github.ref != 'refs/heads/dev'
         run: docker build --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-ci:${{ github.sha }} .
+
+      - name: Record validated revision
+        if: always()
+        env:
+          VALIDATED_REF: ${{ github.ref }}
+          VALIDATED_SHA: ${{ github.sha }}
+        run: printf 'Frontend ref=%s commit=%s\n' "$VALIDATED_REF" "$VALIDATED_SHA" >> "$GITHUB_STEP_SUMMARY"
 
   e2e:
     name: E2E (Playwright)
@@ -141,7 +177,7 @@ jobs:
         run: npm run test:e2e
 
       - name: Upload Playwright report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -154,7 +190,7 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' &&
       (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'))
-    needs: [configuration, validate, e2e]
+    needs: [configuration, validate, e2e, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -235,7 +271,7 @@ jobs:
   deploy:
     name: Deploy Frontend to Lightsail
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && vars.CD_ENABLED == 'true'
-    needs: [configuration, publish]
+    needs: [configuration, publish, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

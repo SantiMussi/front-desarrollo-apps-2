@@ -1,0 +1,23 @@
+title = "M2 secret checks"
+[extend]
+useDefault = true
+
+# No baselines, commit-wide exceptions or whole test-directory exclusions.
+# Literal passwords in the old MOCK provider require a human reuse decision.
+[[rules]]
+id = "m2-historical-mock-password"
+description = "Literal MOCK credential; assess historical reuse before release"
+path = '''(^|/)MockIdentityProvider\.java$'''
+regex = '''(?i)\b[A-Z_]+_PASSWORD\s*=\s*["']([^"'\r\n]{6,})["']'''
+secretGroup = 1
+keywords = ["password"]
+
+# A one-token Password: line in README is a credential, not an instruction
+# such as the current 'Password: valor de MOCK_...'. No literal is allowlisted.
+[[rules]]
+id = "m2-documented-password"
+description = "Documented literal password; assess historical reuse before release"
+path = '''(^|/)README\.md$'''
+regex = '''(?im)^\s*Password:\s*([^\s`<>${}]{6,})[ \t]*\r?$'''
+secretGroup = 1
+keywords = ["password"]
