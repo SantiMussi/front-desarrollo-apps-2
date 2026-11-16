@@ -84,7 +84,7 @@ export function useCategories() {
       }
     }
 
-    load();
+    void load();
     return () => { cancelled = true; };
   }, []);
 
