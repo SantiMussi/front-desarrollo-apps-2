@@ -334,10 +334,14 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
     target?.focus?.({ preventScroll: true });
   }, [reviewing]);
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(trackingCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(trackingCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const ownTicketPassword = formData.ticketPassword.trim();

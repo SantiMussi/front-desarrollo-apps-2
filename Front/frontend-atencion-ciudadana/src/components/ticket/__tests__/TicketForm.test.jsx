@@ -299,10 +299,26 @@ describe("TicketForm - envío con sesión", () => {
     await screen.findByText("¡Reclamo Registrado!");
     fireEvent.click(screen.getByLabelText("Copiar código"));
     expect(clipboard.writeText).toHaveBeenCalledWith("ABC123");
+    await waitFor(() => expect(screen.getByLabelText("Copiar código").querySelector(".lucide-circle-check-big")).toBeInTheDocument());
     act(() => vi.advanceTimersByTime(2100));
     vi.useRealTimers();
     fireEvent.click(screen.getByText("Nuevo reclamo"));
     expect(onNewTicket).toHaveBeenCalledOnce();
+  });
+
+  it.each(["denied", "unavailable"])("permite reintentar la copia del código con portapapeles %s", async (mode) => {
+    await setup();
+    fillBasics();
+    send();
+    await screen.findByText("¡Reclamo Registrado!");
+    if (mode === "denied") clipboard.writeText.mockRejectedValueOnce(new Error("Clipboard permission denied"));
+    else Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    fireEvent.click(screen.getByLabelText("Copiar código"));
+    expect(screen.getByLabelText("Copiar código").querySelector(".lucide-copy")).toBeInTheDocument();
+    Object.defineProperty(navigator, "clipboard", { value: clipboard, configurable: true });
+    clipboard.writeText.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByLabelText("Copiar código"));
+    await waitFor(() => expect(screen.getByLabelText("Copiar código").querySelector(".lucide-circle-check-big")).toBeInTheDocument());
   });
 
   it("navega al seguimiento y al inicio desde la confirmación", async () => {
