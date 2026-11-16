@@ -292,14 +292,13 @@ describe("LoginPromptModal", () => {
     expect(input).toHaveAttribute("type", "password");
   });
 
-  it("se cierra con la X, Escape y el fondo; enlaza al registro", () => {
+  it("se cierra con la X, Escape y el fondo", () => {
     const { onClose } = setup();
     fireEvent.click(screen.getByLabelText("Cerrar"));
     fireEvent.keyDown(window, { key: "Escape" });
     fireEvent.keyDown(window, { key: "a" });
     fireEvent.click(document.querySelector(".backdrop-blur-sm"));
     expect(onClose).toHaveBeenCalledTimes(3);
-    expect(screen.getByRole("link", { name: "Registrate" })).toHaveAttribute("href", "/registro");
   });
 
   it("no se puede cerrar mientras inicia sesión", async () => {

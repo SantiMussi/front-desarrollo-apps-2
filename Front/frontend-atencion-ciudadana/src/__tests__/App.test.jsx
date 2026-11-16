@@ -12,7 +12,6 @@ vi.mock("../pages/citizen/TrackingPage", () => stub("Seguimiento"));
 vi.mock("../pages/citizen/MisReclamosPage", () => stub("Mis reclamos"));
 vi.mock("../pages/citizen/MisReclamoDetailPage", () => stub("Detalle de mi reclamo"));
 vi.mock("../pages/auth/LoginPage", () => stub("Ingresar"));
-vi.mock("../pages/auth/RegisterPage", () => stub("Registro"));
 vi.mock("../pages/agent/TicketsInboxPage", () => stub("Bandeja"));
 vi.mock("../pages/agent/TicketDetailPage", () => stub("Detalle de ticket"));
 vi.mock("../pages/agent/TicketCitizenViewPage", () => stub("Vista ciudadano"));
@@ -65,7 +64,6 @@ describe("App - rutas públicas", () => {
     ["/portal-ayuda", "Portal de ayuda"],
     ["/seguimiento", "Seguimiento"],
     ["/ingresar", "Ingresar"],
-    ["/registro", "Registro"],
   ])("resuelve %s", async (path, text) => {
     await renderAt(path);
     expect(screen.getByText(text)).toBeInTheDocument();

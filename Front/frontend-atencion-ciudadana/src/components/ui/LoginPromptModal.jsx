@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
 import { X, LockKeyhole, Mail, LogIn, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 
@@ -174,16 +173,6 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
               </form>
             </div>
 
-            <div className="mt-2 border-t border-neutral-100 bg-neutral-50/60 px-6 py-3.5 text-center text-[12.5px] text-neutral-500">
-              ¿Todavía no tenés cuenta?{" "}
-              <Link
-                to="/registro"
-                state={{ message: "Creá tu cuenta para registrar tu reclamo." }}
-                className="font-semibold text-[#0F2C59] hover:underline"
-              >
-                Registrate
-              </Link>
-            </div>
           </motion.div>
         </motion.div>
       )}

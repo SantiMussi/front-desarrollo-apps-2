@@ -2,7 +2,6 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "../auth/LoginPage";
-import RegisterPage from "../auth/RegisterPage";
 import AgentsPage from "../agent/AgentsPage";
 import MisReclamoDetailPage from "../citizen/MisReclamoDetailPage";
 import TicketCitizenViewPage from "../agent/TicketCitizenViewPage";
@@ -110,21 +109,6 @@ describe("LoginPage", () => {
       path: "/ingresar",
       extraRoutes: <Route path="/" element={<p>Inicio</p>} />,
     });
-    expect(screen.getByText("Inicio")).toBeInTheDocument();
-  });
-});
-
-describe("RegisterPage", () => {
-  it("informa que no hay registro y permite volver al login sin enviar credenciales", () => {
-    const { auth } = renderWithProviders(<RegisterPage />, { route: "/registro", path: "/registro" });
-    expect(screen.getByRole("heading", { name: "Registro no disponible" })).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Volver a ingresar" })).toHaveAttribute("href", "/ingresar");
-    expect(auth.register).not.toHaveBeenCalled();
-  });
-
-  it("redirige si ya hay sesión", () => {
-    renderWithProviders(<RegisterPage />, { auth: authFor(CITIZEN), route: "/registro", path: "/registro", extraRoutes: <Route path="/" element={<p>Inicio</p>} /> });
     expect(screen.getByText("Inicio")).toBeInTheDocument();
   });
 });

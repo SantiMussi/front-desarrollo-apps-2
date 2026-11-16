@@ -10,7 +10,6 @@ export function makeAuth(overrides = {}) {
     isLoading: false,
     isAuthenticated: false,
     login: vi.fn().mockResolvedValue({}),
-    register: vi.fn().mockResolvedValue({}),
     logout: vi.fn(),
     refreshUser: vi.fn().mockResolvedValue(null),
     ...overrides,
