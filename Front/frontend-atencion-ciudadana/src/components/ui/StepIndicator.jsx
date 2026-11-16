@@ -54,9 +54,7 @@ export default function StepIndicator({ currentStep = 0, status = 'idle' }) {
                 className={`hidden sm:inline text-[12px] transition-colors ${
                   isCurrent
                     ? "font-semibold text-neutral-800"
-                    : isCompleted
-                      ? "text-neutral-500"
-                      : "text-neutral-500"
+                    : "text-neutral-500"
                 }`}
               >
                 {step.label}

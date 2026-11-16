@@ -46,7 +46,7 @@ export default function CancellationReviewPanel({ ticket, readOnly, onRefresh, o
   }, [ticket.id]);
   useEffect(() => {
     generation.current += 1;
-    Promise.resolve().then(load);
+    void Promise.resolve().then(load);
     return () => { generation.current += 1; };
   }, [load, ticket]);
 

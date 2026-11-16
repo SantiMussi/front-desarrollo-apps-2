@@ -47,7 +47,7 @@ export default function SubcategoriesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load();
     })();
     return () => {

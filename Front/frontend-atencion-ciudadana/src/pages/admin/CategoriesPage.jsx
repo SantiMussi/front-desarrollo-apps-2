@@ -48,7 +48,7 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load();
     })();
     return () => {

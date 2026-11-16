@@ -47,7 +47,7 @@ export function useTicketMessages(ticketId) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load();
     })();
     return () => {

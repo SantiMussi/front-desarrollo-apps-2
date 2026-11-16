@@ -99,7 +99,7 @@ function MetricsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([fetchCategories(), fetchNeighborhoods(), fetchIndicatorAreas()]).then(([categories, neighborhoods, areaValues]) => {
+    void Promise.allSettled([fetchCategories(), fetchNeighborhoods(), fetchIndicatorAreas()]).then(([categories, neighborhoods, areaValues]) => {
       if (cancelled) return;
       setCatalog({
         categories: Object.fromEntries((categories.value || []).map((item) => [String(item.id), item.name])),

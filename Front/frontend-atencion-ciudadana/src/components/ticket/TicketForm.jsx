@@ -157,7 +157,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
       }
     }
     if (!requestType.specificFields || requestType.specificFields.length === 0) {
-      loadFields();
+      void loadFields();
     }
     return () => { cancelled = true; };
   }, [requestType, fieldsReloadKey]);
@@ -343,14 +343,18 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
   const ownTicketPassword = formData.ticketPassword.trim();
   const displayedTicketPassword = ownTicketPassword || generatedTicketPassword;
 
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(displayedTicketPassword);
-    setCopiedPassword(true);
-    setTimeout(() => setCopiedPassword(false), 2000);
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(displayedTicketPassword);
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
+    } catch {
+      setCopiedPassword(false);
+    }
   };
 
   const handleRetry = () => {
-    handleSubmit({ preventDefault: () => { } });
+    void handleSubmit({ preventDefault: () => { } });
   };
 
   useEffect(() => {

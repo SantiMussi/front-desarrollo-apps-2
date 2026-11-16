@@ -91,7 +91,7 @@ export function useMyTickets() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load();
     })();
     return () => {

@@ -47,7 +47,7 @@ export default function ReclassificationPanel({ ticket, requestTypes, readOnly, 
       {loading && <p>Cargando propuestas…</p>}
       {loadError && <div role="alert">No pudimos consultar las propuestas. <button type="button" onClick={onRefresh}>Reintentar</button></div>}
       {!open && canProposeReclassification(ticket) && !readOnly && (
-        <form onSubmit={(event) => { event.preventDefault(); if (targetId) run(() => proposeTicketReclassification(ticket.id, { requestTypeId: Number(targetId), ...(message.trim() ? { messageForCitizen: message.trim() } : {}) })); }} className="space-y-2">
+        <form onSubmit={(event) => { event.preventDefault(); if (targetId) void run(() => proposeTicketReclassification(ticket.id, { requestTypeId: Number(targetId), ...(message.trim() ? { messageForCitizen: message.trim() } : {}) })); }} className="space-y-2">
           <label className="block">Nuevo tipo propuesto
             <select aria-label="Nuevo tipo propuesto" value={targetId} required disabled={unavailable} onChange={(event) => setTargetId(event.target.value)} className="mt-1 w-full rounded border border-slate-300 bg-white p-2">
               <option value="">Seleccionar…</option>

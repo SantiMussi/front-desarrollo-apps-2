@@ -69,7 +69,7 @@ export default function RequestTypesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load();
     })();
     return () => {

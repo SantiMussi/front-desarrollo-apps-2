@@ -34,7 +34,7 @@ export function useCitizenCancellation({ ticket, refreshTicket, trackingCode, pa
   useEffect(() => {
     generation.current += 1;
     const current = generation.current;
-    Promise.resolve().then(() => {
+    void Promise.resolve().then(() => {
       if (current !== generation.current) return;
       setRequiresReview(false); setNeedsRefresh(false); setError(null); loadHistory();
     });

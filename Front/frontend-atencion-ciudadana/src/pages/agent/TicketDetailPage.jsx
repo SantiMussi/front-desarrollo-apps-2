@@ -228,7 +228,7 @@ function TicketDetailContent() {
     const mainTicketId = ticket?.mainTicketId;
     if (!mainTicketId) return undefined;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const main = await fetchStaffTicketDetail(mainTicketId);
         if (!cancelled) setMainTicketPublicId(main?.publicId ?? null);
@@ -267,7 +267,7 @@ function TicketDetailContent() {
     const currentTicketId = ticket?.id;
     if (!currentTicketId) return undefined;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         await fetchMyTicketDetail(currentTicketId);
         if (!cancelled) setOwnershipStatus("own");
@@ -394,7 +394,7 @@ function TicketDetailContent() {
       return false;
     }
     if (status === "REGISTERED" && nextStatus === "IN_REVIEW") {
-      startReview();
+      void startReview();
       return false;
     }
     if (status === "IN_REVIEW" && nextStatus === "ROUTED") {
@@ -402,7 +402,7 @@ function TicketDetailContent() {
       return false;
     }
     if (status === "ROUTED" && nextStatus === "IN_PROGRESS") {
-      startWork();
+      void startWork();
       return false;
     }
     if (nextStatus === "RESOLVED") {

@@ -77,7 +77,7 @@ export default function DuplicateLinkDialog({ ticket, loading = false, error, on
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setCandidatesLoading(true);
       setCandidatesError(null);
       try {

@@ -74,7 +74,7 @@ export default function RequestTypeFormSchemaDialog({ requestType, onClose }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const response = await fetchAdminRequestTypeForm(requestType.id);
         if (!cancelled) hydrate(response);

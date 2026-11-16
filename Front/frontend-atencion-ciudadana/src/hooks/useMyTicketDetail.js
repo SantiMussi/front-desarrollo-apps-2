@@ -188,7 +188,7 @@ export function useMyTicketDetail(publicId) {
     let cancelled = false;
     informationInFlight.current = false;
     actionInFlight.current = false;
-    (async () => {
+    void (async () => {
       if (!cancelled) await load({ resetActions: true });
     })();
     return () => {

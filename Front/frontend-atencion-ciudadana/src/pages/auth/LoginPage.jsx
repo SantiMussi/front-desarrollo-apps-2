@@ -41,7 +41,7 @@ export default function LoginPage() {
       <form onSubmit={submit} className="mt-8 space-y-5">
         <AuthField icon={Mail} label="Correo electrónico" name="username" type="email" value={form.username} onChange={update} autoComplete="username" />
         <AuthField icon={LockKeyhole} label="Contraseña" name="password" type={showPassword ? "text" : "password"} value={form.password} onChange={update} autoComplete="current-password" action={<button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>} />
-        <button disabled={loading} className="w-full rounded-xl bg-[#D63031] px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-[#bb292a] disabled:cursor-wait disabled:opacity-60">{loading ? "Procesando..." : "Ingresar"}</button>
+        <button type="submit" disabled={loading} className="w-full rounded-xl bg-[#D63031] px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-[#bb292a] disabled:cursor-wait disabled:opacity-60">{loading ? "Procesando..." : "Ingresar"}</button>
       </form>
     </AuthShell>
   );

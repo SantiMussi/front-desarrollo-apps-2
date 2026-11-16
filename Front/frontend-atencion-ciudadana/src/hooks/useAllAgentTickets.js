@@ -23,7 +23,7 @@ export function useAllAgentTickets({
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       setLoading(true);
       setError(null);
 

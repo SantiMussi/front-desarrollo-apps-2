@@ -362,6 +362,23 @@ describe("TicketForm - visitantes y anonimato", () => {
     expect(clipboard.writeText).toHaveBeenCalledWith("claveSegura1");
   });
 
+  it("permite reintentar la copia de contraseña cuando el portapapeles la rechaza", async () => {
+    createTicket.mockResolvedValue({ trackingCode: "ZZZ", generatedAnonymousAccessPassword: "Generada99" });
+    clipboard.writeText.mockRejectedValueOnce(new Error("Clipboard permission denied"));
+    await setup({ requestType: requestType({ allowsAnonymous: true }) }, { auth: makeAuth({ isAuthenticated: false }) });
+    fireEvent.click(screen.getByRole("switch"));
+    type("Canal de contacto", "vecina@example.test");
+    fillBasics();
+    send();
+    await screen.findByText("¡Reclamo Registrado!");
+    fireEvent.click(screen.getByLabelText("Copiar contraseña"));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Generada99")).toBeInTheDocument();
+    clipboard.writeText.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByLabelText("Copiar contraseña"));
+    await waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(2));
+  });
+
   it("acepta un teléfono, sin contraseña propia, y muestra la generada", async () => {
     createTicket.mockResolvedValue({ trackingCode: "ZZZ", generatedAnonymousAccessPassword: "Generada99" });
     await setup({ requestType: requestType({ allowsAnonymous: true }) }, { auth: authFor(CITIZEN) });

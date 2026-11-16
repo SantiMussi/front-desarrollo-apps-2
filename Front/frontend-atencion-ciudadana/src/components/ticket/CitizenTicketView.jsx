@@ -872,7 +872,7 @@ export default function CitizenTicketView({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        sendMessage();
+                        void sendMessage();
                       }
                     }}
                     rows={1}

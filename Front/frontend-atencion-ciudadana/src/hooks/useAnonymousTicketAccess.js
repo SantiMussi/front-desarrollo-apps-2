@@ -56,7 +56,7 @@ export function useAnonymousTicketAccess(trackingCode) {
 
   useEffect(() => {
     const current = generation.current;
-    Promise.resolve().then(() => { if (current === generation.current) reset(); });
+    void Promise.resolve().then(() => { if (current === generation.current) reset(); });
     return () => { generation.current += 1; };
   }, [trackingCode, reset]);
 

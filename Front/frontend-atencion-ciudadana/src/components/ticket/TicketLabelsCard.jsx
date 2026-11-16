@@ -148,8 +148,8 @@ export default function TicketLabelsCard({ ticket, readOnly = false }) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    if (exactMatch) assignLabel(exactMatch);
-                    else if (labelQuery.trim()) createAndAssignLabel();
+                    if (exactMatch) void assignLabel(exactMatch);
+                    else if (labelQuery.trim()) void createAndAssignLabel();
                   }
                 }}
               />
