@@ -27,7 +27,7 @@ describe("CitizenNavbar", () => {
     openMenu(/Ingresar/);
     const menu = screen.getByRole("menu");
     expect(within(menu).getByRole("menuitem", { name: "Ingresar" })).toHaveAttribute("href", "/ingresar");
-    expect(within(menu).getByRole("menuitem", { name: "Crear cuenta" })).toHaveAttribute("href", "/registro");
+    expect(within(menu).queryByRole("menuitem", { name: "Crear cuenta" })).not.toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: /código de seguimiento/ })).toHaveAttribute("href", "/seguimiento");
     expect(within(menu).queryByRole("menuitem", { name: "Cerrar sesión" })).not.toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Ingresar" }));
@@ -79,12 +79,12 @@ describe("CitizenNavbar", () => {
   it("tiene un menú móvil para visitantes", () => {
     renderWithProviders(<CitizenNavbar />);
     fireEvent.click(screen.getByLabelText("Abrir menú"));
-    expect(screen.getAllByRole("link", { name: "Crear cuenta" })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("link", { name: "Crear cuenta" }));
+    expect(screen.queryByRole("link", { name: "Crear cuenta" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Ingresar" }));
     expect(screen.getByLabelText("Abrir menú")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Abrir menú"));
     fireEvent.click(screen.getByLabelText("Cerrar menú"));
-    expect(screen.queryByRole("link", { name: "Crear cuenta" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ingresar" })).not.toBeInTheDocument();
   });
 
   it("tiene un menú móvil para usuarios con sesión", () => {

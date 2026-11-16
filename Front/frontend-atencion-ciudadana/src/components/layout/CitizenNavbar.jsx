@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Ticket, User, Menu, X, Headset, LogOut, ChevronDown, UserCircle, KeyRound } from "lucide-react";
+import { Ticket, User, Menu, X, Headset, LogOut, ChevronDown, KeyRound } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/useAuth";
 import UserAvatar from "../ui/UserAvatar";
@@ -45,7 +45,6 @@ export default function CitizenNavbar() {
       ]
     : [
         { icon: User, label: "Ingresar", to: "/ingresar" },
-        { icon: UserCircle, label: "Crear cuenta", to: "/registro" },
         { icon: KeyRound, label: "Ingresar un código de seguimiento", to: "/seguimiento" },
       ];
 
