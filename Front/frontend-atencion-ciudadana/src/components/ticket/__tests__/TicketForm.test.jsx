@@ -248,7 +248,7 @@ describe("TicketForm - envío con sesión", () => {
     fillBasics();
     send();
     expect(await screen.findByText("Datos inválidos")).toBeInTheDocument();
-    expect(onStatusChange).toHaveBeenLastCalledWith("error");
+    await waitFor(() => expect(onStatusChange).toHaveBeenLastCalledWith("error"));
     fireEvent.click(screen.getByText("Reintentar"));
     expect(await screen.findByText("¡Reclamo Registrado!")).toBeInTheDocument();
     expect(createTicket).toHaveBeenCalledTimes(2);
