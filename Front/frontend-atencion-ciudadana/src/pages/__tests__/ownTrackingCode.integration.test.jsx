@@ -14,6 +14,12 @@ const recoveryCalls = () => fetch.mock.calls.filter(([url]) => url.endsWith("/tr
 const detail = () => renderWithProviders(<><Link to="/mis-reclamos/OP-1">Otro reclamo</Link><MisReclamoDetailPage /></>, {
   route: "/mis-reclamos/OP-201", path: "/mis-reclamos/:publicId", auth: authFor(CITIZEN),
 });
+// The detail loads messages and cancellation history from effects that run after the heading is painted
+// (the latter is deferred a microtask). Wait for both before counting calls, or they look like a reload.
+const waitForDetailRequests = () => waitFor(() => {
+  expect(fetch.mock.calls.some(([url]) => url.endsWith("/messages"))).toBe(true);
+  expect(fetch.mock.calls.some(([url]) => url.endsWith("/cancellation-requests"))).toBe(true);
+});
 function sessionDetail() {
   const ui = (user) => <AuthContext.Provider value={authFor(user)}>
     <MemoryRouter initialEntries={["/mis-reclamos/OP-201"]}><Routes>
@@ -82,6 +88,7 @@ it.each([false, true])("shared anonymous/staff views do not acquire recovery con
 it.each(["identity", "citizenId", "token", "logout", "storage-token", "storage-logout"])("removes the complete previous detail and displayed tracking code on %s", async (change) => {
     const view = sessionDetail();
     await screen.findByRole("heading", { name: old.summary });
+    await waitForDetailRequests();
     fireEvent.click(screen.getByRole("button", { name: "Mostrar código de seguimiento" }));
     await screen.findByText("SAME-ORIGINAL-CODE");
     const oldSignal = fetch.mock.calls.find(([url]) => url === `/api/tickets/${old.id}`)[1].signal;
@@ -152,6 +159,7 @@ it("a late recovered code cannot reappear after changing the detail identity", a
 it("refreshing the user object without changing identity or token does not reload the detail", async () => {
   const view = sessionDetail();
   await screen.findByRole("heading", { name: old.summary });
+  await waitForDetailRequests();
   const before = fetch.mock.calls.length;
   view.setUser({ ...CITIZEN, displayName: "Nombre actualizado" });
   expect(screen.getByRole("heading", { name: old.summary })).toBeVisible();
