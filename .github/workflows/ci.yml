@@ -1,12 +1,20 @@
 name: Frontend CI
 
-# Register manual dispatch on the default branch. Selecting dev in Run workflow
-# executes dev's complete CI/publish workflow at this same path, unchanged.
 on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       identity_provider:
-        description: "Choose branch dev. MOCK validates only; M1 publishes without deployment."
+        description: "MOCK validates only. M1 publishes from main; manual runs never deploy."
         type: choice
         required: true
         default: MOCK
@@ -14,16 +22,506 @@ on:
           - MOCK
           - M1
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  select-dev:
-    name: Select dev in Run workflow
+  secrets:
+    name: Scan full history and working tree
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 5
     steps:
-      - name: Explain the required workflow branch
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan secrets (metadata only)
+        run: python3 .github/scripts/check-secrets.py --output "$RUNNER_TEMP/secrets-summary.json"
+      - name: Upload safe secret scan summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: secrets-summary
+          path: ${{ runner.temp }}/secrets-summary.json
+          if-no-files-found: error
+
+  configuration:
+    name: Resolve provider and validate CD contracts
+    runs-on: ubuntu-latest
+    outputs:
+      identity_provider: ${{ steps.mode.outputs.identity_provider }}
+      sonar_mode: ${{ steps.sonar_scope.outputs.sonar_mode }}
+      sonar_branch: ${{ steps.sonar_scope.outputs.sonar_branch }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test CD contracts without remote access
+        run: python3 -m unittest discover -s .github/tests -v
+      - name: Resolve identity provider
+        id: mode
+        env:
+          CD_IDENTITY_PROVIDER: ${{ vars.CD_IDENTITY_PROVIDER }}
+          INPUT_IDENTITY_PROVIDER: ${{ inputs.identity_provider }}
+        run: bash .github/scripts/resolve-provider.sh
+
+      - name: Resolve explicit Sonar Free scope
+        id: sonar_scope
+        run: python3 .github/scripts/check-sonar.py --scope --main-branch main
+
+  validate:
+    name: Lint, tests, coverage and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: configuration
+    env:
+      TZ: UTC
+      BUILD_IDENTITY_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
+    concurrency:
+      group: ${{ github.workflow }}-validate-${{ github.event.pull_request.number || github.ref }}-${{ needs.configuration.outputs.identity_provider }}
+      cancel-in-progress: true
+
+    defaults:
+      run:
+        working-directory: Front/frontend-atencion-ciudadana
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Check explicit M1 publication branch
+        if: github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1'
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "M1 publication requires main." >&2
+            exit 1
+          fi
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Front/frontend-atencion-ciudadana/package-lock.json
+
+      - name: Install fixed npm build tool
+        run: npm install --global npm@11.21.2
+
+      - name: Build API-compatible patched esbuild
+        run: docker build --target esbuild-tool --output "type=local,dest=$RUNNER_TEMP/esbuild-tool" .
+
+      - name: Upload patched build tool for E2E
+        uses: actions/upload-artifact@v7
+        with:
+          name: esbuild-tool
+          path: ${{ runner.temp }}/esbuild-tool/esbuild
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Patch esbuild binary without changing its API
+        run: sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
+
+      - name: Lint application
+        run: npm run lint
+
+      - name: Test with coverage thresholds
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: Front/frontend-atencion-ciudadana/coverage/
+          if-no-files-found: error
+
+      - name: Build application
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: /api
+          VITE_IDENTITY_PROVIDER: ${{ env.BUILD_IDENTITY_PROVIDER }}
+
+      - name: Validate Nginx proxy configuration
+        run: |
+          docker run --rm --network none \
+            -v "$PWD/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a nginx -t
+
+      - name: Build Frontend container image
+        run: |
+          docker build --pull --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" --label "ar.edu.uade.m2.identity-provider=$BUILD_IDENTITY_PROVIDER" --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-ci:${{ github.sha }} .
+          docker build --target build --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-builder-ci:${{ github.sha }} .
+
+      - name: Save validated container image
+        run: |
+          docker save frontend-ci:${{ github.sha }} --output "$RUNNER_TEMP/frontend-image.tar"
+          docker save frontend-builder-ci:${{ github.sha }} --output "$RUNNER_TEMP/frontend-builder.tar"
+
+      - name: Upload validated container image
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/frontend-image.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload builder image for SCA
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-builder
+          path: ${{ runner.temp }}/frontend-builder.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Record validated revision
+        if: always()
+        env:
+          VALIDATED_REF: ${{ github.ref }}
+          VALIDATED_SHA: ${{ github.sha }}
+        run: printf 'Frontend ref=%s commit=%s\n' "$VALIDATED_REF" "$VALIDATED_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [configuration, validate]
+    env:
+      TZ: UTC
+      # Existing E2E emulate the MOCK API; validate builds the selected provider.
+      VITE_IDENTITY_PROVIDER: MOCK
+      VITE_API_BASE_URL: /api
+    concurrency:
+      group: ${{ github.workflow }}-e2e-${{ github.event.pull_request.number || github.ref }}-${{ needs.configuration.outputs.identity_provider }}
+      cancel-in-progress: true
+
+    defaults:
+      run:
+        working-directory: Front/frontend-atencion-ciudadana
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Front/frontend-atencion-ciudadana/package-lock.json
+
+      - name: Install fixed npm build tool
+        run: npm install --global npm@11.21.2
+
+      - name: Download patched build tool
+        uses: actions/download-artifact@v7
+        with:
+          name: esbuild-tool
+          path: ${{ runner.temp }}/esbuild-tool
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Patch esbuild binary without changing its API
+        run: sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
+
+      # Corre los escenarios sobre la app compilada con el Chrome del runner.
+      # La API está mockeada en cada escenario, así que no depende del back.
+      - name: Run E2E scenarios
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: Front/frontend-atencion-ciudadana/playwright-report
+          retention-days: 7
+
+  sonar:
+    name: SonarCloud Quality Gate
+    needs: [configuration, validate]
+    if: needs.configuration.outputs.sonar_mode != 'unsupported'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    concurrency:
+      group: ${{ github.workflow }}-sonar-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_BRANCH: ${{ needs.configuration.outputs.sonar_branch }}
+      SONAR_MODE: ${{ needs.configuration.outputs.sonar_mode }}
+      SONAR_PULL_REQUEST: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require real Sonar configuration
         shell: bash
         run: |
-          echo "::error::This branch only registers Frontend CI. Choose Run workflow, branch dev, then identity_provider=MOCK or M1."
-          exit 1
+          : "${SONAR_TOKEN:?Configure SONAR_TOKEN as an Actions secret; fork PRs cannot run trusted analysis}"
+          : "${SONAR_PROJECT_KEY:?Configure SONAR_PROJECT_KEY as an Actions variable}"
+          : "${SONAR_ORGANIZATION:?Configure SONAR_ORGANIZATION as an Actions variable}"
+      - uses: actions/download-artifact@v7
+        if: env.SONAR_MODE != 'existing'
+        with:
+          name: frontend-coverage
+          path: Front/frontend-atencion-ciudadana/coverage
+      - name: Prepare branch analysis argument
+        if: env.SONAR_MODE != 'existing'
+        id: scope
+        shell: bash
+        run: |
+          test -s Front/frontend-atencion-ciudadana/coverage/lcov.info
+          if [[ -z "$SONAR_PULL_REQUEST" ]]; then
+            printf 'args=-Dsonar.branch.name=%s\n' "$SONAR_BRANCH" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Analyze Frontend and wait for service gate
+        if: env.SONAR_MODE != 'existing'
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        with:
+          projectBaseDir: Front/frontend-atencion-ciudadana
+          args: >-
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.scm.revision=${{ github.sha }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=180
+            ${{ steps.scope.outputs.args }}
+      - name: Verify academic overall-code limits and revision
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ "$SONAR_MODE" == existing ]]; then
+            python3 .github/scripts/check-sonar.py --existing-analysis --output "$RUNNER_TEMP/sonar-evidence.json"
+          else
+            python3 .github/scripts/check-sonar.py --task Front/frontend-atencion-ciudadana/.scannerwork/report-task.txt --output "$RUNNER_TEMP/sonar-evidence.json"
+          fi
+      - name: Upload Sonar evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sonar-evidence
+          path: ${{ runner.temp }}/sonar-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    name: SEG-08 dependencies and images
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/image
+      - uses: actions/download-artifact@v7
+        with:
+          name: frontend-builder
+          path: ${{ runner.temp }}/image
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/trivy-cache
+          key: trivy-0.76.2-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-0.76.2-${{ runner.os }}-
+      - name: Install verified Trivy
+        run: bash .github/scripts/install-trivy.sh
+      - name: Scan dependencies, builder and exact runtime image
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+        run: >-
+          python3 .github/scripts/scan-vulnerabilities.py
+          --fs Front/frontend-atencion-ciudadana --npm Front/frontend-atencion-ciudadana
+          --archive "${RUNNER_TEMP}/image/frontend-image.tar"
+          --archive "${RUNNER_TEMP}/image/frontend-builder.tar"
+          --output "${RUNNER_TEMP}/sca"
+      - name: Upload sanitized QA vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: seg08-reports
+          path: ${{ runner.temp }}/sca/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish Frontend image
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' &&
+      github.ref == 'refs/heads/main')
+    needs: [configuration, validate, e2e, secrets, sonar, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BUILD_IDENTITY_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
+      IMAGE_REPOSITORY: ghcr.io/santimussi/front-desarrollo-apps-2
+    outputs:
+      image: ${{ steps.record.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    concurrency:
+      group: ${{ github.event_name == 'workflow_dispatch' && 'frontend-m1-publish' || 'frontend-main-publish' }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select image tags
+        id: image
+        shell: bash
+        run: |
+          if [[ "$BUILD_IDENTITY_PROVIDER" == M1 ]]; then
+            # A dispatch/rerun never replaces MOCK tags or an earlier M1 build.
+            reference="$IMAGE_REPOSITORY:m1-sha-$GITHUB_SHA-run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            printf 'tags=%s\n' "$reference" >> "$GITHUB_OUTPUT"
+          else
+            reference="$IMAGE_REPOSITORY:sha-$GITHUB_SHA"
+            printf 'tags<<FRONTEND_TAGS\n%s:main\n%s\nFRONTEND_TAGS\n' "$IMAGE_REPOSITORY" "$reference" >> "$GITHUB_OUTPUT"
+          fi
+          printf 'reference=%s\n' "$reference" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/image
+      - name: Publish scanned Frontend image
+        id: build
+        env:
+          IMAGE_TAGS: ${{ steps.image.outputs.tags }}
+          IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
+        shell: bash
+        run: |
+          docker load --input "$RUNNER_TEMP/image/frontend-image.tar"
+          while IFS= read -r reference; do
+            [[ -n "$reference" ]] || continue
+            docker tag "frontend-ci:$GITHUB_SHA" "$reference"
+            docker push "$reference"
+          done <<< "$IMAGE_TAGS"
+          immutable="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE_REFERENCE")"
+          digest="${immutable##*@}"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Record published image and digest
+        id: record
+        env:
+          IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Missing image digest." >&2; exit 1; }
+          printf 'image=%s@%s\n' "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+          {
+            printf '### Frontend %s\n\n' "$BUILD_IDENTITY_PROVIDER"
+            printf -- '- Source commit: `%s`\n' "$GITHUB_SHA"
+            printf -- '- Image tag: `%s`\n' "$IMAGE_REFERENCE"
+            printf -- '- Digest: `%s`\n' "$IMAGE_DIGEST"
+            printf -- '- Immutable reference for Infra: `%s@%s`\n' "$IMAGE_REPOSITORY" "$IMAGE_DIGEST"
+            if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+              printf '\nManual publication only; this run never deploys.\n'
+            else
+              printf '\nCD uses this digest only when CD_ENABLED=true; Infra verifies the live Backend provider.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy Frontend to Lightsail
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CD_ENABLED == 'true'
+    needs: [configuration, publish, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: lightsail-main-frontend-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout deployment guards
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Refuse stale main runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$current_sha" == "$GITHUB_SHA" ]] || { echo 'Stale main run; no deployment allowed.' >&2; exit 65; }
+
+      - name: Validate selected CD image and provider
+        env:
+          SELECTED_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
+          CONFIGURED_CD_PROVIDER: ${{ vars.CD_IDENTITY_PROVIDER }}
+          DEPLOY_IMAGE: ${{ needs.publish.outputs.image }}
+        shell: bash
+        run: |
+          [[ "$SELECTED_PROVIDER" == M1 || "$SELECTED_PROVIDER" == MOCK ]]
+          [[ "$SELECTED_PROVIDER" == "$CONFIGURED_CD_PROVIDER" ]] || { echo 'Selected provider differs from configured CD provider.' >&2; exit 65; }
+          [[ "$DEPLOY_IMAGE" =~ ^ghcr\.io/santimussi/front-desarrollo-apps-2@sha256:[0-9a-f]{64}$ ]]
+
+      - name: Configure SSH
+        env:
+          LIGHTSAIL_SSH_PRIVATE_KEY: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
+          LIGHTSAIL_KNOWN_HOSTS: ${{ vars.LIGHTSAIL_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          : "${LIGHTSAIL_SSH_PRIVATE_KEY:?LIGHTSAIL_SSH_PRIVATE_KEY is required}"
+          : "${LIGHTSAIL_KNOWN_HOSTS:?LIGHTSAIL_KNOWN_HOSTS is required}"
+          umask 077
+          printf '%s\n' "$LIGHTSAIL_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/lightsail_cd"
+          printf '%s\n' "$LIGHTSAIL_KNOWN_HOSTS" > "$RUNNER_TEMP/lightsail_known_hosts"
+          chmod 600 "$RUNNER_TEMP/lightsail_cd" "$RUNNER_TEMP/lightsail_known_hosts"
+
+      - name: Deploy published Frontend digest
+        env:
+          LIGHTSAIL_HOST: ${{ vars.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ vars.LIGHTSAIL_USER }}
+          LIGHTSAIL_DEPLOY_PATH: ${{ vars.LIGHTSAIL_DEPLOY_PATH }}
+          DEPLOY_IMAGE: ${{ needs.publish.outputs.image }}
+          CD_PROVIDER: ${{ needs.configuration.outputs.identity_provider }}
+        shell: bash
+        run: |
+          : "${LIGHTSAIL_HOST:?LIGHTSAIL_HOST is required}"
+          : "${LIGHTSAIL_USER:?LIGHTSAIL_USER is required}"
+          : "${LIGHTSAIL_DEPLOY_PATH:?LIGHTSAIL_DEPLOY_PATH is required}"
+          [[ "$LIGHTSAIL_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$LIGHTSAIL_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$LIGHTSAIL_DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]
+          ssh \
+            -i "$RUNNER_TEMP/lightsail_cd" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/lightsail_known_hosts" \
+            "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" \
+            "bash -s -- '$LIGHTSAIL_DEPLOY_PATH' frontend '$DEPLOY_IMAGE' '$CD_PROVIDER'" \
+            < .github/scripts/deploy-cd.sh
+
+      - name: Remove temporary SSH files
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/lightsail_cd" "$RUNNER_TEMP/lightsail_known_hosts"

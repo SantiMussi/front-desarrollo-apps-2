@@ -1,0 +1,337 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { MapPin, Search, Loader2, LocateFixed } from "lucide-react";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+const redIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const GEO_ERRORS = {
+  1: "No tenemos permiso para ver tu ubicación. Podés habilitarlo en el navegador o marcar el punto en el mapa.",
+  2: "No pudimos saber dónde estás. Marcá el punto en el mapa o escribí la dirección.",
+  3: "Tardó demasiado en responder. Probá de nuevo o marcá el punto en el mapa.",
+  default: "No pudimos obtener tu ubicación. Marcá el punto en el mapa o escribí la dirección.",
+};
+// Si el dispositivo informa un margen mayor, se sugiere ajustar el marcador a mano.
+const APPROXIMATE_ACCURACY_METERS = 200;
+
+const CABA_CENTER = [-34.6118, -58.4173];
+const CABA_ZOOM = 12;
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=es`,
+      { 
+        headers: { "User-Agent": "AtencionCiudadanaApp/1.0" },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+      }
+    );
+    if (!res.ok) throw new Error("Network response was not ok");
+    const data = await res.json();
+    if (data && data.display_name) {
+      const addr = data.address || {};
+      const street = addr.road || "";
+      const streetNumber = addr.house_number || "";
+
+      const neighborhoods = [
+        addr.neighbourhood,
+        addr.suburb,
+        addr.city_district,
+        addr.quarter,
+        addr.borough
+      ].filter(Boolean);
+
+      let addressString = "";
+      if (!street) {
+        addressString = data.display_name.split(",").slice(0, 2).join(",").trim();
+      } else {
+        addressString = [street, streetNumber].filter(Boolean).join(" ");
+      }
+      return { address: addressString, street, streetNumber, neighborhoods };
+    }
+    return { address: "", street: "", streetNumber: "", neighborhoods: [] };
+  } catch (error) {
+    console.error("Reverse geocoding error:", error);
+    return { address: "", street: "", streetNumber: "", neighborhoods: [] };
+  }
+}
+
+async function forwardGeocode(address, signal) {
+  try {
+    const query = encodeURIComponent(`${address}, Buenos Aires, Argentina`);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1&accept-language=es`,
+      { 
+        headers: { "User-Agent": "AtencionCiudadanaApp/1.0" },
+        signal: signal || (AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
+      }
+    );
+    if (!res.ok) throw new Error("Network response was not ok");
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const addr = data[0].address || {};
+      const neighborhoods = [
+        addr.neighbourhood,
+        addr.suburb,
+        addr.city_district,
+        addr.quarter,
+        addr.borough
+      ].filter(Boolean);
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        displayName: data[0].display_name,
+        neighborhoods
+      };
+    }
+    return null;
+  } catch (error) {
+    if (error.name === "AbortError") return null;
+    console.error("Forward geocoding error:", error);
+    return null;
+  }
+}
+
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng);
+    },
+  });
+  return null;
+}
+
+function RecenterMap({ position }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, 15, { duration: 0.8 });
+    }
+  }, [position, map]);
+  return null;
+}
+
+// Los navegadores sólo permiten la geolocalización en páginas seguras (HTTPS o localhost).
+const canLocate = () => typeof navigator !== "undefined" && "geolocation" in navigator && window.isSecureContext !== false;
+
+export default function LocationMap({ address, streetNumber, addressSource, latitude, longitude, onLocationSelect, disabled }) {
+  const [geocoding, setGeocoding] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState(null);
+  const [approximate, setApproximate] = useState(false);
+  const markerRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const markerPos = latitude && longitude ? [latitude, longitude] : null;
+
+  const handleMapClick = useCallback(
+    async (latlng) => {
+      if (disabled) return;
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+      const { lat, lng } = latlng;
+      setGeocoding(true);
+
+      try {
+        const { address: addr, street, streetNumber, neighborhoods } = await reverseGeocode(lat, lng);
+        onLocationSelect({ lat, lng, address: addr, street, streetNumber, neighborhoods, source: "map" });
+      } finally {
+        setGeocoding(false);
+      }
+    },
+    [disabled, onLocationSelect]
+  );
+
+  // Sólo se pide la ubicación al tocar el botón; se usa para ubicar el marcador y nada más.
+  const handleUseMyLocation = useCallback(() => {
+    if (disabled || locating || !navigator.geolocation) return;
+    setLocateError(null);
+    setApproximate(false);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          await handleMapClick({ lat: coords.latitude, lng: coords.longitude });
+          setApproximate(coords.accuracy > APPROXIMATE_ACCURACY_METERS);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (error) => {
+        setLocating(false);
+        setLocateError(GEO_ERRORS[error?.code] ?? GEO_ERRORS.default);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [disabled, locating, handleMapClick]);
+
+  const handleMarkerDragEnd = useCallback(async () => {
+    const marker = markerRef.current;
+    if (!marker) return;
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    const { lat, lng } = marker.getLatLng();
+    setGeocoding(true);
+    try {
+      const { address: addr, street, streetNumber, neighborhoods } = await reverseGeocode(lat, lng);
+      onLocationSelect({ lat, lng, address: addr, street, streetNumber, neighborhoods, source: "map" });
+    } finally {
+      setGeocoding(false);
+    }
+  }, [onLocationSelect]);
+
+  const handleSearchAddress = useCallback(
+    async (searchAddress) => {
+      if (!searchAddress || searchAddress.trim().length < 5) return;
+
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setGeocoding(true);
+      try {
+        const result = await forwardGeocode(searchAddress, controller.signal);
+        if (controller.signal.aborted) return;
+        if (result) {
+          onLocationSelect({
+            lat: result.lat,
+            lng: result.lng,
+            neighborhoods: result.neighborhoods,
+            source: "geocode"
+          });
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setGeocoding(false);
+        }
+      }
+    },
+    [onLocationSelect]
+  );
+
+  useEffect(() => {
+    if (addressSource !== "input") return undefined;
+
+    const query = [address, streetNumber]
+      .filter((part) => part && String(part).trim())
+      .join(" ")
+      .trim();
+    if (query.length < 5) return undefined;
+
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+
+    const timer = setTimeout(() => handleSearchAddress(query), 1200);
+    return () => clearTimeout(timer);
+  }, [address, streetNumber, addressSource, handleSearchAddress]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <label className="text-[13px] font-medium text-neutral-700 flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5 text-[#D63031]" strokeWidth={2} />
+          Ubicación en el mapa
+        </label>
+        <div className="flex items-center gap-3">
+          {geocoding && (
+            <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Buscando...
+            </span>
+          )}
+          {canLocate() && (
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={disabled || locating}
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-[#0F2C59] transition-colors hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60"
+            >
+              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <LocateFixed className="h-3.5 w-3.5" aria-hidden />}
+              {locating ? "Buscando tu ubicación…" : "Usar mi ubicación"}
+            </button>
+          )}
+        </div>
+      </div>
+      {locateError && <p role="alert" className="text-[12px] text-red-600">{locateError}</p>}
+      {approximate && !locateError && (
+        <p className="text-[12px] text-amber-700">Tu ubicación es aproximada: arrastrá el marcador hasta el lugar exacto.</p>
+      )}
+
+      <div
+        className={`relative rounded-lg border border-neutral-200 overflow-hidden shadow-sm transition-shadow hover:shadow-md ${
+          disabled ? "opacity-50 pointer-events-none" : ""
+        }`}
+        style={{ height: "280px" }}
+      >
+        <MapContainer
+          center={CABA_CENTER}
+          zoom={CABA_ZOOM}
+          style={{ height: "100%", width: "100%" }}
+          scrollWheelZoom={true}
+          className="z-0"
+        >
+          <TileLayer
+            attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+            maxZoom={16}
+          />
+          <MapClickHandler onMapClick={handleMapClick} />
+          {markerPos && <RecenterMap position={markerPos} />}
+          {markerPos && (
+            <Marker
+              position={markerPos}
+              icon={redIcon}
+              draggable={!disabled}
+              ref={markerRef}
+              eventHandlers={{ dragend: handleMarkerDragEnd }}
+            />
+          )}
+        </MapContainer>
+
+        {!markerPos && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-neutral-100">
+              <Search className="h-4 w-4 text-[#D63031]" />
+              <span className="text-[12px] font-medium text-neutral-600">
+                Hacé click en el mapa o escribí la dirección arriba
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {markerPos && (
+        <p className="text-[11px] text-neutral-500 flex items-center gap-1">
+          <MapPin className="h-3 w-3" />
+          Coordenadas: {markerPos[0].toFixed(6)}, {markerPos[1].toFixed(6)}
+          <span className="text-neutral-500 mx-1">•</span>
+          Podés arrastrar el marcador para ajustar
+        </p>
+      )}
+    </div>
+  );
+}
+

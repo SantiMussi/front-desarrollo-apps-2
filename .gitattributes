@@ -1,0 +1,2 @@
+.github/scripts/resolve-provider.sh text eol=lf
+Front/frontend-atencion-ciudadana/docker/patch-esbuild.sh text eol=lf

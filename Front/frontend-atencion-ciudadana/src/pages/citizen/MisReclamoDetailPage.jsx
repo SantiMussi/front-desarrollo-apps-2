@@ -1,0 +1,79 @@
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useMyTicketDetail } from "../../hooks/useMyTicketDetail";
+import { useTicketMessages } from "../../hooks/useTicketMessages";
+import { useAuth } from "../../context/useAuth";
+import { useSessionToken } from "../../hooks/useSessionToken";
+import CitizenTicketView from "../../components/ticket/CitizenTicketView";
+import OwnTrackingCode from "../../components/ticket/OwnTrackingCode";
+import { uploadTicketAttachment, downloadTicketAttachment } from "../../services/apiClient";
+
+export default function MisReclamoDetailPage() {
+  const { publicId } = useParams();
+  const { user } = useAuth();
+  const token = useSessionToken();
+  if (!user || !token) return null;
+
+  return <MyTicketDetail key={JSON.stringify([publicId, user.id, user.actorId ?? user.citizenId, token])} publicId={publicId} user={user} />;
+}
+
+// Reset the complete detail (including chat, drafts and tracking code) together.
+function MyTicketDetail({ publicId, user }) {
+  const { ticket, loading, error, actions, actionLoading, actionError, cancellation } =
+    useMyTicketDetail(publicId);
+  const chatMessages = useTicketMessages(ticket?.id);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+      </div>
+    );
+  }
+
+  if (!ticket) {
+    return (
+      <div className="mx-auto max-w-2xl px-5 py-16 text-center">
+        <p className="text-[14px] text-neutral-500">
+          {error || "No encontramos este reclamo."}
+        </p>
+        <Link
+          to="/mis-reclamos"
+          className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0F2C59] hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Volver a Mis Reclamos
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <CitizenTicketView
+      ticket={ticket}
+      trackingCodeControl={<OwnTrackingCode key={publicId} ticketId={ticket.id} />}
+      backTo="/mis-reclamos"
+      backLabel="Mis Reclamos"
+      actions={actions}
+      cancellation={cancellation}
+      actionLoading={actionLoading}
+      actionError={actionError}
+      attachments={{
+        canUpload: true,
+        uploadFile: (file) => uploadTicketAttachment(ticket.id, file),
+        downloadFile: (attachment) => downloadTicketAttachment(attachment.id),
+      }}
+      chat={{
+        items: chatMessages.messages,
+        loading: chatMessages.loading,
+        error: chatMessages.error,
+        canSend: true,
+        currentAuthorId: user?.actorId ?? user?.citizenId,
+        onSend: (text) => chatMessages.send("PUBLIC", text),
+        onEdit: chatMessages.edit,
+        onDelete: chatMessages.remove,
+        messageForError: chatMessages.messageForError,
+      }}
+    />
+  );
+}

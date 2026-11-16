@@ -1,32 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ArrowRight, ClipboardList, ChevronRight, FileText, CreditCard, CheckCircle } from "lucide-react";
+import { ArrowRight, ClipboardList, FileText, CreditCard, CheckCircle } from "lucide-react";
 import CategoryCard from "../../components/ui/CategoryCard";
+import SearchBar from "../../components/ui/SearchBar";
 import logo from "../../assets/logo.png";
-import { MOCK_CATEGORIES } from "../../data/mockCategories";
+import { useCategories } from "../../hooks/useCategories";
+import Spinner from "../../components/ui/Spinner";
 
 /* HomePage */
 export default function HomePage() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
-
-  const handleSearch = (e) => {
-    e?.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/portal-ayuda?q=${encodeURIComponent(searchQuery)}`);
-    } else {
-      navigate("/portal-ayuda");
-    }
-  };
-
-  const handleTagClick = (tag) => {
-    navigate(`/portal-ayuda?q=${encodeURIComponent(tag)}`);
-  };
+  const { categories, loading, error } = useCategories();
 
   return (
     <div className="flex flex-col min-h-[calc(100svh-58px)] bg-[#fafafa]">
-      {/* HERO ASYMMETRICAL & EDITORIAL (Con "Chucu" pero sin cara de IA) */}
+      {/* HERO*/}
       <section className="relative w-full bg-white border-b border-neutral-200 overflow-hidden">
         {/* Top accent line */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0F2C59] to-[#D63031]" />
@@ -55,24 +44,7 @@ export default function HomePage() {
               </p>
 
               {/* Buscador */}
-              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row w-full max-w-2xl shadow-xl shadow-black/[0.03] rounded-xl sm:rounded-2xl">
-                <div className="flex-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-neutral-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Buscá: Patentes, Alumbrado, Licencias..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-full min-h-[64px] bg-white border-2 border-neutral-200 text-neutral-900 text-[16px] font-medium rounded-t-xl sm:rounded-l-2xl sm:rounded-tr-none pl-14 pr-4 outline-none transition-all focus:border-[#0F2C59] focus:ring-4 focus:ring-[#0F2C59]/10"
-                  />
-                </div>
-                <button type="submit" className="min-h-[64px] bg-[#0F2C59] hover:bg-[#163d75] text-white px-10 rounded-b-xl sm:rounded-r-2xl sm:rounded-bl-none font-bold text-[16px] transition-all flex items-center justify-center gap-2">
-                  Buscar
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              </form>
+              <SearchBar />
             </div>
 
             {/* Right Content */}
@@ -101,7 +73,7 @@ export default function HomePage() {
                         <img src={logo} alt="Logo" className="w-6 h-6 object-contain opacity-50" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Hola, vecino</p>
+                        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Hola, vecino</p>
                         <p className="text-[13px] font-extrabold text-[#0F2C59]">Mi Ciudad UADE</p>
                       </div>
                     </div>
@@ -150,17 +122,17 @@ export default function HomePage() {
                           </div>
                           <div className="flex-1">
                             <p className="text-[12px] font-bold text-neutral-900 leading-tight">Licencia</p>
-                            <p className="text-[10px] text-neutral-400">Trámite aprobado</p>
+                            <p className="text-[10px] text-neutral-500">Trámite aprobado</p>
                           </div>
                           <CheckCircle className="w-4 h-4 text-emerald-500" />
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-neutral-100 flex items-center gap-3 opacity-50">
+                        <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-100 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center">
                             <CreditCard className="w-4 h-4 text-neutral-500" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-[12px] font-bold text-neutral-900 leading-tight">Pago ABL</p>
-                            <p className="text-[10px] text-neutral-400">Impactado</p>
+                            <p className="text-[12px] font-bold text-neutral-600 leading-tight">Pago ABL</p>
+                            <p className="text-[10px] text-neutral-500">Impactado</p>
                           </div>
                         </div>
                       </div>
@@ -191,7 +163,14 @@ export default function HomePage() {
       <div className="flex-1 bg-[#fafafa]">
         {/* Tracking strip */}
         <section className="border-b border-neutral-200/60 bg-white">
-          <div className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = trackingCode.trim();
+              if (value) navigate("/seguimiento", { state: { codigo: value } });
+            }}
+            className="mx-auto max-w-6xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3"
+          >
             <div className="flex items-center gap-2.5 text-[13px] text-neutral-500 shrink-0">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#D63031]/5">
                 <ClipboardList className="h-3.5 w-3.5 text-[#D63031]" strokeWidth={1.5} />
@@ -205,19 +184,19 @@ export default function HomePage() {
                 value={trackingCode}
                 onChange={(e) => setTrackingCode(e.target.value)}
                 className="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[13px] text-neutral-900 placeholder-neutral-400 outline-none
-                           transition-colors focus:border-[#D63031]/30 focus:bg-white focus:ring-1 focus:ring-[#D63031]/10"
+                            transition-colors focus:border-[#D63031]/30 focus:bg-white focus:ring-1 focus:ring-[#D63031]/10"
               />
               <button
-                type="button"
+                type="submit"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F2C59] px-4 py-1.5 text-[13px] font-medium text-white
-                           transition-all duration-200 hover:bg-[#1a3f7a]
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F2C59] focus-visible:ring-offset-2"
+                            transition-all duration-200 hover:bg-[#1a3f7a]
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F2C59] focus-visible:ring-offset-2"
               >
                 Consultar
                 <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
               </button>
             </div>
-          </div>
+          </form>
         </section>
 
         {/* Categories */}
@@ -234,54 +213,42 @@ export default function HomePage() {
                 ¿Sobre qué es tu consulta?
               </h2>
             </div>
-            <span className="hidden sm:inline text-[11px] text-neutral-300 tabular-nums">
-              {MOCK_CATEGORIES.length} categorías
+            <span className="hidden sm:inline text-[11px] text-neutral-500 tabular-nums">
+              {loading ? "..." : categories.length} categorías
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {MOCK_CATEGORIES.map((category) => (
-              <CategoryCard
-                key={category.id}
-                title={category.title}
-                description={category.description}
-                iconName={category.iconName}
-                itemCount={category.itemCount}
-                badgeText={category.badgeText}
-                onClick={() => navigate(`/portal-ayuda?category=${category.id}`)}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Spinner size="lg" />
+            </div>
+          ) : error ? (
+            <div className="py-10 text-center text-red-500">
+              <p>Error al cargar las categorías: {error}</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {categories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  title={category.title}
+                  description={category.description}
+                  iconName={category.iconName}
+                  itemCount={category.itemCount}
+                  badgeText={category.badgeText}
+                  onClick={() => {
+                    if (category.id === "otro") {
+                      navigate("/portal-ayuda?category=otro&subcategory=otro-general&requestType=OTRO_CONSULTA_GENERAL");
+                    } else {
+                      navigate(`/portal-ayuda?category=${category.id}`);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
-        <section className="mx-auto max-w-6xl px-5 pb-16">
-          <div className="relative overflow-hidden rounded-xl border border-neutral-200/80 bg-white p-6 sm:p-8">
-            <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden">
-              <div className="absolute -top-12 -right-12 w-24 h-24 rotate-45 bg-[#D63031]/5" />
-            </div>
-
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-[15px] font-semibold text-neutral-900">
-                  ¿No encontrás la categoría que necesitás?
-                </p>
-                <p className="text-[13px] text-neutral-400 mt-0.5">
-                  Iniciá un reclamo general y nuestro equipo lo deriva al área correspondiente.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate("/portal-ayuda")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#D63031] px-4 py-2 text-[13px] font-semibold text-white shrink-0
-                           transition-all duration-200 hover:bg-[#c0282a] hover:shadow-md hover:shadow-[#D63031]/10
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031] focus-visible:ring-offset-2"
-              >
-                Reclamo General
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );

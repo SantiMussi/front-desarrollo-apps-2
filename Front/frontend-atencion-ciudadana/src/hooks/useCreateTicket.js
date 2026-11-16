@@ -1,53 +1,52 @@
-import { useState, useCallback } from "react";
-// import { createTicket } from "../services/apiClient";
-
-function generateTrackingCode() {
-  const prefix = "REC";
-  const number = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${number}`;
-}
+import { useState, useCallback, useRef, useEffect } from "react";
+import { createTicket } from "../services/apiClient";
 
 export function useCreateTicket() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [errorCode, setErrorCode] = useState(null);
   const [trackingCode, setTrackingCode] = useState(null);
+  const [ticketPassword, setTicketPassword] = useState(null);
+  const inFlight = useRef(false);
+  const generation = useRef(0);
+  useEffect(() => () => { generation.current += 1; }, []);
 
-  const submit = useCallback(async (payload) => {
+  const submit = useCallback(async (payload, attachments = [], options = {}) => {
+    if (inFlight.current) return null;
+    inFlight.current = true;
+    const current = generation.current;
     setLoading(true);
     setError(null);
+    setErrorCode(null);
     setTrackingCode(null);
+    setTicketPassword(null);
 
     try {
-      // Simular delay de red
-      await new Promise((r) => setTimeout(r, 1500));
-
-      // Simular error aleatorio para testing (10% de las veces)
-      if (Math.random() < 0.1) {
-        throw new Error("No se pudo conectar con el servidor. Intentá nuevamente en unos minutos.");
-      }
-
-      const code = generateTrackingCode();
-      console.log("[useCreateTicket] Respuesta esperada del backend:", {
-        trackingNumber: code,
-        status: "REGISTRADO",
-        createdAt: new Date().toISOString(),
-      });
-      setTrackingCode(code);
-      return code;
+      const response = await createTicket(payload, attachments, options);
+      if (current !== generation.current) return null;
+      if (!response?.trackingCode) throw new Error("El servidor no confirmó el código de seguimiento. Verificá el resultado antes de volver a enviar.");
+      setTrackingCode(response.trackingCode);
+      setTicketPassword(response.generatedAnonymousAccessPassword ?? null);
+      return response.trackingCode;
     } catch (err) {
-      console.error("[useCreateTicket] Error del backend:", err.message);
+      if (current !== generation.current) return null;
       setError(err.message || "Ocurrió un error inesperado. Intentá de nuevo.");
+      setErrorCode(err.code || err.status || null);
       return null;
     } finally {
-      setLoading(false);
+      if (current === generation.current) { inFlight.current = false; setLoading(false); }
     }
   }, []);
 
   const reset = useCallback(() => {
+    generation.current += 1;
+    inFlight.current = false;
     setLoading(false);
     setError(null);
+    setErrorCode(null);
     setTrackingCode(null);
+    setTicketPassword(null);
   }, []);
 
-  return { submit, loading, error, trackingCode, reset };
+  return { submit, loading, error, errorCode, trackingCode, ticketPassword, reset, setError, setErrorCode };
 }

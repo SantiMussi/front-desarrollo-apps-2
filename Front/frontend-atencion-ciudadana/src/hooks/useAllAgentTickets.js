@@ -1,0 +1,70 @@
+import { useCallback, useEffect, useState } from "react";
+import { fetchAgentTickets } from "../services/apiClient";
+import { hasTicketLocation } from "../utils/ticketLocation";
+
+const PAGE_SIZE = 200;
+
+export function useAllAgentTickets({
+  categoryId,
+  priority,
+  neighborhoodId,
+  withoutLocation = false,
+  responsibleAreaId,
+  status,
+  labelIds,
+  search,
+  sort = "createdAt,desc",
+} = {}) {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const filters = {
+          categoryId,
+          priority,
+          neighborhoodId,
+          responsibleAreaId,
+          status,
+          labelIds,
+          search,
+        };
+        const firstPage = await fetchAgentTickets({ ...filters, page: 0, size: PAGE_SIZE, sort });
+        const totalPages = Number(firstPage?.totalPages) || 1;
+        const remainingPages = await Promise.all(
+          Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
+            fetchAgentTickets({ ...filters, page: index + 1, size: PAGE_SIZE, sort })
+          )
+        );
+        const allTickets = [firstPage, ...remainingPages]
+          .flatMap((page) => page?.content ?? [])
+          .filter((ticket) => !withoutLocation || !hasTicketLocation(ticket));
+
+        if (!cancelled) setTickets(allTickets);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message ?? "No pudimos cargar todos los tickets.");
+          setTickets([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId, priority, neighborhoodId, withoutLocation, responsibleAreaId, status, labelIds, search, sort, reloadKey]);
+
+  const refetch = useCallback(() => setReloadKey((key) => key + 1), []);
+
+  return { tickets, loading, error, refetch };
+}

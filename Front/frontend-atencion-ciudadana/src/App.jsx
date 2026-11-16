@@ -1,18 +1,95 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import CitizenNavbar from "./components/layout/CitizenNavbar";
 import HomePage from "./pages/citizen/HomePage";
 import HelpPortalPage from "./pages/citizen/HelpPortalPage";
-import Footer from "./components/layout/footer";
+import Footer from "./components/layout/Footer";
+import AccessibilityBar from "./components/layout/AccessibilityBar";
+import SupportChat from "./components/support/SupportChat";
+import { useAccessibilityPrefs } from "./hooks/useAccessibilityPrefs";
+import SplashScreen from "./components/ui/SplashScreen";
+import AgentLayout from "./components/layout/AgentLayout";
+import TicketsInboxPage from "./pages/agent/TicketsInboxPage";
+import TicketDetailPage from "./pages/agent/TicketDetailPage";
+import TicketCitizenViewPage from "./pages/agent/TicketCitizenViewPage";
+import CategoriesPage from "./pages/admin/CategoriesPage";
+import SubcategoriesPage from "./pages/admin/SubcategoriesPage";
+import RequestTypesPage from "./pages/admin/RequestTypesPage";
+import LabelsPage from "./pages/admin/LabelsPage";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import TrackingPage from "./pages/citizen/TrackingPage";
+import MisReclamosPage from "./pages/citizen/MisReclamosPage";
+import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import DashboardPage from "./pages/agent/DashboardPage";
+import MetricsPage from "./pages/agent/MetricsPage";
+import AgentsPage from "./pages/agent/AgentsPage";
+
+function CitizenLayout() {
+  const { size, contrast, zoom, setSize, toggleContrast } = useAccessibilityPrefs();
+  return (
+    <>
+      <AccessibilityBar size={size} contrast={contrast} onSizeChange={setSize} onToggleContrast={toggleContrast} />
+      <SupportChat zoom={zoom} />
+      <div
+        data-contrast={contrast ? "high" : undefined}
+        style={zoom === 1 ? undefined : { zoom }}
+        className="flex flex-1 flex-col"
+      >
+        <CitizenNavbar />
+        <main className="flex flex-1 flex-col">
+          <Outlet />
+        </main>
+        <Footer areaName="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar" />
+      </div>
+    </>
+  );
+}
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const handleSplashFinish = useCallback(() => setShowSplash(false), []);
+
   return (
     <BrowserRouter>
-      <CitizenNavbar />
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/portal-ayuda" element={<HelpPortalPage />} />
+        <Route element={<CitizenLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/portal-ayuda" element={<HelpPortalPage />} />
+          <Route path="/seguimiento" element={<TrackingPage />} />
+
+          {/* Rutas del ciudadano que requieren sesión */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/mis-reclamos" element={<MisReclamosPage />} />
+            <Route path="/mis-reclamos/:publicId" element={<MisReclamoDetailPage />} />
+          </Route>
+        </Route>
+
+        <Route path="/ingresar" element={<LoginPage />} />
+        <Route path="/registro" element={<RegisterPage />} />
+
+        <Route element={<ProtectedRoute roles={["AGENT", "ADMIN", "AREA_RESPONSIBLE"]} />}>
+          <Route path="/agente" element={<AgentLayout />}>
+            <Route path="tickets" element={<TicketsInboxPage />} />
+            <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
+            <Route path="tickets/:ticketId/vista-ciudadano" element={<TicketCitizenViewPage />} />
+            <Route element={<ProtectedRoute roles={["AGENT", "ADMIN"]} />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="metricas" element={<MetricsPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute roles={["ADMIN"]} />}>
+              <Route path="agentes" element={<AgentsPage />} />
+              <Route path="catalogo" element={<CategoriesPage />} />
+              <Route path="catalogo/:categoryId" element={<SubcategoriesPage />} />
+              <Route path="catalogo/:categoryId/:subcategoryId" element={<RequestTypesPage />} />
+              <Route path="etiquetas" element={<LabelsPage />} />
+            </Route>
+          </Route>
+        </Route>
       </Routes>
-      <Footer areaName="Atención Ciudadana" areaEmail="atencion@ciudaduade.com.ar"/>
     </BrowserRouter>
   );
 }

@@ -1,0 +1,974 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Send, RotateCcw, ArrowLeft, Copy, CheckCircle, Paperclip, X, EyeOff, AlertCircle, Shield, Search, KeyRound, Lock } from "lucide-react";
+import { motion } from "framer-motion";
+import FormField from "../ui/FormField";
+import LocationMap from "../ui/LocationMap";
+import Spinner from "../ui/Spinner";
+import Alert from "../ui/Alert";
+import LoginPromptModal from "../ui/LoginPromptModal";
+import TicketReviewSummary from "./TicketReviewSummary";
+import AiTicketTextReview from "./AiTicketTextReview";
+import { useCreateTicket } from "../../hooks/useCreateTicket";
+import { useNeighborhoods } from "../../hooks/useNeighborhoods";
+import { useAuth } from "../../context/useAuth";
+import { fetchRequestTypeForm } from "../../services/apiClient";
+
+import { UNKNOWN_VALUE, creationLocation, specificAnswers } from "../../utils/ticketFormValidation";
+import { buildReviewItems } from "../../utils/ticketReview";
+import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
+
+const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONTACT_PHONE_RE = /^\+?[0-9()\-\s]{6,20}$/;
+
+function isValidContactChannel(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return CONTACT_EMAIL_RE.test(trimmed) || CONTACT_PHONE_RE.test(trimmed);
+}
+
+function validateForm(formData, specificFields, requiresLocation) {
+  const errors = {};
+
+  if (formData.contactChannel && !isValidContactChannel(formData.contactChannel)) {
+    errors.contactChannel = "Ingresá un email o teléfono válido";
+  }
+
+  if (formData.isAnonymous && formData.ticketPassword.trim() && formData.ticketPassword.trim().length < 8) {
+    errors.ticketPassword = "La contraseña debe tener al menos 8 caracteres";
+  }
+
+  if (!formData.summary.trim()) {
+    errors.summary = "El título / resumen es obligatorio";
+  }
+
+  if (!formData.description.trim()) {
+    errors.description = "La descripción es obligatoria";
+  } else if (formData.description.trim().length < 10) {
+    errors.description = "La descripción debe tener al menos 10 caracteres";
+  }
+
+  const location = creationLocation(formData, requiresLocation);
+  if (location.error) errors.location = location.error;
+  Object.assign(errors, specificAnswers(specificFields, formData.specificData).errors);
+  return errors;
+}
+
+const API_TYPE_MAP = {
+  TEXT: "text",
+  TEXTAREA: "textarea",
+  SELECT: "select",
+  NUMBER: "number",
+  DATE: "date",
+  BOOLEAN: "boolean",
+};
+
+function normalizeSpecificFields(fields) {
+  const usedKeys = new Set();
+
+  const ordered = [...fields].sort(
+    (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+  );
+
+  return ordered.map((field, index) => {
+    const baseKey = String(
+      field.key ?? field.name ?? field.id ?? field.code ?? field.label ?? `field_${index}`
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "") || `field_${index}`;
+
+    let key = baseKey;
+    let suffix = 2;
+    while (usedKeys.has(key)) {
+      key = `${baseKey}_${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(key);
+
+    const backendType = String(field.type ?? "TEXT").toUpperCase();
+
+    return {
+      ...field,
+      key,
+      code: field.code ?? key,
+      backendType,
+      type: API_TYPE_MAP[backendType] ?? "text",
+      label: field.label ?? field.code ?? key,
+      placeholder: field.placeholder ?? field.config?.placeholder ?? "",
+      options: field.options ?? field.config?.options ?? [],
+      required: Boolean(field.required),
+      allowUnknown: Boolean(field.allowUnknown),
+      displayOrder: field.displayOrder ?? index,
+    };
+  });
+}
+
+export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyChange, onStatusChange, catalog, onChangeRequestType }) {
+  const navigate = useNavigate();
+  const { submit, loading, error, errorCode, trackingCode, ticketPassword: generatedTicketPassword, reset, setError, setErrorCode } = useCreateTicket();
+  const { neighborhoods } = useNeighborhoods();
+  const { isAuthenticated } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const pendingFocus = useRef(null);
+
+  const [specificFields, setSpecificFields] = useState(
+    normalizeSpecificFields(requestType.specificFields || [])
+  );
+  const [loadingFields, setLoadingFields] = useState(false);
+  const [fieldsError, setFieldsError] = useState(false);
+  const [fieldsReloadKey, setFieldsReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFields() {
+      setLoadingFields(true);
+      setFieldsError(false);
+      try {
+        const res = await fetchRequestTypeForm(requestType.code || requestType.id);
+        let arr = null;
+        if (Array.isArray(res)) {
+          arr = res;
+        } else if (res && Array.isArray(res.fields)) {
+          arr = res.fields;
+        } else if (res && Array.isArray(res.data)) {
+          arr = res.data;
+        }
+        if (cancelled) return;
+        if (arr === null) {
+          setFieldsError(true);
+        } else {
+          setSpecificFields(normalizeSpecificFields(arr));
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err?.status === 404) {
+          setSpecificFields([]);
+        } else {
+          console.error("Error loading specific fields:", err);
+          setFieldsError(true);
+        }
+      } finally {
+        if (!cancelled) setLoadingFields(false);
+      }
+    }
+    if (!requestType.specificFields || requestType.specificFields.length === 0) {
+      void loadFields();
+    }
+    return () => { cancelled = true; };
+  }, [requestType, fieldsReloadKey]);
+
+  const [formData, setFormData] = useState({
+    summary: "",
+    description: "",
+    address: "",
+    streetNumber: "",
+    addressSource: null,
+    neighborhoodId: "",
+    latitude: null,
+    longitude: null,
+    isAnonymous: false,
+    contactChannel: "",
+    ticketPassword: "",
+    specificData: {},
+  });
+
+  const canBeAnonymous = Boolean(requestType?.allowsAnonymous);
+  const submittingAnonymously = canBeAnonymous && formData.isAnonymous;
+
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [attachments, setAttachments] = useState([]);
+
+  useEffect(() => {
+    if (!onDirtyChange) return;
+    const isDirty =
+      formData.summary.trim() !== "" ||
+      formData.description.trim() !== "" ||
+      formData.address.trim() !== "" ||
+      formData.neighborhoodId !== "" ||
+      Object.values(formData.specificData).some((v) => v !== undefined && v !== "") ||
+      attachments.length > 0;
+    onDirtyChange(isDirty);
+  }, [formData, attachments, onDirtyChange]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "address" || name === "streetNumber"
+        ? { addressSource: "input", latitude: null, longitude: null }
+        : {}),
+    }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined, ...(["address", "streetNumber", "neighborhoodId"].includes(name) ? { location: undefined } : {}) }));
+  };
+
+  const handleSpecificChange = (e) => {
+    const { name, value } = e.target;
+    const fieldKey = name.replace("specific_", "");
+    setFormData((prev) => ({
+      ...prev,
+      specificData: { ...prev.specificData, [fieldKey]: value },
+    }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleUnknownToggle = (fieldKey, checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      specificData: {
+        ...prev.specificData,
+        [fieldKey]: checked ? UNKNOWN_VALUE : "",
+      },
+    }));
+    setFieldErrors((prev) => ({ ...prev, [`specific_${fieldKey}`]: undefined }));
+  };
+
+  const handleReloadFields = () => setFieldsReloadKey((k) => k + 1);
+
+  // Al cambiar de tipo por una sugerencia se conserva lo escrito, pero las respuestas específicas
+  // pertenecían a los campos del tipo anterior y se descartan.
+  const handleSwitchRequestType = (requestTypeId) => {
+    setFormData((prev) => ({ ...prev, specificData: {} }));
+    setFieldErrors({});
+    onChangeRequestType?.(requestTypeId);
+  };
+
+  const handleLocationSelect = useCallback(({ lat, lng, address: addr, street, streetNumber, source }) => {
+    setFormData((prev) => ({
+      ...prev, latitude: lat, longitude: lng,
+      addressSource: source === "map" ? "map" : "geocode",
+      ...(source === "map" ? { address: street || addr || prev.address, streetNumber: streetNumber ?? "" } : {}),
+    }));
+    setFieldErrors((prev) => ({ ...prev, location: undefined }));
+  }, []);
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const error = attachmentError([...attachments, ...files]);
+    setFieldErrors((prev) => ({ ...prev, attachments: error }));
+    if (error) return;
+    const newAttachments = files.map((file) => ({
+      name: file.name,
+      mimeType: file.type,
+      size: file.size,
+      file,
+    }));
+    setAttachments((prev) => [...prev, ...newAttachments]);
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setFieldErrors((prev) => ({ ...prev, attachments: undefined }));
+  };
+
+  const submitTicket = useCallback(async () => {
+    const mappedFormData = specificAnswers(specificFields, formData.specificData).data;
+    const { location } = creationLocation(formData, requestType.requiresLocation);
+
+    const payload = {
+      requestTypeId: Number(requestType.id || requestType.code || 0),
+      summary: formData.summary,
+      description: formData.description,
+      formData: mappedFormData,
+      location,
+      ...(submittingAnonymously
+        ? {
+            anonymousContact: formData.contactChannel.trim()
+              ? {
+                  channel: CONTACT_EMAIL_RE.test(formData.contactChannel.trim()) ? "EMAIL" : "PHONE",
+                  value: formData.contactChannel.trim(),
+                }
+              : null,
+            anonymousAccessPassword: formData.ticketPassword.trim() || null,
+          }
+        : {}),
+    };
+
+    await submit(payload, attachments, { skipAuth: submittingAnonymously });
+  }, [formData, specificFields, requestType, attachments, submit, submittingAnonymously]);
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+
+    if (loading || loadingFields || fieldsError) return;
+
+    const errors = validateForm(formData, specificFields, requestType.requiresLocation);
+    const filesError = attachmentError(attachments);
+    if (filesError) errors.attachments = filesError;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    // Primero se muestra el resumen; recién al confirmarlo se envía.
+    if (!reviewing) {
+      setReviewing(true);
+      return;
+    }
+
+    if (!isAuthenticated && !submittingAnonymously) {
+      setLoginPromptOpen(true);
+      return;
+    }
+
+    await submitTicket();
+  };
+
+  const handleEditFromReview = (selector) => {
+    pendingFocus.current = selector;
+    setReviewing(false);
+  };
+
+  // Al volver desde el resumen, lleva al campo que se quiere corregir.
+  useEffect(() => {
+    if (reviewing || !pendingFocus.current) return;
+    const target = document.querySelector(pendingFocus.current);
+    pendingFocus.current = null;
+    target?.scrollIntoView?.({ block: "center" });
+    target?.focus?.({ preventScroll: true });
+  }, [reviewing]);
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(trackingCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const ownTicketPassword = formData.ticketPassword.trim();
+  const displayedTicketPassword = ownTicketPassword || generatedTicketPassword;
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(displayedTicketPassword);
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
+    } catch {
+      setCopiedPassword(false);
+    }
+  };
+
+  const handleRetry = () => {
+    void handleSubmit({ preventDefault: () => { } });
+  };
+
+  useEffect(() => {
+    if (trackingCode && onDirtyChange) {
+      onDirtyChange(false);
+    }
+  }, [trackingCode, onDirtyChange]);
+
+  useEffect(() => {
+    if (onStatusChange) {
+      if (trackingCode) onStatusChange('success');
+      else if (error) onStatusChange('error');
+      else onStatusChange('idle');
+    }
+  }, [trackingCode, error, onStatusChange]);
+
+  const isSubmitDisabled = loading || loadingFields || fieldsError ||
+    Object.keys(validateForm(formData, specificFields, requestType.requiresLocation)).length > 0;
+
+  if (errorCode === 'EVIDENCE_REQUIRED') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+        className="flex flex-col items-center text-center py-10"
+      >
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
+          <AlertCircle className="h-10 w-10 text-[#D63031]" strokeWidth={2} />
+        </div>
+
+        <h3 className="text-2xl font-extrabold text-[#0F2C59] tracking-tight">
+          Información adicional requerida
+        </h3>
+
+        <p className="mt-3 text-[15px] text-neutral-600 max-w-md leading-relaxed">
+          Debido a la naturaleza crítica o de alto riesgo del reporte, nuestro
+          sistema requiere documentación respaldatoria adicional para
+          procesar la solicitud correctamente.
+        </p>
+
+        <div className="mt-8 flex flex-col items-start text-left gap-2 rounded-xl border border-red-200 bg-red-50 px-6 py-5 w-full max-w-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-[#D63031]" fill="white" />
+            <span className="font-semibold text-[#D63031]">Riesgo Detectado: Alto/Crítico</span>
+          </div>
+          <p className="text-sm text-[#D63031] mt-1">
+            Se requiere adjuntar evidencia fotográfica clara de la zona afectada y, de ser
+            posible, una descripción detallada de los daños estructurales inmediatos
+            para agilizar la intervención.
+          </p>
+        </div>
+
+        <div className="mt-10 flex gap-3 w-full max-w-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setErrorCode(null);
+              setError(null);
+              setReviewing(false);
+            }}
+            className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-[#ff6b6b] px-6 py-3.5 text-[14px] font-semibold text-white
+                       transition-all duration-300 hover:bg-[#fa5252] shadow-sm active:scale-95"
+          >
+            <Paperclip className="h-4 w-4" />
+            Completar información
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("¿Salir sin guardar? Los datos de esta solicitud se descartarán.")) navigate("/");
+            }}
+            className="flex-1 flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-[#0F2C59]
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            Salir sin guardar
+          </button>
+        </div>
+
+        <button className="mt-6 flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-700 font-medium transition-colors">
+            <Shield className="h-4 w-4" />
+            Ver políticas de seguridad y riesgo
+        </button>
+      </motion.div>
+    );
+  }
+
+  if (trackingCode) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+        className="flex flex-col items-center text-center py-10"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1, rotate: 360 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+          className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 mb-6 shadow-lg shadow-emerald-500/20"
+        >
+          <div className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-20"></div>
+          <CheckCircle className="h-10 w-10 text-emerald-600" strokeWidth={2} />
+        </motion.div>
+
+        <motion.h3
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-2xl font-extrabold text-neutral-900 tracking-tight"
+        >
+          ¡Reclamo Registrado!
+        </motion.h3>
+
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-3 text-[15px] text-neutral-600 max-w-md leading-relaxed"
+        >
+          Tu solicitud ha sido ingresada exitosamente. Utilizá el siguiente código para consultar su estado en cualquier momento.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 px-8 py-5 relative overflow-hidden group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-100/0 via-emerald-100/40 to-emerald-100/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+          <span className="text-[13px] text-emerald-600 font-semibold uppercase tracking-widest">
+            Código de Seguimiento
+          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl font-black text-emerald-700 font-mono tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm">
+              {trackingCode}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="p-2.5 rounded-lg bg-white shadow-sm hover:bg-emerald-100 hover:text-emerald-700 transition-all active:scale-95"
+              aria-label="Copiar código"
+            >
+              {copied ? (
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <Copy className="h-5 w-5 text-emerald-600" />
+              )}
+            </button>
+          </div>
+        </motion.div>
+
+        {displayedTicketPassword && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-4 flex w-full max-w-md flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[#D63031]/30 bg-red-50/40 px-8 py-5"
+          >
+            <span className="flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-widest text-[#D63031]">
+              <KeyRound className="h-4 w-4" />
+              Contraseña del ticket
+            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black tracking-widest text-[#D63031] font-mono bg-white px-4 py-2 rounded-lg shadow-sm">
+                {displayedTicketPassword}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyPassword}
+                className="p-2.5 rounded-lg bg-white shadow-sm hover:bg-red-100 hover:text-[#D63031] transition-all active:scale-95"
+                aria-label="Copiar contraseña"
+              >
+                {copiedPassword ? (
+                  <CheckCircle className="h-5 w-5 text-[#D63031]" />
+                ) : (
+                  <Copy className="h-5 w-5 text-[#D63031]" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1 max-w-xs text-[11.5px] leading-relaxed text-neutral-500">
+              {ownTicketPassword
+                ? "Es la que elegiste al crear el ticket. Guardala junto con el código: la vas a necesitar para gestionarlo."
+                : "Generada automáticamente porque no definiste una propia. Guardala junto con el código: no la vamos a poder volver a mostrar."}
+            </p>
+          </motion.div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-10 flex flex-col gap-3 w-full max-w-xs"
+        >
+          <button
+            type="button"
+            onClick={() => navigate("/seguimiento", { state: { codigo: trackingCode } })}
+            className="group flex justify-center items-center gap-2 rounded-xl bg-[#0F2C59] px-6 py-3.5 text-[14px] font-semibold text-white
+                       transition-all duration-300 hover:bg-[#1a3f7a] shadow-sm hover:shadow-md active:scale-95"
+          >
+            <Search className="h-4 w-4" />
+            Ver estado del reclamo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              onNewTicket();
+            }}
+            className="group flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-neutral-600
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            <RotateCcw className="h-4 w-4 transition-transform group-hover:-rotate-180 duration-500" />
+            Nuevo reclamo
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="group flex justify-center items-center gap-2 rounded-xl bg-white border border-neutral-200 px-6 py-3.5 text-[14px] font-semibold text-neutral-600
+                       transition-all duration-300 hover:bg-neutral-50 active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1 duration-300" />
+            Volver al inicio
+          </button>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  const errorAlert = error ? (
+        <Alert
+          variant="error"
+          title="Error al enviar"
+          onDismiss={reset}
+          sticky
+          autoDismissMs={10000}
+        >
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-red-700 hover:text-red-900 underline underline-offset-2"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reintentar
+          </button>
+        </Alert>
+  ) : null;
+
+  const reviewItems = reviewing
+    ? buildReviewItems({ requestType, formData, specificFields, neighborhoods, attachments, anonymous: submittingAnonymously })
+    : [];
+
+  return (
+    <>
+    <LoginPromptModal
+      isOpen={loginPromptOpen}
+      onClose={() => setLoginPromptOpen(false)}
+      onAuthenticated={() => {
+        setLoginPromptOpen(false);
+        submitTicket();
+      }}
+    />
+    {reviewing ? (
+      <TicketReviewSummary
+        items={reviewItems}
+        loading={loading}
+        notice={errorAlert}
+        onEdit={handleEditFromReview}
+        onBack={() => setReviewing(false)}
+        onConfirm={handleSubmit}
+      />
+    ) : (
+    <form noValidate onSubmit={handleSubmit} className="space-y-6">
+      {errorAlert}
+
+      <div className="rounded-lg border border-[#0F2C59]/10 bg-[#0F2C59]/[0.02] p-4">
+        <p className="text-[13px] font-medium text-[#0F2C59]">{requestType.name}</p>
+        <p className="text-[12px] text-neutral-500 mt-0.5">{requestType.description}</p>
+      </div>
+
+      {!isAuthenticated && !canBeAnonymous && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 p-3.5">
+          <EyeOff className="h-4 w-4 shrink-0 text-neutral-500" strokeWidth={1.5} />
+          <p className="text-[12px] text-neutral-500">
+            Este tipo de solicitud no admite presentación anónima — necesitás iniciar sesión para enviarla.
+          </p>
+        </div>
+      )}
+
+      {canBeAnonymous && (
+        <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <EyeOff className="h-4 w-4 text-neutral-500" strokeWidth={1.5} />
+              <div>
+                <p className="text-[13px] font-medium text-neutral-700">Presentación anónima</p>
+                <p className="text-[11px] text-neutral-500">
+                  {isAuthenticated
+                    ? "Este ticket no quedará ligado a tu cuenta. Vas a conservar un código y una contraseña propios para gestionarlo."
+                    : "Enviá sin crear una cuenta. Vas a conservar un código y una contraseña propios del ticket."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="ticket-anonymous"
+              onClick={() => setFormData((prev) => ({ ...prev, isAnonymous: !prev.isAnonymous }))}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${formData.isAnonymous ? "bg-[#D63031]" : "bg-neutral-300"
+                }`}
+              role="switch"
+              aria-checked={formData.isAnonymous}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${formData.isAnonymous ? "translate-x-5" : "translate-x-0"
+                  }`}
+              />
+            </button>
+          </div>
+
+          {formData.isAnonymous && (
+            <div className="space-y-3 border-t border-neutral-100 pt-3.5">
+              <FormField
+                label="Canal de contacto"
+                name="contactChannel"
+                type="text"
+                placeholder="Email o teléfono (opcional)"
+                value={formData.contactChannel}
+                onChange={handleChange}
+                error={fieldErrors.contactChannel}
+                disabled={loading}
+              />
+              <div>
+                <label htmlFor="ticketPassword" className="text-[13px] font-medium text-neutral-700">
+                  Contraseña del ticket
+                </label>
+                <div className="relative mt-1.5">
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" strokeWidth={1.5} />
+                  <input
+                    id="ticketPassword"
+                    name="ticketPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Opcional: la definís vos"
+                    value={formData.ticketPassword}
+                    onChange={handleChange}
+                    disabled={loading}
+                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2.5 pl-10 pr-3.5 text-[14px] text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:border-[#D63031]/40 focus:bg-white focus:ring-2 focus:ring-[#D63031]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                {fieldErrors.ticketPassword && (
+                  <p className="mt-1.5 text-[12px] text-red-500">{fieldErrors.ticketPassword}</p>
+                )}
+                <p className="mt-1.5 text-[11px] text-neutral-500">
+                  Si la definís, tiene que tener al menos 8 caracteres. La vas a necesitar junto con el código de seguimiento para gestionar el ticket. Si la dejás vacía, te generamos una automáticamente y te la mostramos al finalizar.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="h-px w-4 bg-[#D63031]" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+            Descripción
+          </span>
+        </div>
+        <FormField
+          label="Título / Resumen"
+          name="summary"
+          type="smalltext"
+          placeholder="Pon el título o un pequeño resumen de tu reclamo o solicitud..."
+          value={formData.summary}
+          onChange={handleChange}
+          error={fieldErrors.summary}
+          required
+          disabled={loading}
+        />
+        <FormField
+          label="Descripción detallada"
+          name="description"
+          type="textarea"
+          placeholder="Describí con el mayor detalle posible tu reclamo o solicitud..."
+          value={formData.description}
+          onChange={handleChange}
+          error={fieldErrors.description}
+          required
+          disabled={loading}
+        />
+        {catalog && onChangeRequestType && (
+          <AiTicketTextReview
+            summary={formData.summary}
+            description={formData.description}
+            requestType={requestType}
+            catalog={catalog}
+            onChangeRequestType={handleSwitchRequestType}
+            disabled={loading}
+          />
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="h-px w-4 bg-[#D63031]" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+            Ubicación
+          </span>
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-[2]">
+            <FormField
+              label="Calle"
+              name="address"
+              type="text"
+              placeholder="Ej: Av. Santa Fe"
+              value={formData.address}
+              onChange={handleChange}
+              error={fieldErrors.address}
+                  disabled={loading}
+            />
+          </div>
+          <div className="flex-1">
+            <FormField
+              label="Altura"
+              name="streetNumber"
+              type="text"
+              placeholder="Ej: 1234"
+              value={formData.streetNumber}
+              onChange={handleChange}
+              error={fieldErrors.streetNumber}
+                  disabled={loading}
+            />
+          </div>
+        </div>
+        <FormField
+          label="Barrio"
+          name="neighborhoodId"
+          type="searchable-select"
+          options={neighborhoods.filter((n) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(n.id)).map((n) => ({ value: n.id, label: n.name }))}
+          value={formData.neighborhoodId}
+          onChange={handleChange}
+          error={fieldErrors.neighborhoodId}
+          disabled={loading}
+        />
+        <p className="text-xs text-neutral-500">{requestType.requiresLocation ? "Indicá una dirección, un barrio o un punto en el mapa." : "Ubicación opcional."} Podés continuar con una dirección manual si el mapa no está disponible.</p>
+        {fieldErrors.location && <p role="alert" className="text-xs text-red-500">{fieldErrors.location}</p>}
+        <LocationMap
+          address={formData.address}
+          streetNumber={formData.streetNumber}
+          addressSource={formData.addressSource}
+          latitude={formData.latitude}
+          longitude={formData.longitude}
+          onLocationSelect={handleLocationSelect}
+          disabled={loading}
+        />
+      </div>
+
+      {loadingFields ? (
+        <div className="py-6 flex justify-center">
+          <Spinner size="sm" />
+        </div>
+      ) : fieldsError ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-px w-4 bg-[#D63031]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+              Datos específicos
+            </span>
+          </div>
+          <Alert variant="error" title="No se pudieron cargar los campos del formulario">
+            <p>
+              Necesitamos estos datos para procesar tu solicitud. Revisá tu conexión
+              e intentá nuevamente antes de enviar.
+            </p>
+            <button
+              type="button"
+              onClick={handleReloadFields}
+              className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-red-700 hover:text-red-900 underline underline-offset-2"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reintentar
+            </button>
+          </Alert>
+        </div>
+      ) : specificFields.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-px w-4 bg-[#D63031]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+              Datos específicos
+            </span>
+          </div>
+          {specificFields.map((field) => {
+            const isUnknown = formData.specificData[field.key] === UNKNOWN_VALUE;
+            return (
+              <div key={field.key} className="space-y-1.5">
+                <FormField
+                  label={field.label}
+                  name={`specific_${field.key}`}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  options={field.options || []}
+                  value={isUnknown ? "" : (formData.specificData[field.key] ?? "")}
+                  onChange={handleSpecificChange}
+                  error={fieldErrors[`specific_${field.key}`]}
+                  required={field.required && !field.allowUnknown}
+                  disabled={loading || isUnknown}
+                />
+                {field.allowUnknown && (
+                  <label className="flex items-center gap-2 text-[12px] text-neutral-500 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isUnknown}
+                      disabled={loading}
+                      onChange={(e) => handleUnknownToggle(field.key, e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-neutral-300 text-[#D63031] focus:ring-[#D63031]/20"
+                    />
+                    No sé / Prefiero no responder
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div id="ticket-attachments" className="space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="h-px w-4 bg-[#D63031]" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#D63031]">
+            Archivos adjuntos
+          </span>
+          <span className="text-[10px] text-neutral-500">(opcional)</span>
+        </div>
+
+        <label
+          className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-neutral-200 bg-neutral-50
+                      px-4 py-6 text-[13px] text-neutral-500 transition-colors hover:border-[#D63031]/30 hover:text-[#D63031]/70
+                      ${loading ? "pointer-events-none opacity-50" : ""}`}
+        >
+          <Paperclip className="h-4 w-4" strokeWidth={1.5} />
+          <span>Agregar fotos o documentos</span>
+          <input
+            type="file"
+            multiple
+            accept={ATTACHMENT_ACCEPT}
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={loading}
+          />
+        </label>
+
+        <p className="text-xs text-neutral-500">JPEG, PNG, WebP, HEIC, HEIF o PDF. Hasta cinco archivos, 10 MiB por archivo y 50 MiB en total.</p>
+        {fieldErrors.attachments && <p role="alert" className="text-xs text-red-500">{fieldErrors.attachments}</p>}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <div
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-600"
+              >
+                <Paperclip className="h-3 w-3 text-neutral-500" strokeWidth={1.5} />
+                <span className="max-w-[150px] truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index)}
+                  className="p-0.5 rounded hover:bg-neutral-100 transition-colors"
+                  aria-label={`Eliminar ${file.name}`}
+                >
+                  <X className="h-3 w-3 text-neutral-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 pt-4 border-t border-neutral-100">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-medium text-neutral-600
+                     transition-all hover:bg-neutral-50 disabled:opacity-50"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Volver
+        </button>
+
+        <button
+          type="submit"
+          disabled={isSubmitDisabled}
+          className="inline-flex items-center gap-2 rounded-lg bg-[#D63031] px-6 py-2.5 text-[13px] font-semibold text-white
+                     transition-all duration-200 hover:bg-[#c0282a] hover:shadow-md hover:shadow-[#D63031]/15
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D63031] focus-visible:ring-offset-2
+                     disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <Spinner size="sm" className="border-white/30 border-t-white" />
+              Enviando...
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              Revisar y enviar
+            </>
+          )}
+        </button>
+      </div>
+    </form>
+    )}
+    </>
+  );
+}

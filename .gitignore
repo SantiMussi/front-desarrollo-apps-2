@@ -1,0 +1,19 @@
+# Herramientas locales / editores
+.claude/
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Claves privadas y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+
+# Local Sonar scanner state (may contain service metadata).
+.scannerwork/
+__pycache__/

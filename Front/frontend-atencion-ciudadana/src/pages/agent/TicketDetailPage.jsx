@@ -1,0 +1,926 @@
+import { useEffect, useMemo, useState } from "react";
+import StaffTicketFacts from "../../components/ticket/StaffTicketFacts";
+import { hasTicketLocation } from "../../utils/ticketLocation";
+import { Link, useParams } from "react-router-dom";
+import { AlertCircle, ArrowLeft, CheckCircle2, CircleHelp, Clock3, Eye, FileQuestion, Lightbulb, Loader2, Lock, MapPin, Paperclip, Pencil, Plus, Send, Smile, Trash2, TriangleAlert, Users } from "lucide-react";
+import DetailCard from "../../components/ui/DetailCard";
+import Select from "../../components/ui/Select";
+import StatusTransitionMenu from "../../components/ui/StatusTransitionMenu";
+import TicketTransitionDialog from "../../components/ticket/TicketTransitionForm";
+import ResolveTicketDialog from "../../components/ui/ResolveTicketDialog";
+import RequestInformationDialog from "../../components/ui/RequestInformationDialog";
+import TicketReasonDialog from "../../components/ticket/TicketReasonDialog";
+import DuplicateLinkDialog from "../../components/ui/DuplicateLinkDialog";
+import AiTicketInsightsCard from "../../components/ticket/AiTicketInsightsCard";
+import DuplicateLinkIndicator from "../../components/ui/DuplicateLinkIndicator";
+import AttachmentGallery from "../../components/ui/AttachmentGallery";
+import UserAvatar from "../../components/ui/UserAvatar";
+import TicketLabelsCard from "../../components/ticket/TicketLabelsCard";
+import { RESPONSIBLE_AREAS } from "../../constants/responsibleAreas";
+import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
+import { useResolveTicket } from "../../hooks/useResolveTicket";
+import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
+import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
+import { useTicketMessages } from "../../hooks/useTicketMessages";
+import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
+import { useAuth } from "../../context/useAuth";
+import { reviewTicket, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTicketDetail } from "../../services/apiClient";
+import { getSlaIndicator } from "../../utils/ticketIndicators";
+import { getDuplicateLinkInfo } from "../../utils/duplicateLink";
+import { TICKET_STATUS_LABELS } from "../../constants/ticketStatuses";
+import ReclassificationPanel from "../../components/ticket/ReclassificationPanel";
+import CancellationReviewPanel from "../../components/ticket/CancellationReviewPanel";
+import { useReclassificationProposals } from "../../hooks/useReclassificationProposals";
+import { isOpenProposal } from "../../utils/reclassification";
+import { ACTIVITY_TYPE_LABELS } from "../../constants/ticketActivities";
+
+function reviewErrorMessage(err) {
+  if (err?.status === 409) return err?.message || "El ticket ya no está en un estado que permita iniciar el análisis.";
+  if (err?.status === 404) return "No encontramos el ticket.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return err?.message || "No pudimos iniciar el análisis. Intentá de nuevo.";
+}
+
+function reasonConfirmErrorMessage(err, simulated = false) {
+  if (simulated && err?.status === 403) return "No tenés permiso para usar la simulación DEV en este servidor. No se aplicó ningún cambio.";
+  if (simulated && err?.status === 404) return "La simulación DEV no está disponible en este servidor o el ticket no existe. No se aplicó ningún cambio.";
+  if (err?.status === 409) return err?.message || "El ticket ya no permite esta acción.";
+  if (err?.status === 400) return err?.message || "Faltan datos obligatorios.";
+  if (err?.status === 403) return "No tenés permiso para realizar esta acción.";
+  if (err?.status === 404) return "No encontramos el ticket.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return "No pudimos registrar la acción. Intentá de nuevo más tarde.";
+}
+
+function duplicateLinkErrorMessage(err) {
+  if (err?.status === 409) return err?.message || "El ticket ya no permite vincularse como duplicado.";
+  if (err?.status === 400) return err?.message || "No pudimos vincular estos tickets; revisá la selección.";
+  if (err?.status === 404) return "No encontramos alguno de los tickets a vincular.";
+  if (err?.status === 401) return "Tu sesión no es válida. Volvé a iniciar sesión.";
+  return err?.message || "No pudimos vincular el ticket. Intentá de nuevo.";
+}
+
+const MESSAGE_AUTHOR_LABELS = {
+  AGENT: "Agente",
+  ADMIN: "Administrador",
+  AREA_RESPONSIBLE: "Responsable de área",
+};
+
+function wasMessageEdited(message) {
+  if (!message.updatedAt) return false;
+  return new Date(message.updatedAt).getTime() - new Date(message.createdAt).getTime() > 1000;
+}
+
+function messageAuthor(message, data, currentUser) {
+  if ((currentUser?.actorId ?? currentUser?.citizenId) && message.authorId === (currentUser.actorId ?? currentUser.citizenId)) {
+    return { name: currentUser.displayName || "Vos", initials: "YO" };
+  }
+  if (message.authorType === "CITIZEN") return data.citizen;
+  return { name: MESSAGE_AUTHOR_LABELS[message.authorType] || "Equipo municipal", initials: "—" };
+}
+
+const PRIORITY = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", CRITICAL: "Crítica" };
+const TICKET_TYPE_CONFIG = {
+  COMPLAINT: { label: "Complaint", icon: TriangleAlert, className: "text-red-700 bg-red-50" },
+  REQUEST: { label: "Request", icon: Plus, className: "text-blue-600 bg-blue-50" },
+  INQUIRY: { label: "Question", icon: CircleHelp, className: "text-amber-600 bg-amber-50" },
+  SUGGESTION: { label: "Suggestion", icon: Lightbulb, className: "text-emerald-600 bg-emerald-50" }
+};
+const formatDate = (value) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+
+const REASON_DIALOG_CONFIG = {
+  return: {
+    eyebrow: "Devolución",
+    title: "Devolver a revisión",
+    description: "El ticket vuelve a En revisión para que el agente lo reclasifique o derive de nuevo.",
+    confirmLabel: "Confirmar devolución",
+    reasonOptions: undefined,
+    danger: false,
+  },
+  reject: {
+    eyebrow: "Cancelación",
+    title: "Rechazar / cancelar solicitud",
+    description: "El ticket pasa a Cancelado.",
+    confirmLabel: "Confirmar cancelación",
+    reasonOptions: CANCELLATION_REASONS,
+    danger: true,
+  },
+  cancel: {
+    eyebrow: "Cancelación",
+    title: "Cancelar ticket",
+    description: "El ticket pasa a Cancelado antes de ser derivado a un área.",
+    confirmLabel: "Confirmar cancelación",
+    reasonOptions: CANCELLATION_REASONS,
+    danger: true,
+  },
+};
+
+const COMPLETED_SLA_STATUSES = new Set(["RESOLVED", "CLOSED", "CANCELLED"]);
+
+function formatSlaCountdown(dueAt, now) {
+  const dueTime = dueAt ? new Date(dueAt).getTime() : NaN;
+  if (!Number.isFinite(dueTime)) return null;
+
+  const difference = dueTime - now;
+  const totalHours = Math.floor(Math.abs(difference) / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  return {
+    overdue: difference < 0,
+    label: `${days} ${days === 1 ? "día" : "días"} y ${hours} ${hours === 1 ? "hora" : "horas"}`,
+  };
+}
+
+function activityMessage(activity) {
+  const parts = [ACTIVITY_TYPE_LABELS[activity.actionType] || activity.actionType];
+  if (activity.message) parts.push(`"${activity.message}"`);
+  if (activity.reasonCode) parts.push(`(motivo: ${activity.reasonCode})`);
+  return parts.join(" — ");
+}
+
+function Field({ label, children }) {
+  return <div className="grid grid-cols-[118px_1fr] gap-3 py-2.5 text-xs"><dt className="text-slate-500">{label}</dt><dd className="min-w-0 font-medium text-slate-700">{children}</dd></div>;
+}
+
+export default function TicketDetailPage() {
+  const { ticketId } = useParams();
+  const { user } = useAuth();
+  return <TicketDetailContent key={`${ticketId}:${user?.actorId ?? user?.citizenId}:${user?.role}:${user?.areaId}`} />;
+}
+
+function TicketDetailContent() {
+  const { ticketId } = useParams();
+  const { user } = useAuth();
+  const { ticket, loading, error, reload } = useStaffTicketDetail(ticketId);
+  const chatMessages = useTicketMessages(ticketId);
+  const [status, setStatus] = useState(null);
+  const [tab, setTab] = useState("activity");
+  const [visibility, setVisibility] = useState("PUBLIC");
+  const [comment, setComment] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
+  const [commentError, setCommentError] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+  const [confirmDeleteMessageId, setConfirmDeleteMessageId] = useState(null);
+  const [localMessages, setLocalMessages] = useState([]);
+  const [fields, setFields] = useState(null);
+  const [derivationOpen, setDerivationOpen] = useState(false);
+  const [derivationLoading, setDerivationLoading] = useState(false);
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [infoRequestOpen, setInfoRequestOpen] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [startWorkLoading, setStartWorkLoading] = useState(false);
+  const [reclassificationBusy, setReclassificationBusy] = useState(false);
+  const [cancellationBusy, setCancellationBusy] = useState(false);
+  const canManageClassification = ["AGENT", "ADMIN"].includes(user?.role);
+  const reclassification = useReclassificationProposals(ticket, canManageClassification);
+  const [transitionError, setTransitionError] = useState(null);
+  const [reasonDialog, setReasonDialog] = useState(null);
+  const [reasonLoading, setReasonLoading] = useState(false);
+  const [reasonError, setReasonError] = useState(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateError, setDuplicateError] = useState(null);
+  const { resolve, resolveSimulated, loading: resolving, error: resolveError, reset: resetResolve } = useResolveTicket();
+  const { requestTypes } = useRequestTypesCatalog();
+  const { requestInformation, loading: infoRequestLoading, error: infoRequestError, reset: resetInfoRequest } = useRequestTicketInformation();
+  const [now, setNow] = useState(() => Date.now());
+
+  const [ticketForFields, setTicketForFields] = useState(null);
+  if (ticket && ticket !== ticketForFields) {
+    setTicketForFields(ticket);
+    setStatus(ticket.currentStatus);
+    setFields({
+      responsibleAreaId: ticket.responsibleAreaId,
+      assignedAgentId: ticket.assignedAgentId ?? "",
+      priority: ticket.currentPriority,
+      affectedCount: ticket.estimatedAffectedCount ?? 0,
+    });
+  }
+
+  const data = useMemo(() => {
+    if (!ticket) return null;
+    return {
+      category: ticket.categoryName ? { name: ticket.categoryName } : null,
+      subcategory: ticket.subcategoryName ? { name: ticket.subcategoryName } : null,
+      citizen: ticket.anonymous ? { name: "Anónimo", initials: "AN" } : { name: "Ciudadano registrado", initials: "—" },
+      assignee: ticket.assignedAgentId ? { name: `Agente #${ticket.assignedAgentId}`, initials: "AG" } : { name: "Sin asignar", initials: "—" },
+      neighborhood: ticket.neighborhoodName || null,
+      activities: Array.isArray(ticket.ticketActivities)
+        ? ticket.ticketActivities.map((activity) => ({
+            id: `activity-${activity.sequence}`,
+            message: activityMessage(activity),
+            occurredAt: activity.occurredAt,
+          }))
+        : [],
+    };
+  }, [ticket]);
+
+  const [mainTicketPublicId, setMainTicketPublicId] = useState(null);
+  const [mainTicketIdForPublicId, setMainTicketIdForPublicId] = useState(undefined);
+  if (ticket && ticket.mainTicketId !== mainTicketIdForPublicId) {
+    setMainTicketIdForPublicId(ticket.mainTicketId ?? null);
+    setMainTicketPublicId(null);
+  }
+
+  useEffect(() => {
+    const mainTicketId = ticket?.mainTicketId;
+    if (!mainTicketId) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const main = await fetchStaffTicketDetail(mainTicketId);
+        if (!cancelled) setMainTicketPublicId(main?.publicId ?? null);
+      } catch {
+        if (!cancelled) setMainTicketPublicId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket?.mainTicketId]);
+
+  // No hay ningún campo citizenId expuesto en StaffTicketDetailResponse, así
+  // que no se puede comparar directo contra el usuario logueado. En vez de
+  // listar /me/tickets (falla con paginación: un dueño con más de "size"
+  // tickets podía quedar afuera de la página y el ticket se trataba como
+  // ajeno), se usa GET /tickets/{id} — el endpoint ciudadano puntual, que
+  // sólo devuelve 200 cuando identity.citizenId === ticket.citizenId
+  // (TicketService.requireOwner) y 403 en cualquier otro caso. Es una
+  // consulta por ticket, no una búsqueda en una lista paginada.
+  //
+  // Fail-closed a propósito (QA DDA2-56): mientras no tengamos una
+  // confirmación explícita de que el ticket es AJENO ("not-own"), la vista
+  // se comporta como si fuera propio. Un error de red, un timeout o
+  // cualquier estado intermedio deja la pantalla en solo lectura en vez de
+  // habilitar acciones mutables por default.
+  const [ownershipStatus, setOwnershipStatus] = useState("checking"); // "checking" | "own" | "not-own" | "error"
+  const [ownershipRetryToken, setOwnershipRetryToken] = useState(0);
+  const [ticketIdForOwnCheck, setTicketIdForOwnCheck] = useState(undefined);
+  if (ticket && ticket.id !== ticketIdForOwnCheck) {
+    setTicketIdForOwnCheck(ticket.id);
+    setOwnershipStatus("checking");
+  }
+
+  useEffect(() => {
+    const currentTicketId = ticket?.id;
+    if (!currentTicketId) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await fetchMyTicketDetail(currentTicketId);
+        if (!cancelled) setOwnershipStatus("own");
+      } catch (err) {
+        if (!cancelled) setOwnershipStatus(err?.status === 403 ? "not-own" : "error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket?.id, ownershipRetryToken]);
+
+  // isOwnTicket controla todo el bloqueo de la UI: fail-closed, así que
+  // "checking"/"error"/"own" se tratan igual (solo lectura) y únicamente
+  // "not-own" habilita las acciones mutables.
+  const isOwnTicket = ownershipStatus !== "not-own";
+  const staffReadOnly = isOwnTicket || !canManageClassification;
+  const retryOwnershipCheck = () => {
+    setOwnershipStatus("checking");
+    setOwnershipRetryToken((n) => n + 1);
+  };
+
+  const slaIndicator = getSlaIndicator(ticket);
+  const duplicateLinkInfo = { ...getDuplicateLinkInfo(ticket), mainTicketPublicId };
+  const escalated = ticket?.escalated === true;
+  const slaDueAt = ticket?.resolutionDueAt;
+  const slaCountdown = formatSlaCountdown(slaDueAt, now);
+  const currentTicketStatus = status ?? ticket?.currentStatus;
+  const slaCompleted = COMPLETED_SLA_STATUSES.has(currentTicketStatus);
+  const slaCompletionWasCancellation = currentTicketStatus === "CANCELLED";
+  const slaCompletionAt = ticket?.statusChangedAt ?? ticket?.updatedAt;
+  const firstResponseDueAt = ticket?.firstResponseDueAt;
+  const firstResponseCountdown = formatSlaCountdown(firstResponseDueAt, now);
+  const firstResponseOverdue = ticket?.firstResponseBreached === true || firstResponseCountdown?.overdue;
+
+  useEffect(() => {
+    if (!slaDueAt && !firstResponseDueAt) return undefined;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [firstResponseDueAt, slaDueAt]);
+
+  const submit = async () => {
+    if (!comment.trim() || commentSending) return;
+    setCommentSending(true);
+    setCommentError(null);
+    try {
+      await chatMessages.send(visibility, comment.trim());
+      setComment("");
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    } finally {
+      setCommentSending(false);
+    }
+  };
+
+  const startEditMessage = (message) => {
+    setEditingMessageId(message.id);
+    setEditingMessageText(message.text);
+    setCommentError(null);
+  };
+
+  const saveEditMessage = async (messageId) => {
+    const text = editingMessageText.trim();
+    if (!text) return;
+    try {
+      await chatMessages.edit(messageId, text);
+      setEditingMessageId(null);
+      setEditingMessageText("");
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    }
+  };
+
+  const deleteMessage = async (messageId) => {
+    try {
+      await chatMessages.remove(messageId);
+      setConfirmDeleteMessageId(null);
+    } catch (err) {
+      setCommentError(chatMessages.messageForError(err));
+    }
+  };
+
+  const startReview = async () => {
+    if (reviewLoading) return;
+    setReviewLoading(true);
+    setTransitionError(null);
+    try {
+      const updated = await reviewTicket(ticket.id);
+      setStatus(updated.currentStatus);
+      setFields((current) => ({ ...current, assignedAgentId: updated.assignedAgentId ?? current.assignedAgentId }));
+      reload();
+    } catch (err) {
+      setTransitionError(reviewErrorMessage(err));
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const refreshClassification = async () => {
+    await Promise.all([reload(), reclassification.reload()]);
+  };
+
+  const startWork = async () => {
+    if (startWorkLoading) return;
+    setStartWorkLoading(true);
+    setTransitionError(null);
+    try {
+      const updated = await startTicketWork(ticket.id, fields.responsibleAreaId);
+      setStatus(updated.currentStatus);
+      reload();
+    } catch (err) {
+      setTransitionError([403, 404].includes(err?.status) ? reasonConfirmErrorMessage(err, true)
+        : err?.message || "No pudimos iniciar el trabajo sobre este ticket.");
+    } finally {
+      setStartWorkLoading(false);
+    }
+  };
+
+  const requestTransition = (nextStatus) => {
+    if (reclassificationBusy || cancellationBusy) return false;
+    if (canManageClassification && ["ROUTED", "PENDING_INFORMATION"].includes(nextStatus)
+        && (reclassification.loading || reclassification.error || reclassification.proposals.some(isOpenProposal))) {
+      setTransitionError("Revisá y resolvé la propuesta de reclasificación antes de derivar o solicitar información general.");
+      return false;
+    }
+    if (status === "REGISTERED" && nextStatus === "IN_REVIEW") {
+      void startReview();
+      return false;
+    }
+    if (status === "IN_REVIEW" && nextStatus === "ROUTED") {
+      setDerivationOpen(true);
+      return false;
+    }
+    if (status === "ROUTED" && nextStatus === "IN_PROGRESS") {
+      void startWork();
+      return false;
+    }
+    if (nextStatus === "RESOLVED") {
+      resetResolve();
+      setResolveOpen(true);
+      return false;
+    }
+    if (nextStatus === "PENDING_INFORMATION") {
+      resetInfoRequest();
+      setInfoRequestOpen(true);
+      return false;
+    }
+    if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "IN_REVIEW") {
+      setReasonError(null);
+      setReasonDialog({ kind: "return" });
+      return false;
+    }
+    if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "CANCELLED") {
+      setReasonError(null);
+      setReasonDialog({ kind: "reject" });
+      return false;
+    }
+    if (status === "REGISTERED" && nextStatus === "DUPLICATE") {
+      setDuplicateError(null);
+      setDuplicateDialogOpen(true);
+      return false;
+    }
+    if (["REGISTERED", "IN_REVIEW", "PENDING_INFORMATION"].includes(status) && nextStatus === "CANCELLED") {
+      setReasonError(null);
+      setReasonDialog({ kind: "cancel" });
+      return false;
+    }
+    setTransitionError("Esta acción todavía no tiene un endpoint en el back — no se aplicó ningún cambio.");
+    return false;
+  };
+
+  const handleReasonConfirm = async ({ reasonCode, publicMessage, internalMessage, cancellationScope, decisionReason }) => {
+    if (reasonLoading || !reasonDialog) return;
+    setReasonLoading(true);
+    setReasonError(null);
+    try {
+      const updated =
+        reasonDialog.kind === "cancel"
+          ? await cancelTicket(ticket.id, { reasonCode, publicMessage, internalMessage, ...(cancellationScope ? { cancellationScope, decisionReason } : {}) })
+          : await (reasonDialog.kind === "return" ? returnTicketToAgent : rejectTicket)(
+              ticket.id,
+              fields.responsibleAreaId,
+              { reasonCode, publicMessage, internalMessage }
+            );
+      setStatus(updated.currentStatus);
+      reload();
+      setReasonDialog(null);
+    } catch (err) {
+      setReasonError(reasonConfirmErrorMessage(err, reasonDialog.kind !== "cancel"));
+      if (reasonDialog.kind === "cancel" && err.status === 400 && err.message === "Un principal con duplicados exige cancellationScope y decisionReason") {
+        setReasonDialog((prev) => ({ ...prev, cancellationScopeRequired: true }));
+      }
+      if (err.status === 409) await reload({ background: true });
+    } finally {
+      setReasonLoading(false);
+    }
+  };
+
+  const handleDuplicateConfirm = async ({ mainTicketId }) => {
+    if (duplicateLoading || status !== "REGISTERED") return;
+    setDuplicateLoading(true);
+    setDuplicateError(null);
+    try {
+      const updated = await linkTicketDuplicate(ticket.id, { mainTicketId });
+      setStatus(updated.currentStatus ?? "DUPLICATE");
+      reload();
+      setDuplicateDialogOpen(false);
+    } catch (err) {
+      setDuplicateError(duplicateLinkErrorMessage(err));
+    } finally {
+      setDuplicateLoading(false);
+    }
+  };
+
+  const areaIsM2 = fields?.responsibleAreaId === "M2";
+  const simulatedStatuses = ["ROUTED", "IN_PROGRESS"].includes(status)
+    ? ["IN_REVIEW", "CANCELLED", ...(status === "ROUTED" ? ["IN_PROGRESS"] : []), ...(!areaIsM2 ? ["RESOLVED"] : [])]
+    : [];
+  const resolveMode =
+    areaIsM2 && status === "IN_PROGRESS"
+      ? "manual"
+      : !areaIsM2 && (status === "ROUTED" || status === "IN_PROGRESS")
+        ? "simulator"
+        : null;
+  const resolveIncompatibleReason = areaIsM2
+    ? "El ticket debe estar En gestión para registrar su resolución."
+    : `El ticket lo gestiona ${RESPONSIBLE_AREAS[fields?.responsibleAreaId] || fields?.responsibleAreaId}. Su resolución se registra desde Derivado o En gestión, con la respuesta del área.`;
+
+  const handleResolveConfirm = async ({ type, publicMessage, internalMessage }) => {
+    let when = new Date().toISOString();
+    if (!resolveMode) return;
+    if (resolveMode === "manual") {
+      const result = await resolve(ticket.id, { type, publicMessage, internalMessage });
+      if (!result) return;
+      when = result.resolvedAt || when;
+      reload();
+    } else if (resolveMode === "simulator") {
+      const result = await resolveSimulated(ticket.id, {
+        moduleId: fields.responsibleAreaId,
+        type,
+        publicMessage,
+        internalMessage,
+      });
+      if (!result) return;
+      when = result.statusChangedAt || when;
+      reload();
+    }
+    setStatus("RESOLVED");
+    if (publicMessage) {
+      setLocalMessages((items) => [
+        ...items,
+        { id: `resolution-msg-${Date.now()}`, text: `Ticket resuelto: ${publicMessage}`, visibility: "PUBLIC", createdAt: when, authorType: "SYSTEM" },
+      ]);
+    }
+    setResolveOpen(false);
+  };
+
+  const confirmDerivation = async ({ comment: derivationComment, visibility: derivationVisibility }) => {
+    if (derivationLoading) return;
+    setDerivationLoading(true);
+    setTransitionError(null);
+    try {
+      const updated = await routeTicket(ticket.id);
+      setStatus(updated.currentStatus);
+      if (derivationComment) {
+        setLocalMessages((items) => [...items, { id: `route-${Date.now()}`, text: derivationComment, visibility: derivationVisibility, createdAt: new Date().toISOString(), authorType: "SYSTEM" }]);
+      }
+      reload();
+      setDerivationOpen(false);
+    } catch (err) {
+      setTransitionError(err?.message || "No pudimos derivar este ticket.");
+    } finally {
+      setDerivationLoading(false);
+    }
+  };
+
+  const handleInformationRequestConfirm = async ({ messageForCitizen, internalMessage }) => {
+    const result = await requestInformation(ticket.id, { messageForCitizen, internalMessage });
+    if (!result) return;
+    setStatus("PENDING_INFORMATION");
+    reload();
+    setInfoRequestOpen(false);
+  };
+
+  if (loading && !ticket) {
+    return (
+      <div className="flex h-full min-h-[70vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#0F2C59]" />
+      </div>
+    );
+  }
+
+  if (!ticket || !fields) {
+    if (error && ![403, 404].includes(error.status)) {
+      return <div className="p-8 text-center" role="alert">
+        <p>{error.status === 401 ? "Tu sesión no es válida. Volvé a iniciar sesión." : "No pudimos cargar el ticket. Intentá de nuevo."}</p>
+        <Link className="mt-4 block underline" to={error.status === 401 ? "/ingresar" : "/agente/tickets"}>
+          {error.status === 401 ? "Iniciar sesión" : "Volver a tickets"}
+        </Link>
+      </div>;
+    }
+    const forbidden = error?.status === 403;
+    return (
+      <main className="flex h-full min-h-[70vh] items-center justify-center bg-slate-50 px-6 py-12">
+        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-[#0F2C59]">
+            <FileQuestion className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <p className="mt-5 text-sm font-semibold text-[#D63031]">{forbidden ? "Error 403" : "Error 404"}</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">
+            {forbidden ? "No tenés acceso a este ticket" : "Ticket no encontrado"}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            {forbidden
+              ? "Este ticket pertenece a un área a la que no tenés acceso."
+              : <>No existe un ticket con el identificador <strong className="text-slate-700">{ticketId}</strong>. Verificá el enlace o volvé a la bandeja de entrada.</>}
+          </p>
+          <Link to="/agente/tickets" className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#0F2C59] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#173d73]">
+            <ArrowLeft className="h-4 w-4" /> Volver a tickets
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const typeConfig = TICKET_TYPE_CONFIG[ticket.ticketType];
+  const TypeIcon = typeConfig?.icon;
+
+  return (
+    <div className="h-full overflow-y-auto bg-white text-slate-800">
+      <div className="border-b border-slate-200 px-5 py-3 md:px-7">
+        <Link to="/agente/tickets" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[#0F2C59]"><ArrowLeft className="h-3.5 w-3.5" /> Volver a tickets</Link>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-[#0F2C59]">
+              {TypeIcon && (
+                <span className="group relative inline-flex" title={typeConfig.label} tabIndex={0}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full ${typeConfig.className}`}>
+                    <TypeIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                  </span>
+                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                    {typeConfig.label}
+                  </span>
+                </span>
+              )}
+              <span>{ticket.publicId}</span>
+              <DuplicateLinkIndicator linkInfo={duplicateLinkInfo} />
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{ticket.summary}</h1>
+          </div>
+        	<div className="flex items-center gap-2">
+        		{reviewLoading && <Loader2 className="h-4 w-4 animate-spin text-[#0F2C59]" />}
+        		<Link
+        			to={`/agente/tickets/${ticketId}/vista-ciudadano`}
+        			className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        		>
+        			<Eye className="h-3.5 w-3.5" />
+        			Ver como ciudadano
+        		</Link>
+            {staffReadOnly ? (
+        			<span className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-semibold text-slate-700">
+        				{TICKET_STATUS_LABELS[status] || status}
+        			</span>
+        		) : (
+              <StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} />
+        		)}
+        	</div>
+        </div>
+        {!staffReadOnly && ["ROUTED", "IN_PROGRESS"].includes(status) && <p className="mt-3 text-xs text-amber-800">Simulación DEV: las acciones marcadas simulan eventos externos y requieren el simulador habilitado en el servidor. No contactan al módulo externo.</p>}
+        {ownershipStatus === "checking" && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+            Verificando si este ticket es tuyo antes de habilitar acciones…
+          </div>
+        )}
+        {ownershipStatus === "own" && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            Este ticket es tuyo: el panel de gestión queda en solo lectura. Usá "Ver como ciudadano" o entrá a Mis Reclamos para actuar sobre él.
+          </div>
+        )}
+        {ownershipStatus === "error" && (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              No pudimos confirmar si este ticket es tuyo, así que el panel queda en solo lectura por las dudas.
+            </span>
+            <button type="button" onClick={retryOwnershipCheck} className="shrink-0 font-semibold underline hover:no-underline">
+              Reintentar
+            </button>
+          </div>
+        )}
+        {transitionError && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {transitionError}
+          </div>
+        )}
+      </div>
+
+      <div className="grid min-h-[calc(100%-102px)] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <main className="px-5 py-6 md:px-7 xl:border-r xl:border-slate-200">
+          <div className="mx-auto max-w-4xl">
+            <section className="border-b border-slate-200 pb-6">
+              <h2 className="mb-3 text-sm font-semibold">Descripción</h2>
+              <p className="max-w-3xl text-sm leading-6 text-slate-600">
+                {ticket.description || "Descripción no disponible desde este endpoint."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><MapPin className="h-3.5 w-3.5" />{data.neighborhood || (hasTicketLocation(ticket) ? "Ubicación informada" : "Ubicación pendiente")}</span>
+                <span className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"><Users className="h-3.5 w-3.5" />{fields.affectedCount} {Number(fields.affectedCount) === 1 ? "persona afectada" : "personas afectadas"}</span>
+              </div>
+            </section>
+
+            <AiTicketInsightsCard ticketId={ticketId} />
+
+            <StaffTicketFacts ticket={ticket} />
+
+            <section className="pt-6">
+              <div className="flex items-end justify-between border-b border-slate-200">
+                <div className="flex gap-5">{[["activity", "Actividad"], ["history", "Historial"]].map(([id, label]) => <button key={id} onClick={() => setTab(id)} className={`pb-2 text-sm font-medium ${tab === id ? "border-b-2 border-[#0F2C59] text-[#0F2C59]" : "text-slate-500"}`}>{label}</button>)}</div>
+                <span className="pb-2 text-xs text-slate-500">{chatMessages.messages.length + localMessages.length} comentarios</span>
+              </div>
+
+              {tab === "activity" ? <>
+                {isOwnTicket ? (
+                  <p className="mt-4 rounded-md bg-slate-50 px-3 py-2.5 text-center text-xs text-slate-400">
+                    No podés comentar acá porque este ticket es tuyo. Respondé desde Mis Reclamos.
+                  </p>
+                ) : (
+                  <div className="mt-4 flex gap-3"><UserAvatar user={{ initials: "CG" }} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
+                    <div className="flex bg-slate-50 text-xs"><button onClick={() => setVisibility("PUBLIC")} className={`px-4 py-2 font-medium ${visibility === "PUBLIC" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Responder al ciudadano</button><button onClick={() => setVisibility("INTERNAL")} className={`px-4 py-2 font-medium ${visibility === "INTERNAL" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Nota interna</button></div>
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} disabled={commentSending} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
+                    <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim() || commentSending} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{commentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Enviar</button></div>
+                  </div></div>
+                )}
+                {commentError && <p className="mt-2 text-xs text-red-600">{commentError}</p>}
+                <div className="mt-7 space-y-6">
+                  {chatMessages.loading ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-[#0F2C59]" /></div>
+                  ) : chatMessages.error ? (
+                    <p className="py-6 text-center text-sm text-red-600">{chatMessages.error}</p>
+                  ) : (
+                    [...chatMessages.messages, ...localMessages].map((message) => {
+                    if (message.authorType === "SYSTEM") {
+                      return (
+                        <div key={message.id} className="flex items-center gap-3">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
+                          <div className="flex-1 rounded-md bg-slate-50 px-3 py-2 text-xs italic text-slate-500">{message.text}</div>
+                          <span className="shrink-0 text-[11px] text-slate-400">{formatDate(message.createdAt)}</span>
+                        </div>
+                      );
+                    }
+                    const author = messageAuthor(message, data, user);
+                    const isMine = !isOwnTicket && (user?.actorId ?? user?.citizenId) && message.authorId === (user.actorId ?? user.citizenId);
+                    const isEditing = editingMessageId === message.id;
+                    const isConfirmingDelete = confirmDeleteMessageId === message.id;
+                    return (
+                      <article key={message.id} className="flex gap-3">
+                        <UserAvatar user={author} />
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong className="text-xs">{author?.name || "Equipo municipal"}</strong>
+                            <span className="text-[11px] text-slate-400">
+                              {formatDate(message.createdAt)}
+                              {wasMessageEdited(message) ? " (editado)" : ""}
+                            </span>
+                            {message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}
+                            {isMine && !isEditing && !isConfirmingDelete && (
+                              <span className="ml-auto flex items-center gap-2">
+                                <button onClick={() => startEditMessage(message)} className="text-slate-400 hover:text-[#0F2C59]" aria-label="Editar comentario"><Pencil className="h-3.5 w-3.5" /></button>
+                                <button onClick={() => setConfirmDeleteMessageId(message.id)} className="text-slate-400 hover:text-red-600" aria-label="Borrar comentario"><Trash2 className="h-3.5 w-3.5" /></button>
+                              </span>
+                            )}
+                          </div>
+                          {isEditing ? (
+                            <div className="mt-1.5">
+                              <textarea value={editingMessageText} onChange={(e) => setEditingMessageText(e.target.value)} rows={2} autoFocus className="w-full resize-none rounded-md border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#0F2C59]/20" />
+                              <div className="mt-1.5 flex justify-end gap-3 text-xs font-semibold">
+                                <button onClick={() => setEditingMessageId(null)} className="text-slate-500 hover:underline">Cancelar</button>
+                                <button onClick={() => saveEditMessage(message.id)} disabled={!editingMessageText.trim()} className="text-[#0F2C59] hover:underline disabled:opacity-50">Guardar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-sm leading-5 text-slate-600">{message.text}</p>
+                          )}
+                          {isConfirmingDelete && (
+                            <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold">
+                              <span className="text-slate-500">¿Borrar este comentario?</span>
+                              <button onClick={() => setConfirmDeleteMessageId(null)} className="text-slate-500 hover:underline">No</button>
+                              <button onClick={() => deleteMessage(message.id)} className="text-red-600 hover:underline">Sí, borrar</button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                    })
+                  )}
+                  {!chatMessages.loading && !chatMessages.error && !chatMessages.messages.length && !localMessages.length && <p className="py-6 text-center text-sm text-slate-400">Todavía no hay comentarios en este ticket.</p>}
+                </div>
+              </> : <div className="mt-5 space-y-4">{data.activities.map((activity) => <div key={activity.id} className="flex gap-3 text-sm"><span className="mt-1 h-2 w-2 rounded-full bg-[#0F2C59]"/><div><p className="text-slate-700">{activity.message}</p><p className="mt-1 text-xs text-slate-400">{formatDate(activity.occurredAt)}</p></div></div>)}</div>}
+            </section>
+          </div>
+        </main>
+
+        <aside className="space-y-4 bg-slate-50/60 px-3 py-6">
+          <DetailCard title="SLA" icon={Clock3}>
+            <div className="space-y-3">
+              <div className={`rounded-md border px-3 py-3 ${firstResponseOverdue ? "border-red-200 bg-red-50 text-red-700" : ticket?.firstResponseNearDue === true ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  {firstResponseOverdue ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                  {firstResponseOverdue ? "Primera respuesta vencida" : ticket?.firstResponseNearDue === true ? "Primera respuesta próxima a vencer" : "Primera respuesta"}
+                </div>
+                {firstResponseCountdown ? (
+                  <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${firstResponseOverdue ? "Vencido hace" : "Tiempo restante"} ${firstResponseCountdown.label} para la primera respuesta`}>
+                    {firstResponseOverdue ? "Vencido hace " : ""}{firstResponseCountdown.label}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                )}
+                {firstResponseDueAt && <p className="mt-1 text-[11px]">Vencimiento de primera respuesta: {formatDate(firstResponseDueAt)}</p>}
+              </div>
+              {slaCompleted ? (
+                <div className={`rounded-md border px-3 py-3 ${slaCompletionWasCancellation ? "border-slate-300 bg-slate-100 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {slaCompletionWasCancellation ? <TriangleAlert className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {slaCompletionWasCancellation ? "SLA finalizado por cancelación" : "SLA de resolución completado"}
+                  </div>
+                  <p className="mt-2 text-sm font-semibold">El ticket ya no tiene un SLA activo.</p>
+                  {slaCompletionAt && <p className="mt-1 text-[11px]">Finalizado: {formatDate(slaCompletionAt)}</p>}
+                  {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento original: {formatDate(slaDueAt)}</p>}
+                </div>
+              ) : (
+                <div className={`rounded-md border px-3 py-3 ${slaCountdown?.overdue || slaIndicator.status === "overdue" ? "border-red-200 bg-red-50 text-red-700" : slaIndicator.status === "at-risk" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {slaCountdown?.overdue || slaIndicator.status === "overdue" ? <TriangleAlert className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    {slaCountdown?.overdue ? "SLA vencido" : slaIndicator.label}
+                  </div>
+                  {slaCountdown ? (
+                    <p className="mt-2 text-2xl font-bold leading-tight tracking-tight" aria-label={`${slaCountdown.overdue ? "Vencido hace" : "Tiempo restante"} ${slaCountdown.label}`}>
+                      {slaCountdown.overdue ? "Vencido hace " : ""}{slaCountdown.label}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm font-semibold">Sin fecha de vencimiento disponible</p>
+                  )}
+                  {slaDueAt && <p className="mt-1 text-[11px]">Vencimiento de resolución: {formatDate(slaDueAt)}</p>}
+                </div>
+              )}
+            </div>
+          </DetailCard>
+          <DetailCard title="Detalles">
+            <dl className="divide-y divide-slate-100">
+              <Field label="Tipo de solicitud">
+                <span aria-label="Tipo de solicitud">{ticket.requestTypeName || "—"}</span>
+                <span className="mt-1 block text-[10px] text-slate-500">Clasificación actual</span>
+              </Field>
+              <Field label="Responsable">{data.assignee.name}</Field>
+              <Field label="Informante"><span className="flex items-center gap-2"><UserAvatar user={data.citizen} size="sm" />{data.citizen.name}</span></Field>
+              <Field label="Prioridad"><span aria-label="Prioridad" className="text-xs text-slate-700">{PRIORITY[ticket.currentPriority] || ticket.currentPriority || "Sin prioridad"}<span className="block text-[10px] text-slate-500">Calculada por el sistema</span></span></Field>
+              <Field label="Área responsable"><Select size="xs" ariaLabel="Área responsable" disabled value={fields.responsibleAreaId} options={Object.entries(RESPONSIBLE_AREAS).map(([id, label]) => ({ value: id, label: `${id} · ${label}` }))} /></Field>
+              <Field label="Categoría">{data.category?.name || "Sin categoría"}</Field>
+              <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
+              <Field label="Afectados">
+                <span>{fields.affectedCount}</span>
+                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-400">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
+              </Field>
+              <Field label="Barrio">{data.neighborhood || "—"}</Field>
+            </dl>
+          </DetailCard>
+          {canManageClassification && <DetailCard title="Propuestas de clasificación">
+            <ReclassificationPanel key={ticket.id} ticket={ticket} requestTypes={requestTypes} readOnly={isOwnTicket}
+              proposals={reclassification.proposals} loading={reclassification.loading} error={reclassification.error}
+              onRefresh={refreshClassification} onBusyChange={setReclassificationBusy} />
+          </DetailCard>}
+          {canManageClassification && <DetailCard title="Cancelaciones y revisión administrativa">
+            <CancellationReviewPanel key={ticket.id} ticket={ticket} readOnly={isOwnTicket || reclassificationBusy}
+              onRefresh={() => reload({ background: true })} onBusyChange={setCancellationBusy} />
+          </DetailCard>}
+          <DetailCard title="Adjuntos" icon={Paperclip}>
+            <AttachmentGallery
+              title=""
+              canUpload={!staffReadOnly}
+              items={ticket.attachments}
+              uploadFile={(file) => uploadTicketAttachment(ticket.id, file)}
+              downloadFile={(attachment) => downloadTicketAttachment(attachment.id)}
+            />
+          </DetailCard>
+          {canManageClassification && <TicketLabelsCard ticket={ticket} readOnly={isOwnTicket} />}
+          {escalated && (
+            <DetailCard title="Escalamiento" icon={TriangleAlert}>
+              <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-violet-800">
+                <p className="text-xs font-semibold">Ticket escalado</p>
+                <dl className="mt-1 space-y-1 text-[11px]">
+                  <div className="flex justify-between gap-3"><dt>Motivo</dt><dd className="font-medium text-right">{ticket.escalationReasonCode || "No informado"}</dd></div>
+                  {ticket.escalatedAt && <div className="flex justify-between gap-3"><dt>Escalado</dt><dd className="font-medium text-right">{formatDate(ticket.escalatedAt)}</dd></div>}
+                </dl>
+              </div>
+            </DetailCard>
+          )}
+          <div className="px-1 py-2 text-[11px] text-slate-500"><div className="flex justify-between py-1"><span>Creado</span><span>{formatDate(ticket.createdAt)}</span></div><div className="flex justify-between py-1"><span>Actualizado</span><span>{formatDate(ticket.updatedAt)}</span></div></div>
+        </aside>
+      </div>
+      {derivationOpen && <TicketTransitionDialog
+        open={derivationOpen}
+        eyebrow={`Cambio de estado · ${ticket.publicId}`}
+        title="Derivar ticket"
+        description="El ticket pasa a Derivado, con el área ya asignada por la clasificación."
+        confirmation={<>Vas a derivar este ticket a <strong>{RESPONSIBLE_AREAS[fields.responsibleAreaId] || fields.responsibleAreaId}</strong>.</>}
+        confirmLabel={derivationLoading ? "Derivando…" : "Confirmar derivación"}
+        onCancel={() => setDerivationOpen(false)}
+        onConfirm={confirmDerivation}
+      />}
+      {resolveOpen && (
+        <ResolveTicketDialog
+          ticketPublicId={ticket.publicId}
+          mode={resolveMode}
+          incompatibleReason={resolveIncompatibleReason}
+          loading={resolving}
+          error={resolveError}
+          onCancel={() => setResolveOpen(false)}
+          onConfirm={handleResolveConfirm}
+        />
+      )}
+      {infoRequestOpen && (
+        <RequestInformationDialog
+          ticketPublicId={ticket.publicId}
+          loading={infoRequestLoading}
+          error={infoRequestError}
+          onCancel={() => setInfoRequestOpen(false)}
+          onConfirm={handleInformationRequestConfirm}
+        />
+      )}
+      {reasonDialog && (
+        <TicketReasonDialog
+          ticketPublicId={ticket.publicId}
+          {...REASON_DIALOG_CONFIG[reasonDialog.kind]}
+          {...(reasonDialog.kind !== "cancel" ? { eyebrow: "Simulación DEV", description: `${REASON_DIALOG_CONFIG[reasonDialog.kind].description} Simula un evento externo; requiere el simulador habilitado en el servidor. No contacta al módulo externo.`, confirmLabel: "Confirmar simulación DEV" } : {})}
+          cancellationScopeRequired={reasonDialog.cancellationScopeRequired}
+          loading={reasonLoading}
+          error={reasonError}
+          onCancel={() => setReasonDialog(null)}
+          onConfirm={handleReasonConfirm}
+        />
+      )}
+      {duplicateDialogOpen && (
+        <DuplicateLinkDialog
+          ticket={ticket}
+          loading={duplicateLoading}
+          error={duplicateError}
+          onCancel={() => setDuplicateDialogOpen(false)}
+          onConfirm={handleDuplicateConfirm}
+        />
+      )}
+    </div>
+  );
+}
