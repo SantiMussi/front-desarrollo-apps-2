@@ -86,6 +86,11 @@ export async function fetchRequestTypeForm(requestTypeId) {
   return request(`/catalog/request-types/${requestTypeId}/form`);
 }
 
+// Directorio del personal de M2 (rol ADMIN): personas, rol, área y carga de trabajo.
+export async function fetchAdminAgents() {
+  return request("/admin/agents");
+}
+
 // Catalog Admin (rol ADMIN) — a diferencia de /catalog/*, incluyen activas e inactivas
 export async function fetchAdminCategories() {
   return request("/admin/catalog/categories");
