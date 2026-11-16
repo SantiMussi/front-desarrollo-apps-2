@@ -337,6 +337,27 @@ describe("TicketDetailPage - comentarios", () => {
     expect(screen.getByText("7 comentarios")).toBeInTheDocument();
   });
 
+  it("el avatar de quien escribe es el del usuario logueado, no iniciales fijas", async () => {
+    await renderPage();
+    expect(screen.getByPlaceholderText("Escribe un comentario o respuesta...")).toBeInTheDocument();
+    expect(screen.queryByText("CG")).not.toBeInTheDocument();
+    expect(screen.getByText("AU")).toBeInTheDocument();
+  });
+
+  it("muestra el nombre real del autor cuando el back lo informa", async () => {
+    chat.messages = [
+      { ...messages()[3], authorName: "Mateo Pérez" },
+      { ...messages()[0], authorName: "  Laura Gómez " },
+      { ...messages()[2], authorName: "   " },
+    ];
+    await renderPage();
+    expect(screen.getByText("Mateo Pérez", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getByText("MP")).toBeInTheDocument();
+    expect(screen.getByText("Laura Gómez", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.queryByText("Ciudadano registrado", { selector: "strong" })).not.toBeInTheDocument();
+    expect(screen.getByText("Responsable de área", { selector: "strong" })).toBeInTheDocument();
+  });
+
   it("usa 'Vos' si el usuario no tiene nombre", async () => {
     chat.messages = [messages()[5]];
     await renderPage(authFor({ ...AGENT, displayName: undefined, citizenId: "agent-citizen" }));
@@ -651,9 +672,10 @@ describe("TicketDetailPage - transiciones de estado", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("solicita información al ciudadano", async () => {
+  it("solicita información al ciudadano y recarga el chat para mostrar el pedido", async () => {
     setTicket({ currentStatus: "IN_REVIEW" });
     infoHook.requestInformation.mockResolvedValue({ ok: true });
+    chat.reload = vi.fn().mockResolvedValue(undefined);
     await renderPage();
     await pickTransition("En revisión", "Solicitar información");
     expect(infoHook.reset).toHaveBeenCalled();
@@ -662,6 +684,7 @@ describe("TicketDetailPage - transiciones de estado", () => {
     await act(async () => {});
     expect(infoHook.requestInformation).toHaveBeenCalledWith(5, { messageForCitizen: "¿Foto?", internalMessage: "" });
     expect(screen.getByRole("button", { name: /Pendiente de información/ })).toBeInTheDocument();
+    expect(chat.reload).toHaveBeenCalledTimes(1);
   });
 
   it("mantiene el diálogo de información abierto si falla", async () => {
