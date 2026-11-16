@@ -97,7 +97,8 @@ export default function AgentsPage() {
   const [area, setArea] = useState("");
   const [state, setState] = useState("");
 
-  const areas = useMemo(() => [...new Set(agents.map((agent) => agent.areaId).filter(Boolean))].sort(), [agents]);
+  const areas = useMemo(() => [...new Set(agents.map((agent) => agent.areaId).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [agents]);
   const filtered = useMemo(() => {
     const needle = fold(query.trim());
     return agents.filter((agent) => fold(`${agent.name} ${agent.email || ""}`).includes(needle)
