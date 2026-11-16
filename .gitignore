@@ -13,3 +13,7 @@
 *.p12
 *.pfx
 id_rsa*
+
+# Local Sonar scanner state (may contain service metadata).
+.scannerwork/
+__pycache__/

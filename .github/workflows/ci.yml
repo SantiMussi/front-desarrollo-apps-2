@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       identity_provider:
-        description: "MOCK validates only. M1 publishes a separate image from dev/main; never deploys."
+        description: "MOCK validates only. M1 publishes from main; manual runs never deploy."
         type: choice
         required: true
         default: MOCK
@@ -50,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       identity_provider: ${{ steps.mode.outputs.identity_provider }}
+      sonar_mode: ${{ steps.sonar_scope.outputs.sonar_mode }}
+      sonar_branch: ${{ steps.sonar_scope.outputs.sonar_branch }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -63,6 +65,10 @@ jobs:
           CD_IDENTITY_PROVIDER: ${{ vars.CD_IDENTITY_PROVIDER }}
           INPUT_IDENTITY_PROVIDER: ${{ inputs.identity_provider }}
         run: bash .github/scripts/resolve-provider.sh
+
+      - name: Resolve explicit Sonar Free scope
+        id: sonar_scope
+        run: python3 .github/scripts/check-sonar.py --scope --main-branch main
 
   validate:
     name: Lint, tests, coverage and build
@@ -87,8 +93,8 @@ jobs:
       - name: Check explicit M1 publication branch
         if: github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1'
         run: |
-          if [[ "$GITHUB_REF" != refs/heads/dev && "$GITHUB_REF" != refs/heads/main ]]; then
-            echo "M1 publication requires dev or main." >&2
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "M1 publication requires main." >&2
             exit 1
           fi
 
@@ -99,8 +105,25 @@ jobs:
           cache: npm
           cache-dependency-path: Front/frontend-atencion-ciudadana/package-lock.json
 
+      - name: Install fixed npm build tool
+        run: npm install --global npm@11.21.2
+
+      - name: Build API-compatible patched esbuild
+        run: docker build --target esbuild-tool --output "type=local,dest=$RUNNER_TEMP/esbuild-tool" .
+
+      - name: Upload patched build tool for E2E
+        uses: actions/upload-artifact@v7
+        with:
+          name: esbuild-tool
+          path: ${{ runner.temp }}/esbuild-tool/esbuild
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Patch esbuild binary without changing its API
+        run: sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
 
       - name: Lint application
         run: npm run lint
@@ -114,7 +137,7 @@ jobs:
         with:
           name: frontend-coverage
           path: Front/frontend-atencion-ciudadana/coverage/
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Build application
         run: npm run build
@@ -126,11 +149,35 @@ jobs:
         run: |
           docker run --rm --network none \
             -v "$PWD/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
-            nginx:1.28-alpine nginx -t
+            nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a nginx -t
 
       - name: Build Frontend container image
-        if: github.event_name != 'push' || github.ref != 'refs/heads/dev'
-        run: docker build --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-ci:${{ github.sha }} .
+        run: |
+          docker build --pull --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" --label "ar.edu.uade.m2.identity-provider=$BUILD_IDENTITY_PROVIDER" --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-ci:${{ github.sha }} .
+          docker build --target build --build-arg VITE_API_BASE_URL=/api --build-arg VITE_IDENTITY_PROVIDER="$BUILD_IDENTITY_PROVIDER" --tag frontend-builder-ci:${{ github.sha }} .
+
+      - name: Save validated container image
+        run: |
+          docker save frontend-ci:${{ github.sha }} --output "$RUNNER_TEMP/frontend-image.tar"
+          docker save frontend-builder-ci:${{ github.sha }} --output "$RUNNER_TEMP/frontend-builder.tar"
+
+      - name: Upload validated container image
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/frontend-image.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload builder image for SCA
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-builder
+          path: ${{ runner.temp }}/frontend-builder.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Record validated revision
         if: always()
@@ -143,7 +190,7 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: configuration
+    needs: [configuration, validate]
     env:
       TZ: UTC
       # Existing E2E emulate the MOCK API; validate builds the selected provider.
@@ -168,8 +215,20 @@ jobs:
           cache: npm
           cache-dependency-path: Front/frontend-atencion-ciudadana/package-lock.json
 
+      - name: Install fixed npm build tool
+        run: npm install --global npm@11.21.2
+
+      - name: Download patched build tool
+        uses: actions/download-artifact@v7
+        with:
+          name: esbuild-tool
+          path: ${{ runner.temp }}/esbuild-tool
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Patch esbuild binary without changing its API
+        run: sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
 
       # Corre los escenarios sobre la app compilada con el Chrome del runner.
       # La API está mockeada en cada escenario, así que no depende del back.
@@ -184,13 +243,127 @@ jobs:
           path: Front/frontend-atencion-ciudadana/playwright-report
           retention-days: 7
 
+  sonar:
+    name: SonarCloud Quality Gate
+    needs: [configuration, validate]
+    if: needs.configuration.outputs.sonar_mode != 'unsupported'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    concurrency:
+      group: ${{ github.workflow }}-sonar-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_BRANCH: ${{ needs.configuration.outputs.sonar_branch }}
+      SONAR_MODE: ${{ needs.configuration.outputs.sonar_mode }}
+      SONAR_PULL_REQUEST: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require real Sonar configuration
+        shell: bash
+        run: |
+          : "${SONAR_TOKEN:?Configure SONAR_TOKEN as an Actions secret; fork PRs cannot run trusted analysis}"
+          : "${SONAR_PROJECT_KEY:?Configure SONAR_PROJECT_KEY as an Actions variable}"
+          : "${SONAR_ORGANIZATION:?Configure SONAR_ORGANIZATION as an Actions variable}"
+      - uses: actions/download-artifact@v7
+        if: env.SONAR_MODE != 'existing'
+        with:
+          name: frontend-coverage
+          path: Front/frontend-atencion-ciudadana/coverage
+      - name: Prepare branch analysis argument
+        if: env.SONAR_MODE != 'existing'
+        id: scope
+        shell: bash
+        run: |
+          test -s Front/frontend-atencion-ciudadana/coverage/lcov.info
+          if [[ -z "$SONAR_PULL_REQUEST" ]]; then
+            printf 'args=-Dsonar.branch.name=%s\n' "$SONAR_BRANCH" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Analyze Frontend and wait for service gate
+        if: env.SONAR_MODE != 'existing'
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
+        with:
+          projectBaseDir: Front/frontend-atencion-ciudadana
+          args: >-
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.scm.revision=${{ github.sha }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=180
+            ${{ steps.scope.outputs.args }}
+      - name: Verify academic overall-code limits and revision
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [[ "$SONAR_MODE" == existing ]]; then
+            python3 .github/scripts/check-sonar.py --existing-analysis --output "$RUNNER_TEMP/sonar-evidence.json"
+          else
+            python3 .github/scripts/check-sonar.py --task Front/frontend-atencion-ciudadana/.scannerwork/report-task.txt --output "$RUNNER_TEMP/sonar-evidence.json"
+          fi
+      - name: Upload Sonar evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sonar-evidence
+          path: ${{ runner.temp }}/sonar-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    name: SEG-08 dependencies and images
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/image
+      - uses: actions/download-artifact@v7
+        with:
+          name: frontend-builder
+          path: ${{ runner.temp }}/image
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/trivy-cache
+          key: trivy-0.76.2-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: trivy-0.76.2-${{ runner.os }}-
+      - name: Install verified Trivy
+        run: bash .github/scripts/install-trivy.sh
+      - name: Scan dependencies, builder and exact runtime image
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+        run: >-
+          python3 .github/scripts/scan-vulnerabilities.py
+          --fs Front/frontend-atencion-ciudadana --npm Front/frontend-atencion-ciudadana
+          --archive "${RUNNER_TEMP}/image/frontend-image.tar"
+          --archive "${RUNNER_TEMP}/image/frontend-builder.tar"
+          --output "${RUNNER_TEMP}/sca"
+      - name: Upload sanitized QA vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: seg08-reports
+          path: ${{ runner.temp }}/sca/
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
     name: Publish Frontend image
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.identity_provider == 'M1' &&
-      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'))
-    needs: [configuration, validate, e2e, secrets]
+      github.ref == 'refs/heads/main')
+    needs: [configuration, validate, e2e, secrets, sonar, security]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -200,7 +373,7 @@ jobs:
       image: ${{ steps.record.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
     concurrency:
-      group: ${{ github.event_name == 'workflow_dispatch' && 'frontend-m1-publish' || 'frontend-dev-publish' }}
+      group: ${{ github.event_name == 'workflow_dispatch' && 'frontend-m1-publish' || 'frontend-main-publish' }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -227,24 +400,31 @@ jobs:
             printf 'tags=%s\n' "$reference" >> "$GITHUB_OUTPUT"
           else
             reference="$IMAGE_REPOSITORY:sha-$GITHUB_SHA"
-            printf 'tags<<FRONTEND_TAGS\n%s:dev\n%s\nFRONTEND_TAGS\n' "$IMAGE_REPOSITORY" "$reference" >> "$GITHUB_OUTPUT"
+            printf 'tags<<FRONTEND_TAGS\n%s:main\n%s\nFRONTEND_TAGS\n' "$IMAGE_REPOSITORY" "$reference" >> "$GITHUB_OUTPUT"
           fi
           printf 'reference=%s\n' "$reference" >> "$GITHUB_OUTPUT"
 
-      - name: Build and publish Frontend image
-        id: build
-        uses: docker/build-push-action@v7
+      - uses: actions/download-artifact@v7
         with:
-          context: Front/frontend-atencion-ciudadana
-          push: true
-          build-args: |
-            VITE_API_BASE_URL=/api
-            VITE_IDENTITY_PROVIDER=${{ env.BUILD_IDENTITY_PROVIDER }}
-          tags: ${{ steps.image.outputs.tags }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            ar.edu.uade.m2.identity-provider=${{ env.BUILD_IDENTITY_PROVIDER }}
+          name: frontend-image
+          path: ${{ runner.temp }}/image
+      - name: Publish scanned Frontend image
+        id: build
+        env:
+          IMAGE_TAGS: ${{ steps.image.outputs.tags }}
+          IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
+        shell: bash
+        run: |
+          docker load --input "$RUNNER_TEMP/image/frontend-image.tar"
+          while IFS= read -r reference; do
+            [[ -n "$reference" ]] || continue
+            docker tag "frontend-ci:$GITHUB_SHA" "$reference"
+            docker push "$reference"
+          done <<< "$IMAGE_TAGS"
+          immutable="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE_REFERENCE")"
+          digest="${immutable##*@}"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
 
       - name: Record published image and digest
         id: record
@@ -270,12 +450,12 @@ jobs:
 
   deploy:
     name: Deploy Frontend to Lightsail
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && vars.CD_ENABLED == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CD_ENABLED == 'true'
     needs: [configuration, publish, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
-      group: lightsail-dev-frontend-deploy
+      group: lightsail-main-frontend-deploy
       cancel-in-progress: false
 
     steps:
@@ -284,13 +464,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Refuse stale dev runs
+      - name: Refuse stale main runs
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/dev" --jq '.object.sha')"
-          [[ "$current_sha" == "$GITHUB_SHA" ]] || { echo 'Stale dev run; no deployment allowed.' >&2; exit 65; }
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$current_sha" == "$GITHUB_SHA" ]] || { echo 'Stale main run; no deployment allowed.' >&2; exit 65; }
 
       - name: Validate selected CD image and provider
         env:
