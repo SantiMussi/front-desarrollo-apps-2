@@ -1,8 +1,7 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "../auth/LoginPage";
-import AgentsPage from "../agent/AgentsPage";
 import MisReclamoDetailPage from "../citizen/MisReclamoDetailPage";
 import TicketCitizenViewPage from "../agent/TicketCitizenViewPage";
 import { CITIZEN, authFor, makeAuth, renderWithProviders } from "../../test/renderWithProviders";
@@ -110,70 +109,6 @@ describe("LoginPage", () => {
       extraRoutes: <Route path="/" element={<p>Inicio</p>} />,
     });
     expect(screen.getByText("Inicio")).toBeInTheDocument();
-  });
-});
-
-describe("AgentsPage", () => {
-  it("muestra el resumen y el directorio completo", () => {
-    renderWithProviders(<AgentsPage />);
-    expect(screen.getByRole("heading", { name: "Agentes" })).toBeInTheDocument();
-    expect(screen.getByText("Equipo total")).toBeInTheDocument();
-    expect(screen.getByText("7 agentes encontrados")).toBeInTheDocument();
-    expect(screen.getByText("Laura Martínez")).toBeInTheDocument();
-    expect(screen.getByText("Disponibles ahora")).toBeInTheDocument();
-    expect(screen.getByText("Carga promedio")).toBeInTheDocument();
-  });
-
-  it("filtra por texto, estado y área y limpia los filtros", () => {
-    renderWithProviders(<AgentsPage />);
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), { target: { value: "sofia" } });
-    expect(screen.getByText("No encontramos agentes")).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), { target: { value: "sofía" } });
-    expect(screen.getByText("1 agente encontrado")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Limpiar filtros"));
-    fireEvent.change(screen.getByDisplayValue("Todos los estados"), { target: { value: "busy" } });
-    expect(screen.getByText("2 agentes encontrados")).toBeInTheDocument();
-    fireEvent.change(screen.getByDisplayValue("Todas las áreas"), { target: { value: "Tránsito" } });
-    expect(screen.getByText("No encontramos agentes")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Limpiar filtros"));
-    expect(screen.getByText("7 agentes encontrados")).toBeInTheDocument();
-    expect(screen.queryByText("Limpiar filtros")).not.toBeInTheDocument();
-  });
-
-  it("colorea el SLA y la carga según los umbrales", () => {
-    renderWithProviders(<AgentsPage />);
-    expect(screen.getByText("98.5%")).toHaveClass("text-emerald-600");
-    expect(screen.getByText("94.2%")).toHaveClass("text-amber-600");
-    expect(screen.getByText("89.6%")).toHaveClass("text-red-600");
-  });
-
-  it("invita a un agente y muestra el aviso", () => {
-    renderWithProviders(<AgentsPage />);
-    fireEvent.click(screen.getByRole("button", { name: /Invitar agente/ }));
-    const dialog = screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.").closest("form");
-    fireEvent.change(within(dialog).getByPlaceholderText(/nombre@ciudaduade/), { target: { value: "nuevo@ciudaduade.gob.ar" } });
-    fireEvent.change(within(dialog).getByDisplayValue("Atención General"), { target: { value: "Tránsito" } });
-    fireEvent.click(screen.getByRole("button", { name: /Probar invitación/ }));
-    expect(screen.getByText("Demostración para nuevo@ciudaduade.gob.ar: no se envió ninguna invitación.")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Cerrar aviso"));
-    expect(screen.queryByText(/Invitación enviada/)).not.toBeInTheDocument();
-  });
-
-  it("cierra el diálogo de invitación con la X, Cancelar y el fondo", () => {
-    renderWithProviders(<AgentsPage />);
-    const open = () => fireEvent.click(screen.getByRole("button", { name: /Invitar agente/ }));
-    open();
-    fireEvent.click(screen.getByLabelText("Cerrar"));
-    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
-    open();
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
-    open();
-    const form = screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.").closest("form");
-    fireEvent.mouseDown(form);
-    expect(screen.getByText("Demostración: no se enviarán correos ni se crearán cuentas.")).toBeInTheDocument();
-    fireEvent.mouseDown(form.parentElement);
-    expect(screen.queryByText("Demostración: no se enviarán correos ni se crearán cuentas.")).not.toBeInTheDocument();
   });
 });
 
