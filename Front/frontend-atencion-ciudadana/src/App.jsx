@@ -17,7 +17,6 @@ import SubcategoriesPage from "./pages/admin/SubcategoriesPage";
 import RequestTypesPage from "./pages/admin/RequestTypesPage";
 import LabelsPage from "./pages/admin/LabelsPage";
 import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
 import TrackingPage from "./pages/citizen/TrackingPage";
 import MisReclamosPage from "./pages/citizen/MisReclamosPage";
 import MisReclamoDetailPage from "./pages/citizen/MisReclamoDetailPage";
@@ -68,7 +67,6 @@ export default function App() {
         </Route>
 
         <Route path="/ingresar" element={<LoginPage />} />
-        <Route path="/registro" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute roles={["AGENT", "ADMIN", "AREA_RESPONSIBLE"]} />}>
           <Route path="/agente" element={<AgentLayout />}>
