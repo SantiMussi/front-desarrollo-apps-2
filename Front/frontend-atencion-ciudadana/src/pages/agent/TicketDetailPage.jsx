@@ -73,8 +73,11 @@ function wasMessageEdited(message) {
 
 function messageAuthor(message, data, currentUser) {
   if ((currentUser?.actorId ?? currentUser?.citizenId) && message.authorId === (currentUser.actorId ?? currentUser.citizenId)) {
-    return { name: currentUser.displayName || "Vos", initials: "YO" };
+    return { ...currentUser, name: currentUser.displayName || "Vos" };
   }
+  // El back sólo manda authorName a la vista staff y cuando el autor está registrado en M2.
+  const authorName = typeof message.authorName === "string" ? message.authorName.trim() : "";
+  if (authorName) return { name: authorName, displayName: authorName };
   if (message.authorType === "CITIZEN") return data.citizen;
   return { name: MESSAGE_AUTHOR_LABELS[message.authorType] || "Equipo municipal", initials: "—" };
 }
@@ -549,6 +552,8 @@ function TicketDetailContent() {
     if (!result) return;
     setStatus("PENDING_INFORMATION");
     reload();
+    // El back deja el pedido en el chat (mensaje público y nota interna): se recarga para verlo ya.
+    void chatMessages.reload?.();
     setInfoRequestOpen(false);
   };
 
@@ -698,7 +703,7 @@ function TicketDetailContent() {
                     No podés comentar acá porque este ticket es tuyo. Respondé desde Mis Reclamos.
                   </p>
                 ) : (
-                  <div className="mt-4 flex gap-3"><UserAvatar user={{ initials: "CG" }} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
+                  <div className="mt-4 flex gap-3"><UserAvatar user={user} /><div className="flex-1 overflow-hidden rounded-md border border-slate-200">
                     <div className="flex bg-slate-50 text-xs"><button onClick={() => setVisibility("PUBLIC")} className={`px-4 py-2 font-medium ${visibility === "PUBLIC" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Responder al ciudadano</button><button onClick={() => setVisibility("INTERNAL")} className={`px-4 py-2 font-medium ${visibility === "INTERNAL" ? "bg-white text-[#0F2C59]" : "text-slate-500"}`}>Nota interna</button></div>
                     <textarea value={comment} onChange={(e) => setComment(e.target.value)} disabled={commentSending} placeholder={visibility === "PUBLIC" ? "Escribe un comentario o respuesta..." : "Agrega una nota para el equipo..."} className="h-24 w-full resize-none border-y border-slate-200 p-3 text-sm outline-none placeholder:text-slate-400" />
                     <div className="flex items-center justify-between px-3 py-2"><div className="flex gap-3 text-slate-500"><Paperclip className="h-4 w-4" /><Smile className="h-4 w-4" /></div><button onClick={submit} disabled={!comment.trim() || commentSending} className="inline-flex items-center gap-2 rounded bg-[#0F2C59] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">{commentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Enviar</button></div>
