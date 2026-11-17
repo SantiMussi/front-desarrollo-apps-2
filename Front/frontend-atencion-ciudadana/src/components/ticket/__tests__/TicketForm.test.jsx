@@ -212,8 +212,11 @@ describe("TicketForm - envío con sesión", () => {
       { skipAuth: false }
     );
     expect(screen.getByText("ABC123")).toBeInTheDocument();
-    expect(onStatusChange).toHaveBeenLastCalledWith("success");
-    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    // The parent callbacks run in effects, which can fire after the success heading is painted.
+    await waitFor(() => {
+      expect(onStatusChange).toHaveBeenLastCalledWith("success");
+      expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    });
   });
 
   it("el mapa conserva el barrio elegido manualmente", async () => {
