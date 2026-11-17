@@ -1,7 +1,8 @@
 // Real HTTP integration. Run only against a new disposable DEV database; see docs/quality.md.
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { Buffer } from "node:buffer";
+import { registerHooks } from "node:module";
 import process from "node:process";
 
 const base = process.env.M2_REAL_API_URL;
@@ -26,10 +27,27 @@ globalThis.fetch = async (url, options) => {
 };
 const memory = new Map();
 globalThis.localStorage = { getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value), removeItem: (key) => memory.delete(key) };
-// Load the actual Vite client without a browser bundler. No endpoint is mocked.
-const source = (await readFile(new URL("../src/services/apiClient.js", import.meta.url), "utf8"))
-  .replace("import.meta.env.VITE_API_BASE_URL", JSON.stringify(base));
-const api = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+globalThis.window ??= new EventTarget();
+// Load the actual Vite client (apiClient + authSession) without a browser bundler. No endpoint is mocked.
+// Node needs two things Vite normally provides: extensionless relative imports and import.meta.env.
+assert.equal(typeof registerHooks, "function", "Node >= 22.15 required (module.registerHooks)");
+const srcRoot = new URL("../src/", import.meta.url).href;
+const viteEnv = JSON.stringify({ VITE_API_BASE_URL: base, VITE_IDENTITY_PROVIDER: "MOCK" });
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (context.parentURL?.startsWith(srcRoot) && /^\.\.?\//.test(specifier) && !/\.[cm]?jsx?$/.test(specifier)) {
+      return nextResolve(`${specifier}.js`, context);
+    }
+    return nextResolve(specifier, context);
+  },
+  load(url, context, nextLoad) {
+    const result = nextLoad(url, context);
+    if (!url.startsWith(srcRoot)) return result;
+    const source = String(result.source).replaceAll("import.meta.env", `(${viteEnv})`);
+    return { ...result, format: "module", source };
+  },
+});
+const api = await import(new URL("../src/services/apiClient.js", import.meta.url).href);
 const tokens = {};
 for (const [role, username, env] of [
   ["admin", "module.admin@example.test", "MOCK_ADMIN_PASSWORD"], ["agent", "agent@example.test", "MOCK_AGENT_PASSWORD"],
