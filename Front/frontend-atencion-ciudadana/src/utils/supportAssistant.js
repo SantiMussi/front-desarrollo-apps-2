@@ -71,11 +71,31 @@ export function findFaq(text) {
 const TICKET_CODE = /\b[a-z]{2}-\d{4}-\d{4,}\b/i;
 export const findTicketCode = (text) => String(text ?? "").match(TICKET_CODE)?.[0] ?? null;
 
-const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+// Sticky matching prevents retries at every suffix of a long non-email token.
+const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/y;
+const EMAIL_LOCAL_PART = /[\w.+-]+/g;
 const LONG_NUMBER = /\b\d[\d\s.-]{6,}\d\b/g;
 // «contraseña del reclamo» es una pregunta; sólo se tapa cuando se da el valor («mi clave es 1234»).
 const SECRET = /\b(?:contrasena|contraseña|clave|password|pin)\s*(?:es|:|=)\s*\S+/gi;
 const AFTER_CODE_PREFIX = /[a-z]{2}-$/i;
+
+function redactEmails(text, mask) {
+  const parts = [];
+  let cursor = 0;
+  for (const local of text.matchAll(EMAIL_LOCAL_PART)) {
+    // A preceding match can end inside this run, e.g. a@b.co+next@c.io.
+    const start = Math.max(cursor, local.index);
+    if (start >= local.index + local[0].length) continue;
+    EMAIL.lastIndex = start;
+    const email = EMAIL.exec(text);
+    if (email) {
+      parts.push(text.slice(cursor, start), mask());
+      cursor = start + email[0].length;
+    }
+  }
+  parts.push(text.slice(cursor));
+  return parts.join("");
+}
 
 // Tapa emails, números largos (DNI, teléfono, tarjetas) y contraseñas antes de mostrar o procesar el mensaje.
 export function redactPersonalData(text) {
@@ -84,8 +104,7 @@ export function redactPersonalData(text) {
     redacted = true;
     return "[dato oculto]";
   };
-  const safe = String(text ?? "")
-    .replace(EMAIL, mask)
+  const safe = redactEmails(String(text ?? ""), mask)
     .replace(SECRET, mask)
     .replace(LONG_NUMBER, (match, offset, whole) => (AFTER_CODE_PREFIX.test(whole.slice(Math.max(0, offset - 3), offset)) ? match : mask()));
   return { text: safe, redacted };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Search, Filter, RefreshCw, Download, Columns, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import TicketTable from "../../components/ticket/TicketTable";
@@ -51,6 +51,7 @@ export default function TicketsInboxPage() {
 
 function TicketsInboxContent() {
   const { user } = useAuth();
+  const filterId = useId();
   const areaScoped = user?.role === "AREA_RESPONSIBLE";
   const [activeTab, setActiveTab] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
@@ -353,8 +354,9 @@ function TicketsInboxContent() {
       {showFilters && (
         <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Área responsable</label>
+            <label htmlFor={`${filterId}-area`} className="block text-xs font-medium text-slate-500 mb-1">Área responsable</label>
             <select
+              id={`${filterId}-area`}
               disabled={areaScoped}
               value={areaScoped ? user.areaId : filters.responsibleAreaId}
               onChange={(e) => handleFilterChange("responsibleAreaId", e.target.value)}
@@ -369,8 +371,9 @@ function TicketsInboxContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
+            <label htmlFor={`${filterId}-category`} className="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
             <select
+              id={`${filterId}-category`}
               value={filters.categoryId}
               onChange={(e) => handleFilterChange("categoryId", e.target.value)}
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
@@ -384,8 +387,9 @@ function TicketsInboxContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Prioridad</label>
+            <label htmlFor={`${filterId}-priority`} className="block text-xs font-medium text-slate-500 mb-1">Prioridad</label>
             <select
+              id={`${filterId}-priority`}
               value={filters.priority}
               onChange={(e) => handleFilterChange("priority", e.target.value)}
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
@@ -399,8 +403,9 @@ function TicketsInboxContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Barrio</label>
+            <label htmlFor={`${filterId}-neighborhood`} className="block text-xs font-medium text-slate-500 mb-1">Barrio</label>
             <select
+              id={`${filterId}-neighborhood`}
               value={filters.neighborhoodId}
               onChange={(e) => handleFilterChange("neighborhoodId", e.target.value)}
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"
@@ -415,8 +420,9 @@ function TicketsInboxContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Estado</label>
+            <label htmlFor={`${filterId}-status`} className="block text-xs font-medium text-slate-500 mb-1">Estado</label>
             <select
+              id={`${filterId}-status`}
               value={filters.status}
               onChange={(e) => handleFilterChange("status", e.target.value)}
               disabled={activeTab === "Resueltos"}
@@ -431,8 +437,9 @@ function TicketsInboxContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Etiqueta</label>
+            <label htmlFor={`${filterId}-label`} className="block text-xs font-medium text-slate-500 mb-1">Etiqueta</label>
             <select
+              id={`${filterId}-label`}
               value={filters.labelId}
               onChange={(e) => handleFilterChange("labelId", e.target.value)}
               className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:ring-[#0F2C59] focus:border-[#0F2C59]"

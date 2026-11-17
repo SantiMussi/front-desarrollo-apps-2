@@ -66,7 +66,7 @@ export function slugifyCode(label) {
 export function slugifyOptionValue(label) {
   return stripAccents(label)
     .replace(/[^A-Za-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .replace(/^_|_$/g, "")
     .toUpperCase()
     .slice(0, 100);
 }
@@ -155,7 +155,7 @@ export function fieldsFromApi(response) {
 
 // ---------- estado del editor -> API ----------
 
-const toNumber = (text) => (String(text ?? "").trim() === "" ? NaN : Number(String(text).replace(",", ".")));
+const toNumber = (text) => (String(text ?? "").trim() === "" ? Number.NaN : Number(String(text).replace(",", ".")));
 const parseNumberList = (text) =>
   String(text ?? "")
     .split(",")

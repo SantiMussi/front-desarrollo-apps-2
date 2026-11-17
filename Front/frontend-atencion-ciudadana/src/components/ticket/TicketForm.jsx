@@ -14,17 +14,16 @@ import { useNeighborhoods } from "../../hooks/useNeighborhoods";
 import { useAuth } from "../../context/useAuth";
 import { fetchRequestTypeForm } from "../../services/apiClient";
 
-import { UNKNOWN_VALUE, creationLocation, specificAnswers } from "../../utils/ticketFormValidation";
+import { UNKNOWN_VALUE, creationLocation, isContactEmail, specificAnswers } from "../../utils/ticketFormValidation";
 import { buildReviewItems } from "../../utils/ticketReview";
 import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
 
-const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONTACT_PHONE_RE = /^\+?[0-9()\-\s]{6,20}$/;
 
 function isValidContactChannel(value) {
   const trimmed = value.trim();
   if (!trimmed) return true;
-  return CONTACT_EMAIL_RE.test(trimmed) || CONTACT_PHONE_RE.test(trimmed);
+  return isContactEmail(trimmed) || CONTACT_PHONE_RE.test(trimmed);
 }
 
 function validateForm(formData, specificFields, requiresLocation) {
@@ -281,7 +280,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
         ? {
             anonymousContact: formData.contactChannel.trim()
               ? {
-                  channel: CONTACT_EMAIL_RE.test(formData.contactChannel.trim()) ? "EMAIL" : "PHONE",
+                  channel: isContactEmail(formData.contactChannel.trim()) ? "EMAIL" : "PHONE",
                   value: formData.contactChannel.trim(),
                 }
               : null,

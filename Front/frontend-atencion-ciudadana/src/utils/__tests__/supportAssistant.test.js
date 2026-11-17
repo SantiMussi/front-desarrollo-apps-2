@@ -166,6 +166,29 @@ describe("supportAssistant", () => {
 });
 
 describe("redactPersonalData", () => {
+  it("preserva la ocultación de correos consecutivos y direcciones parciales", () => {
+    const legacy = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+    const locals = ["", "ana", "a.b+c", "--", "ñ", "a_b", "a.."];
+    const domains = ["", "x", "x.y", "x..y", ".x.y", "x.y.", "x-y.z", "x.y+next@z.t", "x.y@z.t"];
+    for (const local of locals) {
+      for (const domain of domains) {
+        for (const suffix of ["", "+next@correo.test", ", otro@dominio.test", "@otro.test"]) {
+          const text = `(${local}@${domain}${suffix})`;
+          const expected = text.replace(legacy, "[dato oculto]");
+          expect(redactPersonalData(text), text).toEqual({ text: expected, redacted: expected !== text });
+        }
+      }
+    }
+  });
+
+  it("procesa texto largo sin correos y conserva la ocultación de secretos y teléfonos", () => {
+    const plain = "a".repeat(100_000);
+    expect(redactPersonalData(plain)).toEqual({ text: plain, redacted: false });
+    expect(redactPersonalData(`${plain} ana@correo.test clave: hunter2 11 5555-1234`)).toEqual({
+      text: `${plain} [dato oculto] [dato oculto] [dato oculto]`, redacted: true,
+    });
+  });
+
   it("tapa emails, números largos y contraseñas dichas en voz alta", () => {
     expect(redactPersonalData("mi mail es ana@correo.com")).toEqual({ text: "mi mail es [dato oculto]", redacted: true });
     expect(redactPersonalData("mi dni es 30.123.456").redacted).toBe(true);

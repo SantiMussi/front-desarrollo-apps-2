@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { creationLocation, specificAnswers, UNKNOWN_VALUE } from "../ticketFormValidation";
+import { creationLocation, isContactEmail, specificAnswers, UNKNOWN_VALUE } from "../ticketFormValidation";
 import { attachmentError, ATTACHMENT_TYPES, MAX_FILE_BYTES } from "../attachments";
 
 const empty = { address: "", streetNumber: "", neighborhoodId: "", latitude: null, longitude: null };
 const uuid = "11111111-1111-4111-8111-111111111111";
+
+describe("contact email compatibility", () => {
+  it("preserves the existing contact format, including its permissive dot handling", () => {
+    const legacy = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const local of ["", "ana", "a.b+c", ".", "ñ", "a@b", "a b"]) {
+      for (const domain of ["", "x", "x.y", "x..y", "..x", "x..", ".x.", "x.y.z", "x@y.z", "x y.z", "x\ny.z"]) {
+        const value = `${local}@${domain}`.trim();
+        expect(isContactEmail(value), value).toBe(legacy.test(value));
+      }
+    }
+  });
+
+  it("handles long invalid contacts without ambiguous backtracking", () => {
+    expect(isContactEmail(`a@${".".repeat(100_000)}@`)).toBe(false);
+    expect(isContactEmail(`${"a".repeat(100_000)}@example.test`)).toBe(true);
+  });
+});
 describe("H18 location alternatives match TicketService", () => {
   it("omits optional location and rejects missing required location", () => {
     expect(creationLocation(empty, false)).toEqual({ location: null });

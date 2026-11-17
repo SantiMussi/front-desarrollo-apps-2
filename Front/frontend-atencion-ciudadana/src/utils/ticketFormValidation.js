@@ -1,6 +1,14 @@
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const UNKNOWN_VALUE = "__UNKNOWN__";
 
+// Same permissive email format as the contact form, without overlapping regex runs.
+export function isContactEmail(value) {
+  const separator = value.indexOf("@");
+  const dot = value.indexOf(".", separator + 2);
+  return separator > 0 && value.indexOf("@", separator + 1) === -1
+    && !/\s/.test(value) && dot > separator + 1 && dot < value.length - 1;
+}
+
 const absent = (value) => value === undefined || value === null || value === "";
 
 // Creation accepts addressLine OR a catalog neighborhood OR a complete coordinate pair.

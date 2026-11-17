@@ -93,8 +93,8 @@ async function forwardGeocode(address, signal) {
         addr.borough
       ].filter(Boolean);
       return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
+        lat: Number.parseFloat(data[0].lat),
+        lng: Number.parseFloat(data[0].lon),
         displayName: data[0].display_name,
         neighborhoods
       };

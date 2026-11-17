@@ -57,6 +57,15 @@ describe("catálogo de tipos y utilidades", () => {
     expect(slugifyOptionValue(label)).toBe(expected);
   });
 
+  it("preserva los valores normalizados con separadores extensos y texto Unicode", () => {
+    const legacy = (label) => String(label ?? "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "").toUpperCase().slice(0, 100);
+    for (const label of ["", "___", "--á---ñ__漢字__b!!!", "x".repeat(120), "!".repeat(100_000), `--a${"_".repeat(100_000)}b--`]) {
+      expect(slugifyOptionValue(label)).toBe(legacy(label));
+    }
+  });
+
   it("crea opciones, reglas y campos vacíos con valores por defecto", () => {
     expect(emptyOption()).toMatchObject({ label: "", value: "", valueTouched: false });
     expect(emptyRule("BOOLEAN")).toMatchObject({ expected: "true", operator: "EQUALS", active: true });

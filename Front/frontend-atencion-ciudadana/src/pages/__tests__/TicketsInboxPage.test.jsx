@@ -54,7 +54,7 @@ const renderPage = async () => {
 
 const lastArgs = () => useAgentTickets.mock.lastCall[0];
 const openFilters = () => fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
-const filterSelect = (label) => screen.getByText(label, { selector: "label" }).parentElement.querySelector("select");
+const filterSelect = (label) => screen.getByLabelText(label, { selector: "select" });
 
 describe("TicketsInboxPage - listado", () => {
   it("consulta la primera página ordenada y muestra los tickets mapeados", async () => {
@@ -136,6 +136,19 @@ describe("TicketsInboxPage - listado", () => {
 });
 
 describe("TicketsInboxPage - búsqueda y filtros", () => {
+  it("mantiene asociaciones únicas y estables al ocultar y volver a abrir los filtros", async () => {
+    mockTickets();
+    await renderPage();
+    openFilters();
+    const labels = ["Área responsable", "Categoría", "Prioridad", "Barrio", "Estado", "Etiqueta"];
+    const ids = labels.map((label) => filterSelect(label).id);
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(6);
+    openFilters();
+    openFilters();
+    expect(labels.map((label) => filterSelect(label).id)).toEqual(ids);
+  });
+
   it("busca con retardo y vuelve a la primera página", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockTickets();
