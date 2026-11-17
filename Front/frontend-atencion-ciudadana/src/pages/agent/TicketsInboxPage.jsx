@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { Search, Filter, RefreshCw, Download, Columns, Bell, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { Search, Filter, RefreshCw, Download, Columns, Loader2, Check, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import TicketTable from "../../components/ticket/TicketTable";
 import UserAvatar from "../../components/ui/UserAvatar";
 import { useAuth } from "../../context/useAuth";
@@ -230,10 +230,10 @@ function TicketsInboxContent() {
               className="w-full pl-9 pr-4 py-2 bg-slate-100 border-none rounded-md text-sm focus:ring-2 focus:ring-[#0F2C59] focus:bg-white transition-all"
             />
           </div>
-          <button type="button" aria-label="Notificaciones" className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
+          {/* <button type="button" aria-label="Notificaciones" className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-[#D63031] rounded-full border-2 border-white"></span>
-          </button>
+          </button> */}
           <UserAvatar user={user} />
         </div>
       </div>
