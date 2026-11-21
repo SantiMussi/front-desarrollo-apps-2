@@ -11,10 +11,13 @@ export default function CatalogRowActions({
   busy,
 }) {
   return (
-    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center justify-end gap-1">
       <button
         type="button"
-        onClick={onEdit}
+        onClick={(event) => {
+          event.stopPropagation();
+          onEdit?.(event);
+        }}
         disabled={editDisabled || busy}
         title={editDisabled ? editDisabledReason : "Editar"}
         aria-label={editDisabled ? editDisabledReason : "Editar"}
@@ -24,7 +27,10 @@ export default function CatalogRowActions({
       </button>
       <button
         type="button"
-        onClick={onToggleActive}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleActive?.(event);
+        }}
         disabled={toggleDisabled || busy}
         title={toggleDisabled ? toggleDisabledReason : active ? "Desactivar" : "Activar"}
         aria-label={toggleDisabled ? toggleDisabledReason : active ? "Desactivar" : "Activar"}

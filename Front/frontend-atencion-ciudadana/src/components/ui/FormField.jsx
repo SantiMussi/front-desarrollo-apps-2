@@ -5,6 +5,8 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
+  const searchRef = useRef(null);
 
   const filteredOptions = useMemo(() => {
     if (!search) return options;
@@ -18,19 +20,32 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
   const selectedOption = options.find((opt) => opt.value === value);
 
   useEffect(() => {
+    if (!isOpen) return;
+    searchRef.current?.focus();
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && dropdownRef.current?.contains(event.target)) {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
 
   const handleSelect = (val) => {
     onChange({ target: { name, value: val } });
     setIsOpen(false);
     setSearch("");
+    triggerRef.current?.focus();
   };
 
   return (
@@ -41,12 +56,16 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
       </label>
       <div className="relative">
         <button
+          ref={triggerRef}
+          id={name}
           type="button"
+          aria-expanded={isOpen}
+          aria-describedby={`${name}-selection`}
           disabled={disabled}
           onClick={() => setIsOpen(!isOpen)}
           className={`${baseClasses} ${borderClass} flex items-center justify-between text-left h-[42px]`}
         >
-          <span className={`block truncate ${selectedOption ? "text-neutral-900" : "text-neutral-500"}`}>
+          <span id={`${name}-selection`} className={`block truncate ${selectedOption ? "text-neutral-900" : "text-neutral-500"}`}>
             {selectedOption ? selectedOption.label : placeholder || "Seleccionar..."}
           </span>
           <ChevronDown className={`h-4 w-4 text-neutral-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -57,15 +76,16 @@ function SearchableSelect({ label, name, required, options, value, onChange, dis
             <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2">
               <Search className="h-4 w-4 text-neutral-500 shrink-0" />
               <input
+                ref={searchRef}
                 type="text"
+                aria-label={`Buscar ${label.toLowerCase()}`}
                 placeholder="Buscar..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full text-[13px] outline-none placeholder:text-neutral-500 bg-transparent border-none p-0 focus:ring-0"
-                autoFocus
               />
               {search && (
-                <button type="button" onClick={() => setSearch("")} className="shrink-0">
+                <button type="button" onClick={() => setSearch("")} aria-label="Limpiar búsqueda" className="shrink-0">
                   <X className="h-3 w-3 text-neutral-500 hover:text-neutral-600 transition-colors" />
                 </button>
               )}

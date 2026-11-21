@@ -180,9 +180,9 @@ describe("LabelsPage - estado y eliminación", () => {
     fireEvent.click(within(screen.getByRole("alertdialog")).getByLabelText("Cerrar"));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Eliminar Urgente"));
-    fireEvent.mouseDown(screen.getByRole("alertdialog"));
+    fireEvent.click(screen.getByRole("heading", { name: "Eliminar etiqueta" }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole("alertdialog").parentElement);
+    fireEvent.click(screen.getByRole("alertdialog").querySelector('button[aria-hidden="true"]'));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
@@ -193,7 +193,11 @@ describe("LabelsPage - estado y eliminación", () => {
     fireEvent.click(screen.getByLabelText("Eliminar Urgente"));
     fireEvent.click(screen.getByRole("button", { name: /Eliminar\s+definitivamente/ }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled());
-    fireEvent.mouseDown(screen.getByRole("alertdialog").parentElement);
+    const dialog = screen.getByRole("alertdialog");
+    const backdrop = dialog.querySelector('button[aria-hidden="true"]');
+    expect(backdrop).toBeDisabled();
+    fireEvent.click(backdrop);
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     resolve(null);
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());

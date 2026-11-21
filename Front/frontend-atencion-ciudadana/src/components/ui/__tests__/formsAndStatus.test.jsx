@@ -78,16 +78,20 @@ describe("FormField", () => {
       const onChange = setup({ required: true, placeholder: "Elegí un barrio" });
       expect(screen.getByText("Elegí un barrio")).toBeInTheDocument();
       fireEvent.click(screen.getByText("Elegí un barrio"));
+      expect(screen.getByRole("textbox", { name: "Buscar barrio" })).toHaveFocus();
       fireEvent.click(screen.getByRole("button", { name: "Bache" }));
       expect(onChange).toHaveBeenCalledWith({ target: { name: "hood", value: "b" } });
       expect(screen.queryByPlaceholderText("Buscar...")).not.toBeInTheDocument();
+      expect(screen.getByRole("button")).toHaveFocus();
     });
 
     it("usa el placeholder por defecto y marca la opción elegida", () => {
       setup({ value: "a" });
       expect(screen.getAllByText("Árbol").length).toBeGreaterThan(0);
-      fireEvent.click(screen.getAllByRole("button")[0]);
-      expect(screen.getAllByRole("button", { name: "Árbol" })[1]).toHaveClass("text-[#D63031]");
+      const trigger = screen.getByRole("button", { name: "Barrio" });
+      expect(trigger).toHaveAccessibleDescription("Árbol");
+      fireEvent.click(trigger);
+      expect(screen.getByRole("button", { name: "Árbol" })).toHaveClass("text-[#D63031]");
     });
 
     it("cae al texto por defecto sin selección ni placeholder", () => {
@@ -124,6 +128,18 @@ describe("FormField", () => {
       setup({ disabled: true });
       fireEvent.click(screen.getByText("Seleccionar..."));
       expect(screen.getByRole("button")).toBeDisabled();
+    });
+
+    it("cierra con Escape y devuelve el foco al control", () => {
+      setup();
+      const trigger = screen.getByRole("button");
+      fireEvent.click(trigger);
+      const search = screen.getByRole("textbox", { name: "Buscar barrio" });
+      expect(search).toHaveFocus();
+      fireEvent.keyDown(search, { key: "Escape" });
+      expect(trigger).toHaveFocus();
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+      expect(search).not.toBeInTheDocument();
     });
   });
 });

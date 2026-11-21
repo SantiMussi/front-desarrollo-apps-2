@@ -137,7 +137,7 @@ describe("AttachmentGallery", () => {
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByRole("dialog", { name: "Vista previa de acta.pdf" })).toBeInTheDocument();
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
-    if (closeWith === "Escape") fireEvent.keyDown(window, { key: "Escape" });
+    if (closeWith === "Escape") fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
     else fireEvent.click(screen.getByLabelText("Cerrar vista previa"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(URL.revokeObjectURL).toHaveBeenCalledOnce();
