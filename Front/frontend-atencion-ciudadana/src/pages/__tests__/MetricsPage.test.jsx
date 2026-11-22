@@ -22,6 +22,24 @@ describe("MetricsPage con agregación PostgreSQL",()=>{
     expect(kpi("Cumplimiento de SLA").getByText("75%")).toBeInTheDocument(); expect(screen.getByText("Sin barrio informado")).toBeInTheDocument();
     expect(screen.getByRole("img",{name:/Evolución/})).toBeInTheDocument(); expect(screen.getByText("Activos sin agente M2").previousSibling).toHaveTextContent("3");
   });
+  it("distingue las tres categorías principales sin omitir el volumen de la cuarta", async () => {
+    const categories = [
+      { key: "1", name: "Alumbrado", count: 50 },
+      { key: "2", name: "Veredas", count: 35 },
+      { key: "3", name: "Limpieza", count: 25 },
+      { key: "4", name: "Arbolado", count: 15 },
+    ];
+    useIndicatorOverview.mockReturnValue({ data: indicatorOverview({ categories }), loading: false, error: null });
+    await page();
+
+    const panel = within(screen.getByRole("heading", { name: "Volumen por categoría" }).closest("section"));
+    const third = within(panel.getByText("Limpieza").parentElement);
+    const fourth = within(panel.getByText("Arbolado").parentElement);
+    expect(third.getByText("3")).toHaveClass("bg-blue-50");
+    expect(fourth.getByText("4")).toHaveClass("bg-slate-100");
+    expect(fourth.getByText("15")).toBeInTheDocument();
+    expect(fourth.getByText("12%")).toBeInTheDocument();
+  });
   it("envía filtros combinados al servidor, incluido período y SLA",async()=>{
     await page();fireEvent.click(screen.getByRole("button",{name:/Filtros/}));
     for(const [label,value] of [["Período","7"],["Categoría","1"],["Barrio","n1"],["Prioridad","HIGH"],["SLA","breached"],["Área responsable","M6"]]) fireEvent.change(screen.getByLabelText(label),{target:{value}});
