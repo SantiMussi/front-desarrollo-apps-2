@@ -215,13 +215,15 @@ describe("ConfirmExitModal", () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     const { unmount } = render(<ConfirmExitModal isOpen onConfirm={onConfirm} onCancel={onCancel} />);
+    const dialog = screen.getByRole("alertdialog", { name: "¿Querés salir del formulario?" });
+    expect(dialog).toHaveAccessibleDescription(/todo el progreso/);
+    expect(screen.getByRole("button", { name: "Seguir editando" })).toHaveFocus();
     expect(document.body.style.overflow).toBe("hidden");
     fireEvent.click(screen.getByText("Sí, salir"));
     expect(onConfirm).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByText("Seguir editando"));
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.keyDown(window, { key: "x" });
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
     expect(onCancel).toHaveBeenCalledTimes(3);
     unmount();
     expect(document.body.style.overflow).toBe("");
@@ -229,8 +231,8 @@ describe("ConfirmExitModal", () => {
 
   it("cancela al hacer clic en el fondo", () => {
     const onCancel = vi.fn();
-    const { container } = render(<ConfirmExitModal isOpen onConfirm={() => {}} onCancel={onCancel} />);
-    fireEvent.click(container.querySelector(".backdrop-blur-sm"));
+    render(<ConfirmExitModal isOpen onConfirm={() => {}} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("alertdialog").querySelector("button[aria-hidden='true']"));
     expect(onCancel).toHaveBeenCalledOnce();
   });
 });
@@ -277,7 +279,7 @@ describe("LoginPromptModal", () => {
     setup(login);
     fill();
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
-    expect(await screen.findByText("Credenciales inválidas")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Credenciales inválidas");
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
     expect(await screen.findByText("No pudimos iniciar sesión. Intentá de nuevo.")).toBeInTheDocument();
   });
@@ -294,10 +296,12 @@ describe("LoginPromptModal", () => {
 
   it("se cierra con la X, Escape y el fondo", () => {
     const { onClose } = setup();
+    const dialog = screen.getByRole("dialog", { name: "Iniciá sesión para enviar tu reclamo" });
+    expect(dialog).toHaveAccessibleDescription(/No vas a perder/);
+    expect(screen.getByRole("textbox", { name: "Correo electrónico" })).toHaveFocus();
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.keyDown(window, { key: "a" });
-    fireEvent.click(document.querySelector(".backdrop-blur-sm"));
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
+    fireEvent.click(dialog.querySelector("button[aria-hidden='true']"));
     expect(onClose).toHaveBeenCalledTimes(3);
   });
 
@@ -308,8 +312,12 @@ describe("LoginPromptModal", () => {
     fill();
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
     expect(await screen.findByText("Ingresando...")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Iniciá sesión para enviar tu reclamo" });
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
+    const backdrop = dialog.querySelector("button[aria-hidden='true']");
+    expect(backdrop).toBeDisabled();
+    fireEvent.click(backdrop);
     expect(onClose).not.toHaveBeenCalled();
     await act(async () => finish({}));
     expect(onAuthenticated).toHaveBeenCalled();
