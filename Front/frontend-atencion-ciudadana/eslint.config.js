@@ -12,7 +12,7 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['playwright.config.js', 'e2e/**/*.js'],
+    files: ['playwright*.config.js', 'e2e/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },

@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-/** Inicia sesión desde la pantalla real de ingreso. Requiere que `/auth/login` esté mockeado. */
+/** Inicia sesión desde la pantalla de ingreso. */
 export async function loginFromUi(page, { email, password }) {
   await page.goto("/ingresar");
   await page.getByLabel("Correo electrónico").fill(email);

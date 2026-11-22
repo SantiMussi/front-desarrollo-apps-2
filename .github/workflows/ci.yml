@@ -112,6 +112,7 @@ jobs:
         run: docker build --target esbuild-tool --output "type=local,dest=$RUNNER_TEMP/esbuild-tool" .
 
       - name: Upload patched build tool for E2E
+        if: env.BUILD_IDENTITY_PROVIDER == 'M1'
         uses: actions/upload-artifact@v7
         with:
           name: esbuild-tool
@@ -144,6 +145,15 @@ jobs:
         env:
           VITE_API_BASE_URL: /api
           VITE_IDENTITY_PROVIDER: ${{ env.BUILD_IDENTITY_PROVIDER }}
+
+      - name: Upload the validated MOCK bundle for Playwright
+        if: env.BUILD_IDENTITY_PROVIDER == 'MOCK'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-frontend-dist
+          path: Front/frontend-atencion-ciudadana/dist/
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Validate Nginx proxy configuration
         run: |
@@ -193,9 +203,10 @@ jobs:
     needs: [configuration, validate]
     env:
       TZ: UTC
-      # Existing E2E emulate the MOCK API; validate builds the selected provider.
+      # Both suites use synthetic MOCK identities regardless of the deploy provider.
       VITE_IDENTITY_PROVIDER: MOCK
       VITE_API_BASE_URL: /api
+      M2_E2E_BACKEND_DIR: ${{ github.workspace }}/m2-backend-e2e
     concurrency:
       group: ${{ github.workflow }}-e2e-${{ github.event.pull_request.number || github.ref }}-${{ needs.configuration.outputs.identity_provider }}
       cancel-in-progress: true
@@ -207,6 +218,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout the public Backend revision under test
+        uses: actions/checkout@v7
+        with:
+          repository: JuanmaGuida/Backend-DAMII
+          ref: 3147c160973e16d2169a4f75cc2a61b9c7942f29
+          path: m2-backend-e2e
+          persist-credentials: false
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v6
@@ -219,6 +240,7 @@ jobs:
         run: npm install --global npm@11.21.2
 
       - name: Download patched build tool
+        if: needs.configuration.outputs.identity_provider == 'M1'
         uses: actions/download-artifact@v7
         with:
           name: esbuild-tool
@@ -228,12 +250,22 @@ jobs:
         run: npm ci
 
       - name: Patch esbuild binary without changing its API
-        run: sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
+        if: needs.configuration.outputs.identity_provider == 'M1'
+        run: |
+          sh docker/patch-esbuild.sh "$RUNNER_TEMP/esbuild-tool/esbuild"
+          npm run build
 
-      # Corre los escenarios sobre la app compilada con el Chrome del runner.
-      # La API está mockeada en cada escenario, así que no depende del back.
-      - name: Run E2E scenarios
-        run: npm run test:e2e
+      - name: Reuse the validated MOCK bundle
+        if: needs.configuration.outputs.identity_provider == 'MOCK'
+        uses: actions/download-artifact@v7
+        with:
+          name: e2e-frontend-dist
+          path: Front/frontend-atencion-ciudadana/dist
+
+      - name: Run both E2E suites against the disposable stack
+        run: |
+          printf 'Backend E2E revision %s\n' "$(git -C "$M2_E2E_BACKEND_DIR" rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          npm run test:e2e:real -- --with-mocks
 
       - name: Upload Playwright report
         if: always()

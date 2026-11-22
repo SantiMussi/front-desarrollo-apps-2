@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:17@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac
+    environment:
+      POSTGRES_DB: m2_e2e
+      POSTGRES_USER: m2_e2e
+      POSTGRES_PASSWORD: ${M2_E2E_DB_PASSWORD:?Run npm run test:e2e:real}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, m2_e2e, -d, m2_e2e]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build:
+      context: ${M2_E2E_BACKEND_DIR:?Set the local Backend checkout}
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/m2_e2e
+      SPRING_DATASOURCE_USERNAME: m2_e2e
+      SPRING_DATASOURCE_PASSWORD: ${M2_E2E_DB_PASSWORD:?Run npm run test:e2e:real}
+      SPRING_JPA_SHOW_SQL: "false"
+      IDENTITY_PROVIDER: MOCK
+      MOCK_CITIZEN_PASSWORD: ${M2_E2E_FIXTURE_PASSWORD:?Run npm run test:e2e:real}
+      MOCK_AGENT_PASSWORD: ${M2_E2E_FIXTURE_PASSWORD:?Run npm run test:e2e:real}
+      MOCK_AREA_RESPONSIBLE_PASSWORD: ${M2_E2E_FIXTURE_PASSWORD:?Run npm run test:e2e:real}
+      MOCK_ADMIN_PASSWORD: ${M2_E2E_FIXTURE_PASSWORD:?Run npm run test:e2e:real}
+      TRACKING_CODE_ENCRYPTION_KEY_BASE64: ${M2_E2E_TRACKING_KEY:?Run npm run test:e2e:real}
+      TRACKING_CODE_ENCRYPTION_KEY_ID: e2e
+      AI_ENABLED: "false"
+      SIMULATOR_ENABLED: "false"
+      CORE_INBOX_ENABLED: "false"
+      CORE_OUTBOX_ENABLED: "false"
+      ATTACHMENT_STORAGE_ROOT: /var/lib/m2/attachments
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, bash, -ec, 'exec 3<>/dev/tcp/127.0.0.1/8080; printf "GET /actuator/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; IFS= read -r status <&3; [[ "$$status" == *" 200 "* ]]']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
+  frontend:
+    image: nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
+    volumes:
+      - ../dist:/usr/share/nginx/html:ro
+      - ../nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1::80"
+    networks: [default, edge]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+networks:
+  default:
+    internal: true
+  edge: {}
+
+volumes:
+  postgres_data:

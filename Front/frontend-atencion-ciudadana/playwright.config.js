@@ -5,16 +5,18 @@ import { defineConfig, devices } from "@playwright/test";
 // punta sin depender del back ni de datos de una base.
 const PORT = 4173;
 const CI = Boolean(process.env.CI);
+const externalUrl = process.env.M2_E2E_URL;
 
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.e2e.js",
+  testIgnore: "**/real/**",
   fullyParallel: true,
   forbidOnly: CI,
   retries: 0,
   reporter: CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: externalUrl || `http://localhost:${PORT}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     locale: "es-AR",
@@ -24,7 +26,7 @@ export default defineConfig({
     // En CI usa el Chrome ya instalado en el runner; no hay que descargar navegadores.
     { name: "chromium", use: { ...devices["Desktop Chrome"], channel: "chrome" } },
   ],
-  webServer: {
+  webServer: externalUrl ? undefined : {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !CI,
