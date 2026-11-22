@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createRef } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AttachmentGallery from "../AttachmentGallery";
 import ConfirmExitModal from "../ConfirmExitModal";
 import DuplicateLinkDialog from "../DuplicateLinkDialog";
 import LoginPromptModal from "../LoginPromptModal";
+import ModalDialog from "../ModalDialog";
 import { fetchDuplicateCandidates } from "../../../services/apiClient";
 import { AuthContext } from "../../../context/authContext";
 
@@ -204,6 +206,101 @@ describe("AttachmentGallery", () => {
   });
 });
 
+describe("ModalDialog", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // jsdom no calcula la geometría. El foco, los eventos y la visibilidad CSS son reales.
+  function renderedControls(...labels) {
+    for (const label of labels) {
+      vi.spyOn(screen.getByText(label), "getClientRects").mockReturnValue([{ width: 80, height: 24 }]);
+    }
+  }
+
+  it.each([true, false])("abre el diálogo, enfoca el control y restaura el scroll (lockScroll=%s)", (lockScroll) => {
+    const initialFocusRef = createRef();
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "scroll";
+    try {
+      const { unmount } = render(
+        <ModalDialog label="Editar reclamo" initialFocusRef={initialFocusRef} lockScroll={lockScroll}>
+          <button type="button">Cancelar</button>
+          <input ref={initialFocusRef} aria-label="Título" />
+        </ModalDialog>,
+      );
+      const dialog = screen.getByRole("dialog", { name: "Editar reclamo" });
+      expect(dialog).toHaveAttribute("open");
+      expect(dialog).toHaveAttribute("aria-modal", "true");
+      expect(screen.getByRole("textbox", { name: "Título" })).toHaveFocus();
+      expect(document.body.style.overflow).toBe(lockScroll ? "hidden" : "scroll");
+      unmount();
+      expect(dialog).not.toHaveAttribute("open");
+      expect(document.body.style.overflow).toBe("scroll");
+    } finally {
+      document.body.style.overflow = originalOverflow;
+    }
+  });
+
+  it("cicla Tab en ambos extremos y excluye controles fuera del orden de tabulación", () => {
+    render(
+      <ModalDialog label="Editar reclamo">
+        <button type="button" tabIndex={-1}>Foco programático</button>
+        <button type="button">Primero</button>
+        <button type="button">Intermedio</button>
+        <button type="button">Último</button>
+        <button type="button" disabled>Acción deshabilitada</button>
+        <button type="button" hidden>Acción sin caja</button>
+        <button type="button" style={{ visibility: "hidden" }}>Acción invisible</button>
+      </ModalDialog>,
+    );
+    renderedControls("Foco programático", "Primero", "Intermedio", "Último", "Acción deshabilitada", "Acción invisible");
+    const first = screen.getByRole("button", { name: "Primero" });
+    const middle = screen.getByRole("button", { name: "Intermedio" });
+    const last = screen.getByRole("button", { name: "Último" });
+
+    last.focus();
+    expect(fireEvent.keyDown(last, { key: "Tab" })).toBe(false);
+    expect(first).toHaveFocus();
+    expect(fireEvent.keyDown(first, { key: "Tab", shiftKey: true })).toBe(false);
+    expect(last).toHaveFocus();
+
+    middle.focus();
+    expect(fireEvent.keyDown(middle, { key: "Tab" })).toBe(true);
+    expect(fireEvent.keyDown(middle, { key: "Tab", shiftKey: true })).toBe(true);
+    expect(middle).toHaveFocus();
+  });
+
+  it("deja pasar otras teclas y respeta un Tab manejado por un control interno", () => {
+    render(
+      <ModalDialog label="Editar reclamo">
+        <button type="button">Cancelar</button>
+        <button type="button" onKeyDown={(event) => {
+          if (event.key === "Tab") event.preventDefault();
+        }}>Acción con teclado propio</button>
+      </ModalDialog>,
+    );
+    renderedControls("Cancelar", "Acción con teclado propio");
+    const control = screen.getByRole("button", { name: "Acción con teclado propio" });
+    control.focus();
+
+    expect(fireEvent.keyDown(control, { key: "ArrowRight" })).toBe(true);
+    expect(fireEvent.keyDown(control, { key: "Tab" })).toBe(false);
+    expect(control).toHaveFocus();
+  });
+
+  it.each([true, false])("controla Escape y el clic de fondo (canDismiss=%s)", (canDismiss) => {
+    const onDismiss = vi.fn();
+    render(<ModalDialog label="Editar reclamo" canDismiss={canDismiss} onDismiss={onDismiss} />);
+    const dialog = screen.getByRole("dialog", { name: "Editar reclamo" });
+    const backdrop = dialog.querySelector("button[aria-hidden='true']");
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
+    expect(onDismiss).toHaveBeenCalledTimes(canDismiss ? 1 : 0);
+    expect(backdrop.disabled).toBe(!canDismiss);
+    fireEvent.click(backdrop);
+    expect(onDismiss).toHaveBeenCalledTimes(canDismiss ? 2 : 0);
+    expect(dialog).toHaveAttribute("open");
+  });
+});
+
 describe("ConfirmExitModal", () => {
   it("no renderiza nada cerrado y libera el scroll", () => {
     render(<ConfirmExitModal isOpen={false} onConfirm={() => {}} onCancel={() => {}} />);
@@ -215,13 +312,15 @@ describe("ConfirmExitModal", () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     const { unmount } = render(<ConfirmExitModal isOpen onConfirm={onConfirm} onCancel={onCancel} />);
+    const dialog = screen.getByRole("alertdialog", { name: "¿Querés salir del formulario?" });
+    expect(dialog).toHaveAccessibleDescription(/todo el progreso/);
+    expect(screen.getByRole("button", { name: "Seguir editando" })).toHaveFocus();
     expect(document.body.style.overflow).toBe("hidden");
     fireEvent.click(screen.getByText("Sí, salir"));
     expect(onConfirm).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByText("Seguir editando"));
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.keyDown(window, { key: "x" });
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
     expect(onCancel).toHaveBeenCalledTimes(3);
     unmount();
     expect(document.body.style.overflow).toBe("");
@@ -229,8 +328,8 @@ describe("ConfirmExitModal", () => {
 
   it("cancela al hacer clic en el fondo", () => {
     const onCancel = vi.fn();
-    const { container } = render(<ConfirmExitModal isOpen onConfirm={() => {}} onCancel={onCancel} />);
-    fireEvent.click(container.querySelector(".backdrop-blur-sm"));
+    render(<ConfirmExitModal isOpen onConfirm={() => {}} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("alertdialog").querySelector("button[aria-hidden='true']"));
     expect(onCancel).toHaveBeenCalledOnce();
   });
 });
@@ -277,7 +376,7 @@ describe("LoginPromptModal", () => {
     setup(login);
     fill();
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
-    expect(await screen.findByText("Credenciales inválidas")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Credenciales inválidas");
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
     expect(await screen.findByText("No pudimos iniciar sesión. Intentá de nuevo.")).toBeInTheDocument();
   });
@@ -294,10 +393,12 @@ describe("LoginPromptModal", () => {
 
   it("se cierra con la X, Escape y el fondo", () => {
     const { onClose } = setup();
+    const dialog = screen.getByRole("dialog", { name: "Iniciá sesión para enviar tu reclamo" });
+    expect(dialog).toHaveAccessibleDescription(/No vas a perder/);
+    expect(screen.getByRole("textbox", { name: "Correo electrónico" })).toHaveFocus();
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.keyDown(window, { key: "a" });
-    fireEvent.click(document.querySelector(".backdrop-blur-sm"));
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
+    fireEvent.click(dialog.querySelector("button[aria-hidden='true']"));
     expect(onClose).toHaveBeenCalledTimes(3);
   });
 
@@ -308,8 +409,12 @@ describe("LoginPromptModal", () => {
     fill();
     fireEvent.click(screen.getByText("Iniciar sesión y enviar"));
     expect(await screen.findByText("Ingresando...")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Iniciá sesión para enviar tu reclamo" });
     fireEvent.click(screen.getByLabelText("Cerrar"));
-    fireEvent.keyDown(window, { key: "Escape" });
+    expect(fireEvent(dialog, new Event("cancel", { cancelable: true }))).toBe(false);
+    const backdrop = dialog.querySelector("button[aria-hidden='true']");
+    expect(backdrop).toBeDisabled();
+    fireEvent.click(backdrop);
     expect(onClose).not.toHaveBeenCalled();
     await act(async () => finish({}));
     expect(onAuthenticated).toHaveBeenCalled();

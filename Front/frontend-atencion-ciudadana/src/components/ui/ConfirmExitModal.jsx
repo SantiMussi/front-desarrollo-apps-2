@@ -1,52 +1,36 @@
-import { useEffect } from "react";
+import { useId, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X, ArrowLeft, ShieldAlert } from "lucide-react";
+import ModalDialog from "./ModalDialog";
 
 export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
-  // Bloquear scroll del body cuando el modal está abierto
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
-
-  // Cerrar con ESC
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e) => {
-      if (e.key === "Escape") onCancel();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [isOpen, onCancel]);
+  const titleId = useId();
+  const descriptionId = useId();
+  const continueEditingRef = useRef(null);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+        <ModalDialog
+          role="alertdialog"
+          labelledBy={titleId}
+          describedBy={descriptionId}
+          initialFocusRef={continueEditingRef}
+          lockScroll
+          onDismiss={onCancel}
         >
           {/* Backdrop con blur */}
           <motion.div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-0 bg-black/40 backdrop-blur-sm"
+            aria-hidden="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onCancel}
           />
 
           {/* Modal */}
           <motion.div
-            className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/20"
+            className="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/20"
             initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -129,6 +113,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
 
               {/* Title */}
               <motion.h3
+                id={titleId}
                 className="text-center text-xl font-extrabold text-neutral-900 tracking-tight"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -139,6 +124,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
 
               {/* Description */}
               <motion.p
+                id={descriptionId}
                 className="mt-2.5 text-center text-[14px] text-neutral-500 leading-relaxed max-w-sm mx-auto"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -169,6 +155,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
               transition={{ delay: 0.3 }}
             >
               <button
+                ref={continueEditingRef}
                 type="button"
                 onClick={onCancel}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-[13px] font-semibold text-neutral-700
@@ -189,7 +176,7 @@ export default function ConfirmExitModal({ isOpen, onConfirm, onCancel }) {
               </button>
             </motion.div>
           </motion.div>
-        </motion.div>
+        </ModalDialog>
       )}
     </AnimatePresence>
   );

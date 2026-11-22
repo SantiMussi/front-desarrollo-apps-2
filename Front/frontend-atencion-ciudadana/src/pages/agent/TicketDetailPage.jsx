@@ -851,7 +851,7 @@ function TicketDetailContent() {
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
               <Field label="Afectados">
                 <span>{fields.affectedCount}</span>
-                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-400">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
+                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-600">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
               </Field>
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>
