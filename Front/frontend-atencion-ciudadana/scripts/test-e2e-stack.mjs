@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 
 const app = fileURLToPath(new URL("../", import.meta.url));
 const backend = resolve(app, process.env.M2_E2E_BACKEND_DIR || "../../../Backend-DAMII");
+const dockerPath = process.platform === "win32"
+  ? "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe"
+  : "/usr/bin/docker";
 const project = `m2-e2e-${randomUUID()}`;
 const composeArgs = ["compose", "--project-name", project, "--file", "e2e/compose.yml"];
 const env = {
@@ -17,7 +20,7 @@ const env = {
 };
 
 function compose(args, stdio = "inherit") {
-  return execFileSync("docker", [...composeArgs, ...args], { cwd: app, env, stdio, encoding: "utf8" });
+  return execFileSync(dockerPath, [...composeArgs, ...args], { cwd: app, env, stdio, encoding: "utf8" });
 }
 
 if (!existsSync(join(app, "dist/index.html"))) {
@@ -25,6 +28,9 @@ if (!existsSync(join(app, "dist/index.html"))) {
 }
 if (!existsSync(join(backend, "Dockerfile"))) {
   throw new Error(`Falta el Dockerfile de Backend en ${backend}. Revisá M2_E2E_BACKEND_DIR.`);
+}
+if (!existsSync(dockerPath)) {
+  throw new Error(`No encontré Docker en ${dockerPath}. Revisá la instalación estándar de Docker.`);
 }
 
 try {
