@@ -74,7 +74,7 @@ const fillBasics = () => {
   type(/^Calle/, "Av. Corrientes");
   type(/^Altura/, "1234");
   fireEvent.click(screen.getByText("map-click"));
-  fireEvent.click(screen.getByRole("button", { name: "Seleccionar..." }));
+  fireEvent.click(screen.getByRole("button", { name: /^Barrio\b/ }));
   fireEvent.click(screen.getByRole("button", { name: "Palermo" }));
 };
 

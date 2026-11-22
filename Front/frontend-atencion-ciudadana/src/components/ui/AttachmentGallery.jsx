@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, Download, Eye, File, FileText, Image as ImageIcon, Loader2, Paperclip, X } from "lucide-react";
 import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
+import ModalDialog from "./ModalDialog";
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes)) return "";
@@ -37,25 +38,14 @@ function saveBlob(blob, fileName) {
 function AttachmentPreview({ attachment, url, onClose, onDownload }) {
   const kind = previewKind(attachment.contentType);
 
-  useEffect(() => {
-    const handleKey = (event) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Vista previa de ${attachment.fileName}`}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <ModalDialog
+      label={`Vista previa de ${attachment.fileName}`}
+      overlayClassName="bg-black/60 backdrop-blur-sm"
+      onDismiss={onClose}
     >
       <div
         className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-neutral-200 px-4 py-2.5">
           <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-neutral-700">{attachment.fileName}</p>
@@ -84,7 +74,7 @@ function AttachmentPreview({ attachment, url, onClose, onDownload }) {
           )}
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 

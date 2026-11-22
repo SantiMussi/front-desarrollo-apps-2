@@ -157,7 +157,7 @@ describe("TicketDetailPage - cabecera y detalles", () => {
     await renderPage();
     expect(screen.getByRole("heading", { name: "Luminaria apagada" })).toBeInTheDocument();
     expect(screen.getByText("TK-5")).toBeInTheDocument();
-    expect(screen.getByText("Complaint", { selector: '[role="tooltip"]' })).toBeInTheDocument();
+    expect(screen.getByText("Complaint")).toBeVisible();
     expect(screen.getByText("Hace días que no enciende.")).toBeInTheDocument();
     expect(screen.getAllByText("Palermo").length).toBeGreaterThan(0);
     expect(screen.getByText("1 persona afectada")).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe("TicketDetailPage - cabecera y detalles", () => {
   ])("muestra el tipo %s", async (ticketType, label) => {
     setTicket({ ticketType });
     await renderPage();
-    expect(screen.getByText(label, { selector: '[role="tooltip"]' })).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeVisible();
   });
 
   it("muestra el enlace al ticket principal con su código público", async () => {
@@ -426,6 +426,7 @@ describe("TicketDetailPage - comentarios", () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText("Editar comentario"));
     const box = screen.getByDisplayValue("Mi comentario");
+    expect(box).toHaveFocus();
     fireEvent.change(box, { target: { value: "  " } });
     expect(screen.getByText("Guardar")).toBeDisabled();
     fireEvent.click(screen.getByText("Guardar"));
@@ -434,6 +435,7 @@ describe("TicketDetailPage - comentarios", () => {
     fireEvent.click(screen.getByText("Guardar"));
     await act(async () => {});
     expect(chat.edit).toHaveBeenCalledWith(6, "Editado");
+    expect(screen.getByRole("button", { name: "Editar comentario" })).toHaveFocus();
     expect(screen.queryByDisplayValue("Editado")).not.toBeInTheDocument();
   });
 

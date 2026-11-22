@@ -38,7 +38,7 @@ ENV VITE_IDENTITY_PROVIDER=${VITE_IDENTITY_PROVIDER}
 
 RUN npm run build
 
-FROM nginx:1.30.6-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a AS runtime
+FROM nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3 AS runtime
 
 # Security patch within the image's Alpine branch; keep the Nginx configuration intact.
 RUN apk add --no-cache --upgrade 'libxslt>=1.1.43-r4'
