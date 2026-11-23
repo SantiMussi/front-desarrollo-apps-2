@@ -531,14 +531,19 @@ describe("TicketDetailPage - transiciones de estado", () => {
     await act(async () => finish({ currentStatus: "IN_REVIEW" }));
   });
 
-  it("vincula un duplicado", async () => {
+  it.each([
+    ["REGISTERED", "Registrado"],
+    ["IN_REVIEW", "En revisión"],
+  ])("vincula un duplicado desde %s", async (currentStatus, label) => {
+    setTicket({ currentStatus });
     api.linkTicketDuplicate.mockResolvedValue({ currentStatus: "DUPLICATE" });
     await renderPage();
-    await pickTransition("Registrado", "Marcar como duplicado");
+    await pickTransition(label, "Marcar como duplicado");
     fireEvent.click(await screen.findByText("TK-77"));
     fireEvent.click(screen.getByRole("button", { name: /Confirmar vínculo/ }));
     await act(async () => {});
     expect(api.linkTicketDuplicate).toHaveBeenCalledWith(5, { mainTicketId: 77 });
+    expect(reload).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /Duplicado/ })).toBeInTheDocument();
     expect(screen.queryByText("Vincular a un ticket principal")).not.toBeInTheDocument();
   });
@@ -787,11 +792,12 @@ describe("TicketDetailPage - transiciones de estado", () => {
     await act(async () => finish({ currentStatus: "CANCELLED" }));
   });
 
-  it("avisa cuando la transición no tiene endpoint", async () => {
+  it("muestra el estado Duplicado sin acciones manuales de transición", async () => {
     setTicket({ currentStatus: "DUPLICATE" });
     await renderPage();
-    await pickTransition("Duplicado", "Cerrar con el caso principal");
-    expect(screen.getByText(/todavía no tiene un endpoint en el back/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Duplicado" })).toBeDisabled();
+    openMenu("Duplicado");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });
 

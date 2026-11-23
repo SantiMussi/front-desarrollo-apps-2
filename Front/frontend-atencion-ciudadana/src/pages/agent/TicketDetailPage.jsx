@@ -400,6 +400,8 @@ function TicketDetailContent() {
     }
   };
 
+  const canLinkDuplicateFromStatus = ["REGISTERED", "IN_REVIEW"].includes(status);
+
   const requestTransition = (nextStatus) => {
     if (reclassificationBusy || cancellationBusy) return;
     if (canManageClassification && ["ROUTED", "PENDING_INFORMATION"].includes(nextStatus)
@@ -439,7 +441,7 @@ function TicketDetailContent() {
       setReasonDialog({ kind: "reject" });
       return;
     }
-    if (status === "REGISTERED" && nextStatus === "DUPLICATE") {
+    if (canLinkDuplicateFromStatus && nextStatus === "DUPLICATE") {
       setDuplicateError(null);
       setDuplicateDialogOpen(true);
       return;
@@ -480,7 +482,7 @@ function TicketDetailContent() {
   };
 
   const handleDuplicateConfirm = async ({ mainTicketId }) => {
-    if (duplicateLoading || status !== "REGISTERED") return;
+    if (duplicateLoading || !canLinkDuplicateFromStatus) return;
     setDuplicateLoading(true);
     setDuplicateError(null);
     try {
