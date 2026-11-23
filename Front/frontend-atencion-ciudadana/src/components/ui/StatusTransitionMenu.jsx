@@ -12,6 +12,7 @@ const TRANSITIONS = {
   IN_REVIEW: [
     { status: "PENDING_INFORMATION", action: "Solicitar información extra" },
     { status: "ROUTED", action: "Derivar al área correspondiente" },
+    { status: "DUPLICATE", action: "Marcar como duplicado" },
     { status: "CANCELLED", action: "Cancelar ticket" },
   ],
   PENDING_INFORMATION: [
@@ -31,10 +32,7 @@ const TRANSITIONS = {
     { status: "CANCELLED", action: "Cancelar ticket" },
   ],
   RESOLVED: [],
-  DUPLICATE: [
-    { status: "IN_REVIEW", action: "Volver a revisar" },
-    { status: "CLOSED", action: "Cerrar con el caso principal" },
-  ],
+  DUPLICATE: [],
   CANCELLED: [],
   CLOSED: [],
 };
