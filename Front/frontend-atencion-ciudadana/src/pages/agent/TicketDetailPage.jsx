@@ -23,6 +23,7 @@ import { useRequestTicketInformation } from "../../hooks/useRequestTicketInforma
 import { useStaffTicketDetail } from "../../hooks/useStaffTicketDetail";
 import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
+import { useStaffCapabilities } from "../../hooks/useStaffCapabilities";
 import { useAuth } from "../../context/useAuth";
 import { reviewTicket, routeTicket, startTicketWork, returnTicketToAgent, rejectTicket, cancelTicket, linkTicketDuplicate, uploadTicketAttachment, downloadTicketAttachment, fetchStaffTicketDetail, fetchMyTicketDetail } from "../../services/apiClient";
 import { getSlaIndicator } from "../../utils/ticketIndicators";
@@ -498,9 +499,15 @@ function TicketDetailContent() {
   };
 
   const areaIsM2 = fields?.responsibleAreaId === "M2";
-  const simulatedStatuses = ["ROUTED", "IN_PROGRESS"].includes(status)
+  // Estas acciones simulan eventos de otro módulo y sólo existen si el servidor tiene el simulador
+  // habilitado. Con el dato en false se muestran deshabilitadas; sin dato (null) se ofrecen como siempre.
+  const { simulatorEnabled } = useStaffCapabilities();
+  const simulatorOff = simulatorEnabled === false;
+  const simulatorActionStatuses = ["ROUTED", "IN_PROGRESS"].includes(status)
     ? ["IN_REVIEW", "CANCELLED", ...(status === "ROUTED" ? ["IN_PROGRESS"] : []), ...(!areaIsM2 ? ["RESOLVED"] : [])]
     : [];
+  const simulatedStatuses = simulatorOff ? [] : simulatorActionStatuses;
+  const unavailableStatuses = simulatorOff ? simulatorActionStatuses : [];
   const resolveMode =
     areaIsM2 && status === "IN_PROGRESS"
       ? "manual"
@@ -647,11 +654,11 @@ function TicketDetailContent() {
         				{TICKET_STATUS_LABELS[status] || status}
         			</span>
         		) : (
-              <StatusTransitionMenu status={status} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} />
+              <StatusTransitionMenu status={status} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} unavailableStatuses={unavailableStatuses} />
         		)}
         	</div>
         </div>
-        {!staffReadOnly && ["ROUTED", "IN_PROGRESS"].includes(status) && <p className="mt-3 text-xs text-amber-800">Simulación DEV: las acciones marcadas simulan eventos externos y requieren el simulador habilitado en el servidor. No contactan al módulo externo.</p>}
+        {!staffReadOnly && !simulatorOff && ["ROUTED", "IN_PROGRESS"].includes(status) && <p className="mt-3 text-xs text-amber-800">Simulación DEV: las acciones marcadas simulan eventos externos y requieren el simulador habilitado en el servidor. No contactan al módulo externo.</p>}
         {ownershipStatus === "checking" && (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />

@@ -80,6 +80,7 @@ const REQUESTS = [
   ["fetchRequestTypes", [4], undefined, "/api/catalog/subcategories/4/request-types"],
   ["fetchRequestTypeForm", [5], undefined, "/api/catalog/request-types/5/form"],
   ["fetchAdminAgents", [], undefined, "/api/admin/agents"],
+  ["fetchStaffCapabilities", [], undefined, "/api/staff/capabilities"],
   ["fetchAdminCategories", [], undefined, "/api/admin/catalog/categories"],
   ["createCategory", [{ name: "C" }], "POST", "/api/admin/catalog/categories", { name: "C" }],
   ["updateCategory", [1, { name: "C" }], "PUT", "/api/admin/catalog/categories/1", { name: "C" }],

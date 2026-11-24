@@ -15,6 +15,7 @@ const agentRoutes = [
   ["GET", `/staff/tickets/${TICKET.id}/cancellation-conflicts`, { body: [] }],
   ["GET", `/staff/tickets/${TICKET.id}/reclassification-proposals`, { body: [] }],
   ["GET", "/staff/labels", { body: [] }],
+  ["GET", "/staff/capabilities", { body: { simulatorEnabled: false } }],
   ["GET", "/catalog/categories", { body: [] }],
   ["GET", "/catalog/neighborhoods", { body: [] }],
 ];
