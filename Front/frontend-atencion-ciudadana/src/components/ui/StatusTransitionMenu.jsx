@@ -49,7 +49,7 @@ const STATUS_TONES = {
   CANCELLED: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
-export default function StatusTransitionMenu({ status, onChange, onTransitionRequest, align = "right", simulatedStatuses = [] }) {
+export default function StatusTransitionMenu({ status, onChange, onTransitionRequest, align = "right", simulatedStatuses = [], unavailableStatuses = [] }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = useId();
@@ -94,21 +94,29 @@ export default function StatusTransitionMenu({ status, onChange, onTransitionReq
       {open && (
         <div id={menuId} role="menu" className={`absolute top-[calc(100%+8px)] z-30 w-[min(22rem,calc(100vw-2.5rem))] overflow-hidden rounded-lg border border-slate-200 bg-white py-1.5 shadow-xl ${align === "left" ? "left-0" : "right-0"}`}>
           <p className="px-4 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cambiar estado</p>
-          {transitions.map((transition) => (
-            <button
-              type="button"
-              role="menuitem"
-              key={`${status}-${transition.status}`}
-              onClick={() => selectTransition(transition.status)}
-              className="group flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-            >
-              <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">{transition.action}{simulatedStatuses.includes(transition.status) && <span className="block text-xs text-amber-700">Simulación DEV</span>}</span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 transition-transform group-hover:translate-x-0.5" />
-              <span className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${STATUS_TONES[transition.status]}`}>
-                {TICKET_STATUS_LABELS[transition.status]}
-              </span>
-            </button>
-          ))}
+          {transitions.map((transition) => {
+            const unavailable = unavailableStatuses.includes(transition.status);
+            return (
+              <button
+                type="button"
+                role="menuitem"
+                key={`${status}-${transition.status}`}
+                disabled={unavailable}
+                onClick={() => selectTransition(transition.status)}
+                className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left focus:outline-none ${unavailable ? "cursor-not-allowed opacity-60" : "hover:bg-slate-50 focus:bg-slate-50"}`}
+              >
+                <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">
+                  {transition.action}
+                  {simulatedStatuses.includes(transition.status) && <span className="block text-xs text-amber-700">Simulación DEV</span>}
+                  {unavailable && <span className="block text-xs text-slate-500">No disponible: el servidor no tiene habilitado el simulador</span>}
+                </span>
+                <ArrowRight className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${unavailable ? "" : "group-hover:translate-x-0.5"}`} />
+                <span className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${STATUS_TONES[transition.status]}`}>
+                  {TICKET_STATUS_LABELS[transition.status]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

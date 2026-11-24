@@ -91,6 +91,10 @@ export async function fetchAdminAgents() {
   return request("/admin/agents");
 }
 
+export async function fetchStaffCapabilities() {
+  return request("/staff/capabilities");
+}
+
 // Catalog Admin (rol ADMIN) — a diferencia de /catalog/*, incluyen activas e inactivas
 export async function fetchAdminCategories() {
   return request("/admin/catalog/categories");

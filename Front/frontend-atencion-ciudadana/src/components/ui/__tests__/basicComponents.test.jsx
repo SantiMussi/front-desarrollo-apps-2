@@ -418,6 +418,20 @@ describe("StatusTransitionMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("deshabilita las acciones no disponibles y avisa por qué, sin llamar a onTransitionRequest", () => {
+    const onTransitionRequest = vi.fn().mockReturnValue(false);
+    render(<StatusTransitionMenu status="ROUTED" onTransitionRequest={onTransitionRequest}
+      unavailableStatuses={["IN_PROGRESS", "RESOLVED"]} />);
+    fireEvent.click(screen.getByRole("button", { name: /Derivado/ }));
+    const start = screen.getByRole("menuitem", { name: /Iniciar trabajo del área/ });
+    expect(start).toBeDisabled();
+    expect(start).toHaveTextContent("No disponible: el servidor no tiene habilitado el simulador");
+    fireEvent.click(start);
+    expect(onTransitionRequest).not.toHaveBeenCalled();
+    expect(screen.getByRole("menuitem", { name: /Marcar caso como resuelto/ })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: /Devolver al agente/ })).toBeEnabled();
+  });
+
   it.each(["RESOLVED", "CANCELLED", "CLOSED", "DESCONOCIDO"])("el estado terminal/desconocido %s no abre menú", (status) => {
     render(<StatusTransitionMenu status={status} />);
     expect(screen.getByRole("button")).toBeDisabled();

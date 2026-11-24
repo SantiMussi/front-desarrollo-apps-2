@@ -7,6 +7,7 @@ import { useTicketMessages } from "../../hooks/useTicketMessages";
 import { useResolveTicket } from "../../hooks/useResolveTicket";
 import { useRequestTicketInformation } from "../../hooks/useRequestTicketInformation";
 import { useRequestTypesCatalog } from "../../hooks/useRequestTypesCatalog";
+import { useStaffCapabilities } from "../../hooks/useStaffCapabilities";
 import * as api from "../../services/apiClient";
 
 vi.mock("../../hooks/useStaffTicketDetail", () => ({ useStaffTicketDetail: vi.fn() }));
@@ -14,6 +15,7 @@ vi.mock("../../hooks/useTicketMessages", () => ({ useTicketMessages: vi.fn() }))
 vi.mock("../../hooks/useResolveTicket", () => ({ useResolveTicket: vi.fn() }));
 vi.mock("../../hooks/useRequestTicketInformation", () => ({ useRequestTicketInformation: vi.fn() }));
 vi.mock("../../hooks/useRequestTypesCatalog", () => ({ useRequestTypesCatalog: vi.fn() }));
+vi.mock("../../hooks/useStaffCapabilities", () => ({ useStaffCapabilities: vi.fn() }));
 vi.mock("../../services/apiClient", () => ({
   fetchStaffCancellationRequests: vi.fn().mockResolvedValue([]),
   fetchCancellationConflicts: vi.fn().mockResolvedValue([]),
@@ -103,6 +105,7 @@ beforeEach(() => {
   useTicketMessages.mockImplementation(() => chat);
   useResolveTicket.mockImplementation(() => resolveHook);
   useRequestTicketInformation.mockImplementation(() => infoHook);
+  useStaffCapabilities.mockReturnValue({ simulatorEnabled: null });
   useRequestTypesCatalog.mockReturnValue({
     requestTypes: [
       { id: 1, code: "LUM", name: "Luminaria apagada" },
@@ -740,6 +743,48 @@ describe("TicketDetailPage - transiciones de estado", () => {
     expect(screen.queryByRole("button", { name: "En gestión" })).not.toBeInTheDocument();
     expect(screen.getByText(/las acciones marcadas simulan eventos externos/)).toBeInTheDocument();
     if ([403, 404].includes(status)) expect(screen.getByText(/No se aplicó ningún cambio/)).toBeInTheDocument();
+  });
+
+  it("sin dato del servidor ofrece las acciones simuladas como siempre", async () => {
+    setTicket({ currentStatus: "ROUTED", responsibleAreaId: "M3" });
+    await renderPage();
+    expect(screen.getByText(/las acciones marcadas simulan eventos externos/)).toBeInTheDocument();
+    openMenu("Derivado");
+    expect(screen.getByRole("menuitem", { name: /Iniciar trabajo del área/ })).toBeEnabled();
+    expect(screen.getAllByText("Simulación DEV").length).toBeGreaterThan(0);
+  });
+
+  it("con el simulador habilitado marca las acciones simuladas y las deja usar", async () => {
+    useStaffCapabilities.mockReturnValue({ simulatorEnabled: true });
+    setTicket({ currentStatus: "ROUTED", responsibleAreaId: "M3" });
+    await renderPage();
+    expect(screen.getByText(/las acciones marcadas simulan eventos externos/)).toBeInTheDocument();
+    openMenu("Derivado");
+    expect(screen.getByRole("menuitem", { name: /Devolver al agente/ })).toBeEnabled();
+    expect(screen.getAllByText("Simulación DEV").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/No disponible: el servidor/)).not.toBeInTheDocument();
+  });
+
+  it("con el simulador apagado deshabilita las acciones de otro módulo y no promete simulación", async () => {
+    useStaffCapabilities.mockReturnValue({ simulatorEnabled: false });
+    setTicket({ currentStatus: "ROUTED", responsibleAreaId: "M3" });
+    await renderPage();
+    expect(screen.queryByText(/las acciones marcadas simulan eventos externos/)).not.toBeInTheDocument();
+    openMenu("Derivado");
+    for (const action of [/Iniciar trabajo del área/, /Devolver al agente/, /Marcar caso como resuelto/, /Rechazar o cancelar solicitud/]) {
+      expect(screen.getByRole("menuitem", { name: action })).toBeDisabled();
+    }
+    expect(screen.queryByText("Simulación DEV")).not.toBeInTheDocument();
+    // Pedir información es una acción de M2: no depende del simulador.
+    expect(screen.getByRole("menuitem", { name: /Solicitar información extra/ })).toBeEnabled();
+  });
+
+  it("con el simulador apagado, un ticket de M2 en gestión se sigue resolviendo a mano", async () => {
+    useStaffCapabilities.mockReturnValue({ simulatorEnabled: false });
+    setTicket({ currentStatus: "IN_PROGRESS", responsibleAreaId: "M2" });
+    await renderPage();
+    openMenu("En gestión");
+    expect(screen.getByRole("menuitem", { name: /Completar solicitud/ })).toBeEnabled();
   });
 
   it("devuelve un ticket derivado al agente con un motivo", async () => {
