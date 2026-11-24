@@ -1,5 +1,5 @@
 import { ATTACHMENT_ACCEPT, attachmentError } from "../../utils/attachments";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CancellationHistory from "./CancellationHistory";
 import { CANCELLATION_REASONS } from "../../constants/cancellationReasons";
 import { Link } from "react-router-dom";
@@ -238,6 +238,16 @@ export default function CitizenTicketView({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const editInputRef = useRef(null);
+  const editTriggerRef = useRef(null);
+  useEffect(() => {
+    if (editingId !== null) {
+      editInputRef.current?.focus();
+    } else {
+      editTriggerRef.current?.focus();
+      editTriggerRef.current = null;
+    }
+  }, [editingId]);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -319,7 +329,8 @@ export default function CitizenTicketView({
     }
   };
 
-  const startEdit = (message) => {
+  const startEdit = (message, trigger) => {
+    editTriggerRef.current = trigger;
     setEditingId(message.id);
     setEditText(message.text);
     setSendError(null);
@@ -771,10 +782,11 @@ export default function CitizenTicketView({
                       {isEditing ? (
                         <div className="min-w-[200px]">
                           <textarea
+                            ref={editInputRef}
+                            aria-label="Editar contenido del mensaje"
                             value={editText}
                             onChange={(e) => setEditText(e.target.value)}
                             rows={2}
-                            autoFocus
                             className="w-full resize-none rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-[12.5px] text-neutral-800 outline-none focus:ring-2 focus:ring-[#0F2C59]/20"
                           />
                           <div className="mt-1.5 flex justify-end gap-2 text-[11px] font-semibold">
@@ -799,11 +811,11 @@ export default function CitizenTicketView({
                           {dateTime(m.createdAt)}
                           {wasMessageEdited(m) ? " (editado)" : ""}
                         </p>
-                        {canModify && !isEditing && !isConfirmingDelete && (
-                          <span className="ml-auto flex items-center gap-1.5">
+                        {canModify && (
+                          <span hidden={isEditing || isConfirmingDelete} className={isEditing || isConfirmingDelete ? "hidden" : "ml-auto flex items-center gap-1.5"}>
                             <button
                               type="button"
-                              onClick={() => startEdit(m)}
+                              onClick={(event) => startEdit(m, event.currentTarget)}
                               className="text-neutral-500 hover:text-[#0F2C59]"
                               aria-label="Editar mensaje"
                             >

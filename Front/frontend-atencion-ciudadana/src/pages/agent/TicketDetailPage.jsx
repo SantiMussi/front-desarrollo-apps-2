@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import StaffTicketFacts from "../../components/ticket/StaffTicketFacts";
 import { hasTicketLocation } from "../../utils/ticketLocation";
 import { Link, useParams } from "react-router-dom";
@@ -121,7 +121,7 @@ const REASON_DIALOG_CONFIG = {
 const COMPLETED_SLA_STATUSES = new Set(["RESOLVED", "CLOSED", "CANCELLED"]);
 
 function formatSlaCountdown(dueAt, now) {
-  const dueTime = dueAt ? new Date(dueAt).getTime() : NaN;
+  const dueTime = dueAt ? new Date(dueAt).getTime() : Number.NaN;
   if (!Number.isFinite(dueTime)) return null;
 
   const difference = dueTime - now;
@@ -164,6 +164,16 @@ function TicketDetailContent() {
   const [commentSending, setCommentSending] = useState(false);
   const [commentError, setCommentError] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
+  const editInputRef = useRef(null);
+  const editButtonPrefix = useId();
+  const [lastEditedMessageId, setLastEditedMessageId] = useState(null);
+  useEffect(() => {
+    if (editingMessageId !== null) {
+      editInputRef.current?.focus();
+    } else if (lastEditedMessageId !== null) {
+      document.getElementById(`${editButtonPrefix}-${lastEditedMessageId}`)?.focus();
+    }
+  }, [editingMessageId, editButtonPrefix, lastEditedMessageId]);
   const [editingMessageText, setEditingMessageText] = useState("");
   const [confirmDeleteMessageId, setConfirmDeleteMessageId] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
@@ -327,6 +337,7 @@ function TicketDetailContent() {
   };
 
   const startEditMessage = (message) => {
+    setLastEditedMessageId(message.id);
     setEditingMessageId(message.id);
     setEditingMessageText(message.text);
     setCommentError(null);
@@ -390,56 +401,55 @@ function TicketDetailContent() {
   };
 
   const requestTransition = (nextStatus) => {
-    if (reclassificationBusy || cancellationBusy) return false;
+    if (reclassificationBusy || cancellationBusy) return;
     if (canManageClassification && ["ROUTED", "PENDING_INFORMATION"].includes(nextStatus)
         && (reclassification.loading || reclassification.error || reclassification.proposals.some(isOpenProposal))) {
       setTransitionError("Revisá y resolvé la propuesta de reclasificación antes de derivar o solicitar información general.");
-      return false;
+      return;
     }
     if (status === "REGISTERED" && nextStatus === "IN_REVIEW") {
       void startReview();
-      return false;
+      return;
     }
     if (status === "IN_REVIEW" && nextStatus === "ROUTED") {
       setDerivationOpen(true);
-      return false;
+      return;
     }
     if (status === "ROUTED" && nextStatus === "IN_PROGRESS") {
       void startWork();
-      return false;
+      return;
     }
     if (nextStatus === "RESOLVED") {
       resetResolve();
       setResolveOpen(true);
-      return false;
+      return;
     }
     if (nextStatus === "PENDING_INFORMATION") {
       resetInfoRequest();
       setInfoRequestOpen(true);
-      return false;
+      return;
     }
     if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "IN_REVIEW") {
       setReasonError(null);
       setReasonDialog({ kind: "return" });
-      return false;
+      return;
     }
     if ((status === "ROUTED" || status === "IN_PROGRESS") && nextStatus === "CANCELLED") {
       setReasonError(null);
       setReasonDialog({ kind: "reject" });
-      return false;
+      return;
     }
     if (status === "REGISTERED" && nextStatus === "DUPLICATE") {
       setDuplicateError(null);
       setDuplicateDialogOpen(true);
-      return false;
+      return;
     }
     if (["REGISTERED", "IN_REVIEW", "PENDING_INFORMATION"].includes(status) && nextStatus === "CANCELLED") {
       setReasonError(null);
       setReasonDialog({ kind: "cancel" });
-      return false;
+      return;
     }
     setTransitionError("Esta acción todavía no tiene un endpoint en el back — no se aplicó ningún cambio.");
-    return false;
   };
 
   const handleReasonConfirm = async ({ reasonCode, publicMessage, internalMessage, cancellationScope, decisionReason }) => {
@@ -609,13 +619,11 @@ function TicketDetailContent() {
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-[#0F2C59]">
               {TypeIcon && (
-                <span className="group relative inline-flex" title={typeConfig.label} tabIndex={0}>
+                <span className="inline-flex items-center gap-1.5">
                   <span className={`flex h-6 w-6 items-center justify-center rounded-full ${typeConfig.className}`}>
                     <TypeIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
                   </span>
-                  <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                    {typeConfig.label}
-                  </span>
+                  <span>{typeConfig.label}</span>
                 </span>
               )}
               <span>{ticket.publicId}</span>
@@ -637,7 +645,7 @@ function TicketDetailContent() {
         				{TICKET_STATUS_LABELS[status] || status}
         			</span>
         		) : (
-              <StatusTransitionMenu status={status} onChange={setStatus} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} />
+              <StatusTransitionMenu status={status} onTransitionRequest={requestTransition} simulatedStatuses={simulatedStatuses} />
         		)}
         	</div>
         </div>
@@ -743,14 +751,20 @@ function TicketDetailContent() {
                             {message.visibility === "INTERNAL" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">NOTA INTERNA</span>}
                             {isMine && !isEditing && !isConfirmingDelete && (
                               <span className="ml-auto flex items-center gap-2">
-                                <button onClick={() => startEditMessage(message)} className="text-slate-400 hover:text-[#0F2C59]" aria-label="Editar comentario"><Pencil className="h-3.5 w-3.5" /></button>
+                                <button
+                                  id={`${editButtonPrefix}-${message.id}`}
+                                  type="button"
+                                  onClick={() => startEditMessage(message)}
+                                  className="text-slate-400 hover:text-[#0F2C59]"
+                                  aria-label="Editar comentario"
+                                ><Pencil className="h-3.5 w-3.5" /></button>
                                 <button onClick={() => setConfirmDeleteMessageId(message.id)} className="text-slate-400 hover:text-red-600" aria-label="Borrar comentario"><Trash2 className="h-3.5 w-3.5" /></button>
                               </span>
                             )}
                           </div>
                           {isEditing ? (
                             <div className="mt-1.5">
-                              <textarea value={editingMessageText} onChange={(e) => setEditingMessageText(e.target.value)} rows={2} autoFocus className="w-full resize-none rounded-md border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#0F2C59]/20" />
+                              <textarea ref={editInputRef} aria-label="Editar contenido del comentario" value={editingMessageText} onChange={(e) => setEditingMessageText(e.target.value)} rows={2} className="w-full resize-none rounded-md border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-[#0F2C59]/20" />
                               <div className="mt-1.5 flex justify-end gap-3 text-xs font-semibold">
                                 <button onClick={() => setEditingMessageId(null)} className="text-slate-500 hover:underline">Cancelar</button>
                                 <button onClick={() => saveEditMessage(message.id)} disabled={!editingMessageText.trim()} className="text-[#0F2C59] hover:underline disabled:opacity-50">Guardar</button>
@@ -837,7 +851,7 @@ function TicketDetailContent() {
               <Field label="Subcategoría">{data.subcategory?.name || "—"}</Field>
               <Field label="Afectados">
                 <span>{fields.affectedCount}</span>
-                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-400">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
+                <span className="mt-1 block text-[10px] font-normal leading-4 text-slate-600">Estimado automáticamente por el sistema (barrio y tipo de solicitud); no depende de tickets duplicados vinculados.</span>
               </Field>
               <Field label="Barrio">{data.neighborhood || "—"}</Field>
             </dl>

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, LockKeyhole, Mail, LogIn, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
+import ModalDialog from "./ModalDialog";
 
 /**
  * Modal de login rápido. Se usa cuando un vecino intenta enviar un reclamo
@@ -14,6 +15,9 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const titleId = useId();
+  const descriptionId = useId();
+  const emailRef = useRef(null);
 
   const resetForm = () => {
     setForm({ username: "", password: "" });
@@ -27,21 +31,6 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
     resetForm();
     onClose();
   };
-
-  // Bloquear scroll del body + cerrar con ESC
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    document.body.style.overflow = "hidden";
-    const onKey = (e) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, loading]);
 
   const update = ({ target }) =>
     setForm((current) => ({ ...current, [target.name]: target.value }));
@@ -63,23 +52,24 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+        <ModalDialog
+          labelledBy={titleId}
+          describedBy={descriptionId}
+          initialFocusRef={emailRef}
+          lockScroll
+          canDismiss={!loading}
+          onDismiss={handleClose}
         >
           <motion.div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-0 bg-black/40 backdrop-blur-sm"
+            aria-hidden="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
           />
 
           <motion.div
-            className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/20"
+            className="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl shadow-black/20"
             initial={{ opacity: 0, scale: 0.9, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
@@ -104,17 +94,17 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                 </div>
               </div>
 
-              <h3 className="text-center text-xl font-extrabold tracking-tight text-neutral-900">
+              <h3 id={titleId} className="text-center text-xl font-extrabold tracking-tight text-neutral-900">
                 Iniciá sesión para enviar tu reclamo
               </h3>
-              <p className="mx-auto mt-2 max-w-sm text-center text-[13.5px] leading-relaxed text-neutral-500">
+              <p id={descriptionId} className="mx-auto mt-2 max-w-sm text-center text-[13.5px] leading-relaxed text-neutral-500">
                 Necesitás una cuenta para registrar tu solicitud y hacerle seguimiento.
                 No vas a perder lo que ya cargaste.
               </p>
 
               <form onSubmit={submit} className="mt-6 space-y-4">
                 {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+                  <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
                     {error}
                   </div>
                 )}
@@ -126,6 +116,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                   <span className="relative block">
                     <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                     <input
+                      ref={emailRef}
                       name="username"
                       type="email"
                       autoComplete="username"
@@ -155,7 +146,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-neutral-500 hover:text-neutral-600"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-neutral-500 hover:text-neutral-600"
                       aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -174,7 +165,7 @@ export default function LoginPromptModal({ isOpen, onClose, onAuthenticated }) {
             </div>
 
           </motion.div>
-        </motion.div>
+        </ModalDialog>
       )}
     </AnimatePresence>
   );

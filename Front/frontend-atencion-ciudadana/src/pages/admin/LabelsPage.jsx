@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Pencil, Plus, Power, RefreshCw, Search, Tag, Tags, Trash2, X } from "lucide-react";
 import { createStaffLabel, deleteStaffLabel, fetchStaffLabels, updateStaffLabel } from "../../services/apiClient";
 import CatalogEntityFormDialog from "../../components/catalog/CatalogEntityFormDialog";
+import ModalDialog from "../../components/ui/ModalDialog";
 
 const CREATE_FIELDS = [
   {
@@ -95,16 +96,14 @@ function StatCard({ label, value, icon: Icon, tone }) {
 
 function DeleteDialog({ label, loading, error, onCancel, onConfirm }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[1px]"
-      onMouseDown={(e) =>
-        e.target === e.currentTarget && !loading && onCancel()
-      }
+    <ModalDialog
+      role="alertdialog"
+      labelledBy="delete-label-title"
+      overlayClassName="bg-slate-950/45 backdrop-blur-[1px]"
+      canDismiss={!loading}
+      onDismiss={onCancel}
     >
       <section
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-label-title"
         className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
       >
         <div className="flex items-start gap-3 p-5">
@@ -166,7 +165,7 @@ function DeleteDialog({ label, loading, error, onCancel, onConfirm }) {
           </button>
         </footer>
       </section>
-    </div>
+    </ModalDialog>
   );
 }
 

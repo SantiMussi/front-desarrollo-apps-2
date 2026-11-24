@@ -637,7 +637,7 @@ export default function TicketForm({ requestType, onBack, onNewTicket, onDirtyCh
 
       <div className="rounded-lg border border-[#0F2C59]/10 bg-[#0F2C59]/[0.02] p-4">
         <p className="text-[13px] font-medium text-[#0F2C59]">{requestType.name}</p>
-        <p className="text-[12px] text-neutral-500 mt-0.5">{requestType.description}</p>
+        <p className="text-[12px] text-neutral-600 mt-0.5">{requestType.description}</p>
       </div>
 
       {!isAuthenticated && !canBeAnonymous && (

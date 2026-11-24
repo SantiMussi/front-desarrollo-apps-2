@@ -6,7 +6,7 @@ export default function Breadcrumb({ items = [], onNavigate }) {
       <button
         type="button"
         onClick={() => onNavigate(-1)}
-        className="flex items-center gap-1 text-[13px] text-neutral-500 hover:text-[#0F2C59] transition-colors"
+        className="flex min-h-6 items-center gap-1 text-[13px] text-neutral-500 hover:text-[#0F2C59] transition-colors"
       >
         <Home className="h-3.5 w-3.5" strokeWidth={2} />
         <span>Portal de Ayuda</span>
@@ -25,7 +25,7 @@ export default function Breadcrumb({ items = [], onNavigate }) {
               <button
                 type="button"
                 onClick={() => onNavigate(index)}
-                className="text-[13px] text-neutral-500 hover:text-[#0F2C59] transition-colors"
+                className="min-h-6 text-[13px] text-neutral-500 hover:text-[#0F2C59] transition-colors"
               >
                 {item.label}
               </button>

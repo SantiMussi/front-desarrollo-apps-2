@@ -465,6 +465,7 @@ describe("CitizenTicketView - chat", () => {
     view({ chat });
     fireEvent.click(screen.getByLabelText("Editar mensaje"));
     const box = screen.getByDisplayValue("Hola, mi mensaje");
+    expect(box).toHaveFocus();
     fireEvent.change(box, { target: { value: "  " } });
     expect(screen.getByText("Guardar")).toBeDisabled();
     fireEvent.change(box, { target: { value: " Editado " } });
@@ -479,6 +480,7 @@ describe("CitizenTicketView - chat", () => {
     fireEvent.click(screen.getByLabelText("Editar mensaje"));
     fireEvent.click(screen.getByText("Cancelar"));
     expect(screen.queryByText("Guardar")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar mensaje" })).toHaveFocus();
     fireEvent.click(screen.getByLabelText("Editar mensaje"));
     fireEvent.click(screen.getByText("Guardar"));
     expect(await screen.findByText("No se pudo editar")).toBeInTheDocument();
